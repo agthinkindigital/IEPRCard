@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/mcp_oauth.php';
+require_once __DIR__ . '/mcp_tools.php';
 require_once __DIR__ . '/mcp_server_support.php';
 
 /** @return array{id:int,tenant_id:int,client_id:string,scopes:list<string>} */
@@ -71,8 +72,8 @@ function mcpServerAuthenticate(PDO $pdo, ?string $authorization, ?array $configu
     return ['id' => (int) $client['id'], 'tenant_id' => (int) $client['tenant_id'], 'client_id' => (string) $client['client_id'], 'scopes' => $scopes];
 }
 
-/** @param array<string, mixed> $request @return array{status:int,response:array<string,mixed>} */
-function mcpServerHandleRequest(array $request): array
+/** @param array<string, mixed> $request @param array{id:int,tenant_id:int,client_id:string,scopes:list<string>} $principal @return array{status:int,response:array<string,mixed>} */
+function mcpServerHandleRequest(array $request, array $principal): array
 {
     $id = $request['id'] ?? null;
     if (($request['jsonrpc'] ?? null) !== '2.0' || !array_key_exists('id', $request)
@@ -86,13 +87,35 @@ function mcpServerHandleRequest(array $request): array
     if ($request['method'] === 'ping') {
         return ['status' => 200, 'response' => ['jsonrpc' => '2.0', 'id' => $id, 'result' => (object) []]];
     }
+    if ($request['method'] === 'tools/list') {
+        return ['status' => 200, 'response' => [
+            'jsonrpc' => '2.0', 'id' => $id,
+            'result' => [
+                'resultType' => 'complete',
+                'tools' => mcpToolRegistry($principal['scopes']),
+                'ttlMs' => 300000,
+                'cacheScope' => 'private',
+            ],
+        ]];
+    }
+    if ($request['method'] === 'tools/call') {
+        $params = $request['params'];
+        if (!is_string($params['name'] ?? null) || $params['name'] === '') {
+            return ['status' => 400, 'response' => ['jsonrpc' => '2.0', 'id' => $id, 'error' => ['code' => -32602, 'message' => 'Invalid tool name.']]];
+        }
+        $call = mcpToolCall($params['name'], $params['arguments'] ?? [], $principal['scopes']);
+        if (isset($call['error'])) {
+            return ['status' => 400, 'response' => ['jsonrpc' => '2.0', 'id' => $id, 'error' => $call['error']]];
+        }
+        return ['status' => 200, 'response' => ['jsonrpc' => '2.0', 'id' => $id, 'result' => $call['result']]];
+    }
     if ($request['method'] === 'server/discover') {
         return ['status' => 200, 'response' => [
             'jsonrpc' => '2.0', 'id' => $id,
             'result' => [
                 'resultType' => 'complete',
                 'supportedVersions' => ['2026-07-28'],
-                'capabilities' => (object) [],
+                'capabilities' => ['tools' => (object) []],
                 '_meta' => ['io.modelcontextprotocol/serverInfo' => ['name' => 'IEPRCard', 'version' => '0.1.0']],
                 'ttlMs' => 300000,
                 'cacheScope' => 'public',

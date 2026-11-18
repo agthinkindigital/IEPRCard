@@ -108,6 +108,11 @@ if (!$requestObject instanceof stdClass || !is_array($request)
     $correlation = mcpHttpAudit($principal, 'invalid', 'error', microtime(true));
     mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32600, 'message' => 'Invalid JSON-RPC request.']], ['X-Correlation-ID' => $correlation]);
 }
+if (($request['method'] ?? null) === 'tools/call' && isset($requestObject->params->arguments)
+    && !($requestObject->params->arguments instanceof stdClass)) {
+    $correlation = mcpHttpAudit($principal, 'tools/call', 'error', microtime(true));
+    mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => $request['id'] ?? null, 'error' => ['code' => -32602, 'message' => 'Invalid tool arguments.']], ['X-Correlation-ID' => $correlation]);
+}
 $method = is_string($request['method'] ?? null) ? $request['method'] : 'invalid';
 $headerError = mcpServerHeaderValidation($request, [
     'protocol_version' => isset($_SERVER['HTTP_MCP_PROTOCOL_VERSION']) ? (string) $_SERVER['HTTP_MCP_PROTOCOL_VERSION'] : null,
@@ -119,7 +124,7 @@ if ($headerError !== null) {
     $correlation = mcpHttpAudit($principal, $method, 'error', $startedAt);
     mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => $request['id'] ?? null, 'error' => $headerError], ['X-Correlation-ID' => $correlation]);
 }
-$handled = mcpServerHandleRequest($request);
+$handled = mcpServerHandleRequest($request, $principal);
 $result = $handled['status'] < 400 ? 'ok' : 'error';
 $correlation = mcpHttpAudit($principal, $method, $result, $startedAt);
 mcpHttpRespond($handled['status'], $handled['response'], ['X-Correlation-ID' => $correlation]);

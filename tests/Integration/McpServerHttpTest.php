@@ -76,29 +76,10 @@ if (!is_resource($process)) {
     throw new RuntimeException('Could not start MCP transport test server.');
 }
 
-$rpcHeaders = static function (string $method, ?string $name = null, string $version = '2026-07-28', string $tokenValue = ''): array {
-    $headers = [
-        'Accept: application/json, text/event-stream',
-        'Content-Type: application/json',
-        'MCP-Protocol-Version: ' . $version,
-        'Mcp-Method: ' . $method,
-        'Authorization: Bearer ' . $tokenValue,
-        'Origin: https://client.example.test',
-    ];
-    if ($name !== null) {
-        $headers[] = 'Mcp-Name: ' . $name;
-    }
-    return $headers;
-};
-$meta = static fn(string $version = '2026-07-28'): array => [
-    'io.modelcontextprotocol/protocolVersion' => $version,
-    'io.modelcontextprotocol/clientInfo' => ['name' => 'Integration test', 'version' => '1.0'],
-    'io.modelcontextprotocol/clientCapabilities' => (object) [],
-];
-$rpc = static fn(string $method, string $version = '2026-07-28', array $methodParams = []): string => json_encode([
-    'jsonrpc' => '2.0', 'id' => 'req-1', 'method' => $method,
-    'params' => ['_meta' => $meta($version), ...$methodParams],
-], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+$factories = mcpServerHttpRpcFactories();
+$rpcHeaders = $factories['headers'];
+$meta = $factories['meta'];
+$rpc = $factories['request'];
 
 try {
     $url = $baseUrl . '/mcp.php';
@@ -117,6 +98,7 @@ try {
     [$status, $response, $headers] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('server/discover', null, '2026-07-28', $token));
     $decoded = json_decode((string) $response, true);
     if ($status !== 200 || !is_array($decoded) || ($decoded['result']['supportedVersions'] ?? null) !== ['2026-07-28']
+        || !isset($decoded['result']['capabilities']['tools'])
         || !in_array('content-type: application/json; charset=utf-8', array_map('strtolower', $headers), true)
         || !in_array('cache-control: no-store', array_map('strtolower', $headers), true)) {
         throw new RuntimeException('MCP server/discover must return versioned stateless capability metadata: ' . $status . ' ' . (string) $response . ' ' . json_encode($headers));
@@ -126,6 +108,7 @@ try {
     if ($status !== 200 || !str_contains((string) $response, '"result":{}')) {
         throw new RuntimeException('MCP ping must return an empty JSON-RPC result.');
     }
+    mcpServerHttpToolAssertions($url, $token, $meta, $rpc, $rpcHeaders);
     [$status, $response, $authHeaders] = mcpServerHttpRequest($url, 'POST', $body, ['Accept: application/json, text/event-stream', 'Content-Type: application/json', 'Origin: https://client.example.test']);
     if ($status !== 401 || !in_array('www-authenticate: bearer resource_metadata="' . $baseUrl . '/.well-known/oauth-protected-resource/mcp", error="invalid_token"', array_map('strtolower', $authHeaders), true)) {
         throw new RuntimeException('MCP authentication challenge must reference Protected Resource Metadata.');
@@ -166,8 +149,8 @@ try {
     $body = $rpc('tools/call', '2026-07-28', ['name' => $unicodeName]);
     $encodedNameHeaders = $rpcHeaders('tools/call', '=?base64?' . base64_encode($unicodeName) . '?=', '2026-07-28', $token);
     [$status, $response] = mcpServerHttpRequest($url, 'POST', $body, $encodedNameHeaders);
-    if ($status !== 404 || !str_contains((string) $response, '"code":-32601')) {
-        throw new RuntimeException('MCP transport must decode the standard Base64 sentinel in Mcp-Name.');
+    if ($status !== 400 || !str_contains((string) $response, '"code":-32602')) {
+        throw new RuntimeException('MCP transport must decode the standard Base64 sentinel in Mcp-Name before tool lookup.');
     }
     $body = $rpc('ping');
     $tokenSeparator = strpos($token, '.');
@@ -205,7 +188,7 @@ try {
     $activate = $pdo->prepare('UPDATE mcp_api_keys SET ativo = 1 WHERE client_id = :client');
     $activate->execute(['client' => $clientId]);
     $body = $rpc('ping');
-    for ($attempt = 0; $attempt < 23; ++$attempt) {
+    for ($attempt = 0; $attempt < 20; ++$attempt) {
         [$status] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('ping', null, '2026-07-28', $token));
         if ($status !== 200) {
             throw new RuntimeException('MCP client rate limit must allow requests within the configured window.');
