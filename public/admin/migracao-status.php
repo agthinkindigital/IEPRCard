@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/config/admin_migration.php';
 require_once dirname(__DIR__, 2) . '/config/conn.php';
-require_once dirname(__DIR__, 2) . '/config/admin_auth.php';
-require_once dirname(__DIR__, 2) . '/config/admin_security_headers.php';
+require_once dirname(__DIR__, 2) . '/config/admin_guard.php';
 
 adminAuthSendSecurityHeaders();
+adminExigirHostDaPlataforma();
 header('Content-Type: application/json; charset=utf-8');
 if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
     header('Allow: GET');

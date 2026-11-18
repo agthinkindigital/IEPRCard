@@ -4,11 +4,23 @@ declare(strict_types=1);
 require_once __DIR__ . '/conn.php';
 require_once __DIR__ . '/admin_auth.php';
 require_once __DIR__ . '/admin_security_headers.php';
+require_once __DIR__ . '/tenant_resolver.php';
+
+function adminExigirHostDaPlataforma(): void
+{
+    if (tenantResolverIsPlatformHost((string) ($_SERVER['HTTP_HOST'] ?? ''))) {
+        return;
+    }
+
+    http_response_code(404);
+    exit('Recurso não encontrado.');
+}
 
 /** @return array{id: int, nome: string, email: string, papel_sistema: string} */
 function adminExigirAcesso(): array
 {
     adminAuthSendSecurityHeaders();
+    adminExigirHostDaPlataforma();
     if (!adminAuthStartSession()) {
         http_response_code(500);
         exit('Não foi possível iniciar uma sessão segura.');

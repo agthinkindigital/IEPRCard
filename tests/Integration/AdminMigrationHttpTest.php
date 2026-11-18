@@ -10,13 +10,14 @@ mkdir($directory, 0700, true);
 $databasePath = $directory . DIRECTORY_SEPARATOR . 'source.sqlite';
 $statePath = $directory . DIRECTORY_SEPARATOR . 'job.json';
 $oldEnvironment = [];
-foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'MIGRATION_SOURCE_SQLITE_PATH', 'MIGRATION_TARGET_DATABASE', 'MIGRATION_TARGET_USERNAME', 'MIGRATION_TARGET_PASSWORD', 'IEPRCARD_ADMIN_RATE_LIMIT_PATH', 'IEPRCARD_MIGRATION_STATE_PATH'] as $key) {
+foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'PLATFORM_HOSTNAME', 'MIGRATION_SOURCE_SQLITE_PATH', 'MIGRATION_TARGET_DATABASE', 'MIGRATION_TARGET_USERNAME', 'MIGRATION_TARGET_PASSWORD', 'IEPRCARD_ADMIN_RATE_LIMIT_PATH', 'IEPRCARD_MIGRATION_STATE_PATH'] as $key) {
     $value = getenv($key);
     $oldEnvironment[$key] = $value === false ? null : $value;
 }
 putenv('APP_ENV=dev');
 putenv('DB_DRIVER=sqlite');
 putenv('DB_SQLITE_PATH=' . $databasePath);
+putenv('PLATFORM_HOSTNAME=127.0.0.1');
 putenv('MIGRATION_SOURCE_SQLITE_PATH=' . $databasePath);
 putenv('MIGRATION_TARGET_DATABASE=target_db');
 putenv('MIGRATION_TARGET_USERNAME=migration_user');
@@ -74,6 +75,10 @@ try {
     }
     if ($status !== 303) {
         throw new RuntimeException('Unauthenticated access to migration admin must redirect to login.');
+    }
+    [$tenantHostStatus] = migrationHttpRequest($baseUrl . '/admin/migracao-status.php', 'GET', null, null, 'customer.example.test');
+    if ($tenantHostStatus !== 404) {
+        throw new RuntimeException('The JSON status endpoint must not be exposed through a tenant or unknown Host.');
     }
     [$status] = migrationHttpRequest($baseUrl . '/admin/migracao-status.php');
     if ($status !== 401) {
@@ -146,9 +151,10 @@ try {
 return 'pass';
 
 /** @return array{int, string|null, list<string>} */
-function migrationHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null): array
+function migrationHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null, ?string $host = null): array
 {
     $headers = ['Accept: text/html, application/json'];
+    if ($host !== null) $headers[] = 'Host: ' . $host;
     if ($cookie !== null) $headers[] = 'Cookie: ' . $cookie;
     if ($method === 'POST') $headers[] = 'Content-Type: application/x-www-form-urlencoded';
     $context = stream_context_create(['http' => [

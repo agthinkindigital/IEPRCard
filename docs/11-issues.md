@@ -20,16 +20,16 @@
 * **Critério de Aceite:** Passar no `TDD-01`.
 
 
-* **ISSUE-003: Utilitário de Migração automatizada SQLite $\rightarrow$ MySQL/MariaDB**
-* **Arquivos:** serviço `database/migration/sqlite_to_mysql.php`, comando CLI `database/migrate-sqlite-to-mysql.php`; interface administrativa na slice E01.4 após aprovação do mockup e guia.
-* **Descrição:** Serviço e script CLI que leem todas as tabelas do SQLite e transferem os dados para o MySQL/MariaDB configurado, com verificação de integridade. A tela administrativa correspondente fica na slice E01.4 e depende de mockup e guia funcional aprovados.
+* **ISSUE-003: Utilitário de Migração automatizada SQLite $\rightarrow$ MySQL/MariaDB** — serviço e CLI entregues em [GitHub #10](https://github.com/agthinkindigital/IEPRCard/issues/10); interface administrativa E01.4 concluída em [GitHub #11](https://github.com/agthinkindigital/IEPRCard/issues/11).
+* **Arquivos:** serviço `database/migration/sqlite_to_mysql.php`, comando CLI `database/migrate-sqlite-to-mysql.php` e interface administrativa protegida em `public/admin/migracao-banco.php`.
+* **Descrição:** Serviço e script CLI transferem as tabelas SQLite para MySQL/MariaDB com verificação de integridade. A interface aprovada permite pré-verificar, enfileirar e acompanhar o worker sem repetir a lógica de migração.
 * **Critério de Aceite:** Migrar o fixture de 1.000 registros em menos de 5 segundos no ambiente de referência, com contagens e checksums idênticos, chaves estrangeiras válidas e rollback integral se a transferência falhar.
 
 
 
 ### ÉPICO 2: Multi-Tenancy, Domínios, Subdomínios e Permissões (Req 03, 04, 05, 12, 13)
 
-* **ISSUE-004: Resolvedor de Domínios (Clientes) e Subdomínios (Subclientes)**
+* **ISSUE-004: Resolvedor de Domínios (Clientes) e Subdomínios (Subclientes)** — fundação E02.2 rastreada em [GitHub #13](https://github.com/agthinkindigital/IEPRCard/issues/13).
 * **Arquivos:** `config/tenant_resolver.php`, `index.php`
 * **Descrição:** Identificar pelo `$_SERVER['HTTP_HOST']` se o acesso pertence ao Admin Principal, a um Cliente (via domínio próprio CNAME ou subdomínio de 1º nível) ou a um Subcliente (via subdomínio de 2º nível ou subdomínio do domínio do Cliente), carregando o branding e escopo de banco correspondente.
 * **Critério de Aceite:** Passar no `TDD-02` (cenários de resolução de host).

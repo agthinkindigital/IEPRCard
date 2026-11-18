@@ -2,7 +2,7 @@
 
 ## Objetivo e acesso
 
-Esta tela inicia uma sessão do Administrador SaaS para acessar ferramentas globais, incluindo a migração de banco. Não há cadastro público. A conta precisa estar ativa, ter papel `superadmin` e pertencer ao escopo global do sistema.
+Esta tela inicia uma sessão do Administrador SaaS para acessar ferramentas globais, incluindo a migração de banco. Ela só responde no hostname da plataforma definido por `PLATFORM_HOSTNAME`; domínios de clientes não expõem as rotas administrativas. Não há cadastro público. A conta precisa estar ativa, ter papel `superadmin` e pertencer ao escopo global do sistema.
 
 ## Fluxo
 
@@ -11,6 +11,8 @@ Esta tela inicia uma sessão do Administrador SaaS para acessar ferramentas glob
 3. Selecione **Entrar**. O sistema valida as credenciais no servidor, aplica limite de tentativas e cria uma nova sessão protegida.
 4. Em caso de falha, corrija as credenciais e tente novamente. A mensagem não confirma se o e-mail está cadastrado.
 5. Se a sessão expirar, autentique-se novamente. Ações que alteram dados exigem token CSRF válido.
+
+Configure `PLATFORM_HOSTNAME` no ambiente do processo PHP, por exemplo `admin.ieprcard.com.br`. Para roteamento de subdomínios de clientes, configure também `TENANT_BASE_DOMAIN`. Em desenvolvimento local, use o hostname efetivamente usado no navegador, como `localhost` ou `127.0.0.1`.
 
 ## Privacidade e recuperação
 

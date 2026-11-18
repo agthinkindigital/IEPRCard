@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/config/admin_auth.php';
-require_once dirname(__DIR__, 2) . '/config/admin_security_headers.php';
+require_once dirname(__DIR__, 2) . '/config/admin_guard.php';
 
 adminAuthSendSecurityHeaders();
+adminExigirHostDaPlataforma();
 if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     header('Allow: POST');
     http_response_code(405);

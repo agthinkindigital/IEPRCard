@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/config/admin_guard.php';
 
 adminAuthSendSecurityHeaders();
+adminExigirHostDaPlataforma();
 if (!adminAuthStartSession()) {
     http_response_code(500);
     exit('Não foi possível iniciar uma sessão segura.');

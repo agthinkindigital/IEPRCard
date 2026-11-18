@@ -12,13 +12,14 @@ if (!mkdir($tempDirectory, 0700, true) && !is_dir($tempDirectory)) {
 $databasePath = $tempDirectory . DIRECTORY_SEPARATOR . 'admin.sqlite';
 $rateLimitPath = $tempDirectory . DIRECTORY_SEPARATOR . 'rate-limit.json';
 $oldEnvironment = [];
-foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'IEPRCARD_ADMIN_RATE_LIMIT_PATH'] as $key) {
+foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'PLATFORM_HOSTNAME', 'IEPRCARD_ADMIN_RATE_LIMIT_PATH'] as $key) {
     $value = getenv($key);
     $oldEnvironment[$key] = $value === false ? null : $value;
 }
 putenv('APP_ENV=dev');
 putenv('DB_DRIVER=sqlite');
 putenv('DB_SQLITE_PATH=' . $databasePath);
+putenv('PLATFORM_HOSTNAME=127.0.0.1');
 putenv('IEPRCARD_ADMIN_RATE_LIMIT_PATH=' . $rateLimitPath);
 
 $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
@@ -66,6 +67,11 @@ if (!is_resource($process)) {
 
 try {
     $baseUrl = 'http://127.0.0.1:' . $port;
+    [$tenantHostStatus, $tenantHostBody] = adminHttpRequest($baseUrl . '/admin/login.php', 'GET', null, null, 'customer.example.test');
+    if ($tenantHostStatus !== 404 || str_contains((string) $tenantHostBody, 'Entrar na administração')) {
+        throw new RuntimeException('Administrative login must not be exposed through a tenant or unknown Host.');
+    }
+
     $page = null;
     for ($attempt = 0; $attempt < 40; $attempt++) {
         [$status, $page, $headers] = adminHttpRequest($baseUrl . '/admin/login.php');
@@ -145,9 +151,12 @@ fwrite(STDOUT, "PASS: admin login enforces CSRF, generic denials, secure cookies
 return 'pass';
 
 /** @return array{int, string|null, list<string>} */
-function adminHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null): array
+function adminHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null, ?string $host = null): array
 {
     $headers = ['Accept: text/html'];
+    if ($host !== null) {
+        $headers[] = 'Host: ' . $host;
+    }
     if ($cookie !== null) {
         $headers[] = 'Cookie: ' . $cookie;
     }
