@@ -73,7 +73,7 @@ require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 $schemaDrift = schemaGarantirEstrutura($connection, 'test');
 schemaGarantirEstrutura($connection, 'test');
 if (array_filter($schemaDrift) !== [] || array_filter(schemaInspecionar($connection)) !== []) {
-    throw new RuntimeException('MySQL/MariaDB self-healing must create the canonical schema without drift.');
+    throw new RuntimeException('MySQL/MariaDB self-healing must create the canonical schema without drift: ' . json_encode([$schemaDrift, schemaInspecionar($connection)]));
 }
 $expectedSchemaTables = array_keys(\IEPRCard\Database\Schema\catalogoCanonico());
 $actualSchemaTables = $connection->query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = \'BASE TABLE\'')->fetchAll(PDO::FETCH_COLUMN);
