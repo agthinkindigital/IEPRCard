@@ -8,13 +8,7 @@ Nenhum módulo de negócio será considerado pronto sem passar pela suíte autom
 
 | ID da Suíte | Arquivo de Teste | O que é Testado (Asserções Obrigatórias) |
 | --- | --- | --- |
-| **TDD-01** | `tests/Integration/DualDatabaseSelfHealingTest.php` | 1. Conecta em SQLite vazio, aplica o schema canônico e verifica a existência das 27 tabelas do MVP, sem as cinco tabelas financeiras reservadas para fase futura.<br>
-
-<br>2. Em `APP_ENV=dev|test`, simula uma tabela antiga sem 2 colunas, roda o *self-healing* e confirma que as colunas foram adicionadas sem perda de dados; em produção, alterações estruturais seguem migrações versionadas e não executam DDL por *self-healing*.
-
-<br>
-
-<br>3. Repete os mesmos 2 passos usando driver MySQL/MariaDB. |
+| **TDD-01** | `tests/Integration/DualDatabaseSelfHealingTest.php`, `tests/Integration/MySqlConnectionSmokeTest.php` | 1. Confirma seleção do driver por `DB_DRIVER`, contrato dos helpers com parâmetros preparados e timestamp ISO UTC; em SQLite, confirma foreign keys e WAL.<br>2. Em SQLite vazio, aplica o schema canônico e verifica as 27 tabelas do MVP, sem as cinco tabelas financeiras reservadas para fase futura.<br>3. Em `APP_ENV=dev|test`, simula colunas ausentes e confirma *self-healing* sem perda de dados; em produção, confirma que a verificação de drift não executa DDL.<br>4. Repete os cenários de driver, schema e *self-healing* no MySQL/MariaDB. |
 | **TDD-02** | `tests/Unit/TenantResolverAndRbacTest.php` | 1. Simula `HTTP_HOST = painel.saas.com` $\rightarrow$ resolve contexto `admin`.<br>
 
 <br>2. Simula `HTTP_HOST = escolaX.com.br` $\rightarrow$ resolve `cliente` (`id=10`).<br>

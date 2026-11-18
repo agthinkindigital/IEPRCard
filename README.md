@@ -1,6 +1,10 @@
 # IEPRCard
 
-Projeto de sistema multi-tenant para emissão e validação de carteirinhas digitais e impressas. O repositório contém o planejamento e a arquitetura; a implementação ainda não começou.
+Projeto de sistema multi-tenant para emissão e validação de carteirinhas digitais e impressas. A implementação começou pela camada de conexão PDO dual (E01.1); o escopo e a ordem de trabalho ficam nas [issues do GitHub](https://github.com/agthinkindigital/IEPRCard/issues).
+
+## Banco e testes
+
+Configure as variáveis do banco no ambiente do processo PHP; `.env.example` lista os nomes, mas o projeto não carrega arquivos `.env`. SQLite é o padrão local. Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingTest.php`. A suíte completa `php tests/run_all.php` também exige `pdo_mysql` e `TEST_MYSQL_HOST`, `TEST_MYSQL_DATABASE` e `TEST_MYSQL_USERNAME`; se o smoke test MySQL for ignorado, o runner retorna código diferente de zero. Em CI essas configurações são obrigatórias.
 
 ## Documentação
 
