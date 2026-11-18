@@ -19,6 +19,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $planId = null;
     $tenantId = null;
     $childId = null;
+    $foreignTenantId = null;
+    $foreignProfileId = null;
+    $subaccessId = null;
 
     try {
         $plan = $pdo->prepare('INSERT INTO planos (nome, ativo) VALUES (:name, 1)');
@@ -56,6 +59,24 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $child->execute(['parent' => $tenantId, 'name' => 'Delegation unit', 'slug' => 'delegate-unit-' . $suffix]);
         $childId = (int) $pdo->lastInsertId();
 
+        $foreignRoot = $pdo->prepare(
+            "INSERT INTO tenants (tipo, nome_organizacao, slug_subdominio, status_conta) "
+            . "VALUES ('cliente', :name, :slug, 'ativo')"
+        );
+        $foreignRoot->execute(['name' => 'Foreign delegation Sede', 'slug' => 'foreign-delegate-' . $suffix]);
+        $foreignTenantId = (int) $pdo->lastInsertId();
+        $foreignProfile = $pdo->prepare(
+            'INSERT INTO perfis_acesso (tenant_id, nome_perfil, escopo_permitido, permissoes_acoes_json) '
+            . 'VALUES (:tenant, :name, :scope, :permissions)'
+        );
+        $foreignProfile->execute([
+            'tenant' => $foreignTenantId,
+            'name' => 'Foreign delegated profile',
+            'scope' => 'rede',
+            'permissions' => json_encode(['titular.ver'], JSON_THROW_ON_ERROR),
+        ]);
+        $foreignProfileId = (int) $pdo->lastInsertId();
+
         $owner = $pdo->prepare(
             'INSERT INTO usuarios (tenant_id, subcliente_id, papel_sistema, nome, email, senha_hash, ativo) '
             . 'VALUES (:tenant, NULL, :role, :name, :email, :password, 1)'
@@ -74,6 +95,16 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'email' => 'delegation-operator-' . $suffix . '@example.test', 'password' => 'not-used',
         ]);
         $operatorId = (int) $pdo->lastInsertId();
+        $subaccess = $pdo->prepare(
+            'INSERT INTO usuarios (tenant_id, subcliente_id, perfil_acesso_id, papel_sistema, nome, email, senha_hash, ativo) '
+            . 'VALUES (:tenant, NULL, :profile, :role, :name, :email, :password, 1)'
+        );
+        $subaccess->execute([
+            'tenant' => $tenantId, 'profile' => $foreignProfileId, 'role' => 'subacesso',
+            'name' => 'Foreign profile access', 'email' => 'foreign-profile-' . $suffix . '@example.test',
+            'password' => 'not-used',
+        ]);
+        $subaccessId = (int) $pdo->lastInsertId();
 
         $ownerContext = new TenantContext('cliente', $tenantId, null, []);
         $ownerIdentity = ['id' => $ownerId, 'tenant_id' => $tenantId, 'subcliente_id' => null, 'papel_sistema' => 'titular_cliente'];
@@ -95,6 +126,12 @@ foreach (tenantTestConnections() as $driver => $pdo) {
                 'view' => pode($pdo, $unitContext, $operatorIdentity, 'titular.ver', $childId),
                 'create' => pode($pdo, $unitContext, $operatorIdentity, 'titular.criar', $childId),
             ]));
+        }
+        $subaccessIdentity = [
+            'id' => $subaccessId, 'tenant_id' => $tenantId, 'subcliente_id' => null, 'papel_sistema' => 'subacesso',
+        ];
+        if (pode($pdo, $ownerContext, $subaccessIdentity, 'titular.ver', $childId)) {
+            throw new RuntimeException($driver . ': a profile belonging to another Sede must not grant a delegated unit permission.');
         }
 
         $audit = $pdo->prepare(
@@ -229,6 +266,15 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         }
         if ($operatorId !== null) {
             $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $operatorId]);
+        }
+        if ($subaccessId !== null) {
+            $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $subaccessId]);
+        }
+        if ($foreignProfileId !== null) {
+            $pdo->prepare('DELETE FROM perfis_acesso WHERE id = :id')->execute(['id' => $foreignProfileId]);
+        }
+        if ($foreignTenantId !== null) {
+            $pdo->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $foreignTenantId]);
         }
         tenantQuotaTestCleanup($pdo, $tenantId, [$childId], $ownerId, $planId, $adminId);
     }
