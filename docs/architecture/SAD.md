@@ -77,7 +77,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | ID | NFR | Meta | Origem |
 | --- | --- | --- | --- |
 | NFR-01 | Compatibilidade de banco | Alternar `DB_DRIVER=sqlite\|mysql` sem alterar nenhum arquivo consumidor | `docs/11` ISSUE-001 |
-| NFR-02 | Paridade de schema | Self-healing cria tabelas/colunas faltantes em SQLite e MySQL sem perda de dados | `docs/10` TDD-01 |
+| NFR-02 | Paridade e portabilidade de dados | Catálogo versionado comum em SQLite e MySQL; self-healing apenas em dev/test, drift sem DDL em produção e cópia validada por contagem/checksum | TDD-01, ADR-0005, ADR-0010 |
 | NFR-03 | Volume planejado | > 50.000 carteirinhas/mês em VPS 2 vCPU / 4 GB RAM | `docs/14` |
 | NFR-04 | Performance de render | ≤ 80 ms por carteirinha WebP (frente+verso); ≤ 1,5 s para lote PDF de 50 | `docs/12` GATE 3 |
 | NFR-05 | Importação | 500 registros em 3 formatos sem estourar memória; 1.000+ em lotes de 25 via AJAX | `docs/11` ISSUE-007, `docs/16` |

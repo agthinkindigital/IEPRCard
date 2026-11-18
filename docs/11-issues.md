@@ -21,7 +21,7 @@
 
 
 * **ISSUE-003: Utilitário de Migração automatizada SQLite $\rightarrow$ MySQL/MariaDB**
-* **Arquivos:** `admin/migracao-banco.php`, `includes/motor_migracao_db.php`
+* **Arquivos:** serviço `database/migration/sqlite_to_mysql.php`, comando CLI `database/migrate-sqlite-to-mysql.php`; interface administrativa na slice E01.4 após aprovação do mockup e guia.
 * **Descrição:** Serviço e script CLI que leem todas as tabelas do SQLite e transferem os dados para o MySQL/MariaDB configurado, com verificação de integridade. A tela administrativa correspondente fica na slice E01.4 e depende de mockup e guia funcional aprovados.
 * **Critério de Aceite:** Migrar o fixture de 1.000 registros em menos de 5 segundos no ambiente de referência, com contagens e checksums idênticos, chaves estrangeiras válidas e rollback integral se a transferência falhar.
 

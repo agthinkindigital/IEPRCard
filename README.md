@@ -1,6 +1,6 @@
 # IEPRCard
 
-Projeto de sistema multi-tenant para emissão e validação de carteirinhas digitais e impressas. A implementação começou pela camada de conexão PDO dual (E01.1); o escopo e a ordem de trabalho ficam nas [issues do GitHub](https://github.com/agthinkindigital/IEPRCard/issues).
+Projeto de sistema multi-tenant para emissão e validação de carteirinhas digitais e impressas. A fundação PDO dual, o schema canônico e a transferência controlada entre bancos estão implementados em E01.1–E01.3; o escopo e a ordem de trabalho ficam nas [issues do GitHub](https://github.com/agthinkindigital/IEPRCard/issues).
 
 ## Banco e testes
 
