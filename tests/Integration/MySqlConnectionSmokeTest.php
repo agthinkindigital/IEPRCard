@@ -84,7 +84,7 @@ if ($actualSchemaTables !== $expectedSchemaTables) {
 }
 
 $migrations = schemaAplicarMigracoes($connection, 'test');
-if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes'] || array_filter(schemaInspecionar($connection)) !== []) {
+if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry'] || array_filter(schemaInspecionar($connection)) !== []) {
     throw new RuntimeException('MySQL/MariaDB versioned migrations must be repeatable and leave no schema drift.');
 }
 
