@@ -15,6 +15,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $tenantId = null;
     $childId = null;
     $ownerId = null;
+    $operatorId = null;
 
     try {
         $pdo->prepare('INSERT INTO planos (nome, ativo) VALUES (:name, 1)')
@@ -45,6 +46,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'password' => password_hash('unused', PASSWORD_DEFAULT),
         ]);
         $ownerId = (int) $pdo->lastInsertId();
+        $pdo->prepare(
+            'INSERT INTO usuarios (tenant_id, subcliente_id, papel_sistema, nome, email, senha_hash, ativo) '
+            . 'VALUES (:tenant, :child, :role, :name, :email, :password, 1)'
+        )->execute([
+            'tenant' => $tenantId,
+            'child' => $childId,
+            'role' => 'responsavel_sub',
+            'name' => 'Titular batch unit operator',
+            'email' => 'titular-batch-operator-' . $suffix . '@example.test',
+            'password' => password_hash('unused', PASSWORD_DEFAULT),
+        ]);
+        $operatorId = (int) $pdo->lastInsertId();
 
         $context = new TenantContext('cliente', $tenantId, null, []);
         $identity = [
@@ -205,12 +218,34 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if (count($maximumChunkIds) !== 25 || (int) $count->fetchColumn() !== 27) {
             throw new RuntimeException($driver . ': a 25-holder chunk must be accepted within configured quotas.');
         }
+        $pdo->prepare('UPDATE tenants SET permissoes_unidade_json = :permissions WHERE id = :tenant')->execute([
+            'permissions' => json_encode(['titular.criar'], JSON_THROW_ON_ERROR),
+            'tenant' => $tenantId,
+        ]);
+        $unitContext = new TenantContext('subcliente', $tenantId, $childId, []);
+        $operatorIdentity = [
+            'id' => $operatorId,
+            'tenant_id' => $tenantId,
+            'subcliente_id' => $childId,
+            'papel_sistema' => 'responsavel_sub',
+        ];
+        $operatorIds = titularCreateBatch($pdo, $unitContext, $operatorIdentity, $tenantId, $childId, [
+            ['nome_completo' => 'Unit operator batch'],
+        ]);
+        $operatorHolder = $pdo->prepare('SELECT subcliente_id FROM titulares WHERE id = :id');
+        $operatorHolder->execute(['id' => $operatorIds[0] ?? 0]);
+        if (count($operatorIds) !== 1 || (int) $operatorHolder->fetchColumn() !== $childId) {
+            throw new RuntimeException($driver . ': a delegated unit operator must create holders inside its own unit.');
+        }
 
-        fwrite(STDOUT, 'PASS: ' . $driver . ' atomic titular chunks enforce scope, quota, CPF conflicts, and audit rollback.' . "\n");
+        fwrite(STDOUT, 'PASS: ' . $driver . ' atomic titular chunks enforce role scope, quota, CPF conflicts, and audit rollback.' . "\n");
     } finally {
         if ($tenantId !== null) {
             $pdo->prepare('DELETE FROM auditoria_processos WHERE tenant_id = :tenant')->execute(['tenant' => $tenantId]);
             $pdo->prepare('DELETE FROM titulares WHERE tenant_id = :tenant')->execute(['tenant' => $tenantId]);
+        }
+        if ($operatorId !== null) {
+            $pdo->prepare('DELETE FROM usuarios WHERE id = :operator')->execute(['operator' => $operatorId]);
         }
         tenantQuotaTestCleanup($pdo, $tenantId, $childId === null ? [] : [$childId], $ownerId, $planId, null);
     }
