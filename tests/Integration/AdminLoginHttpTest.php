@@ -67,11 +67,6 @@ if (!is_resource($process)) {
 
 try {
     $baseUrl = 'http://127.0.0.1:' . $port;
-    [$tenantHostStatus, $tenantHostBody] = adminHttpRequest($baseUrl . '/admin/login.php', 'GET', null, null, 'customer.example.test');
-    if ($tenantHostStatus !== 404 || str_contains((string) $tenantHostBody, 'Entrar na administração')) {
-        throw new RuntimeException('Administrative login Host gate returned status ' . $tenantHostStatus . ' and body: ' . substr((string) $tenantHostBody, 0, 160));
-    }
-
     $page = null;
     for ($attempt = 0; $attempt < 40; $attempt++) {
         [$status, $page, $headers] = adminHttpRequest($baseUrl . '/admin/login.php');
@@ -82,6 +77,10 @@ try {
     }
     if ($status !== 200 || !is_string($page)) {
         throw new RuntimeException('Admin login page must respond with HTTP 200.');
+    }
+    [$tenantHostStatus, $tenantHostBody] = adminHttpRequest($baseUrl . '/admin/login.php', 'GET', null, null, 'customer.example.test');
+    if ($tenantHostStatus !== 404 || str_contains((string) $tenantHostBody, 'Entrar na administração')) {
+        throw new RuntimeException('Administrative login must not be exposed through a tenant or unknown Host.');
     }
     if (!preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', $page, $tokenMatch)) {
         throw new RuntimeException('Admin login page must include a session-bound CSRF token.');
