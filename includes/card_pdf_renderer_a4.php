@@ -132,4 +132,3 @@ function cardPdfDrawCropMarks(FPDF $pdf, float $x, float $y): void
             $cornerX, $cornerY + $directionY * ($gap + $length));
     }
 }
-
