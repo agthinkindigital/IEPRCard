@@ -8,9 +8,9 @@ Nenhum módulo de negócio será considerado pronto sem passar pela suíte autom
 
 | ID da Suíte | Arquivo de Teste | O que é Testado (Asserções Obrigatórias) |
 | --- | --- | --- |
-| **TDD-01** | `tests/Integration/DualDatabaseSelfHealingTest.php` | 1. Conecta em SQLite vazio, roda `schemaGarantirEstrutura($db)` e verifica a existência de todas as 15 tabelas.<br>
+| **TDD-01** | `tests/Integration/DualDatabaseSelfHealingTest.php` | 1. Conecta em SQLite vazio, aplica o schema canônico e verifica a existência das 27 tabelas do MVP, sem as cinco tabelas financeiras reservadas para fase futura.<br>
 
-<br>2. Simula uma tabela antiga sem 2 colunas, roda o *self-healing* e confirma que as colunas foram adicionadas sem perda de dados.
+<br>2. Em `APP_ENV=dev|test`, simula uma tabela antiga sem 2 colunas, roda o *self-healing* e confirma que as colunas foram adicionadas sem perda de dados; em produção, alterações estruturais seguem migrações versionadas e não executam DDL por *self-healing*.
 
 <br>
 
