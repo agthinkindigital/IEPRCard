@@ -29,7 +29,7 @@
 
 ### ÉPICO 2: Multi-Tenancy, Domínios, Subdomínios e Permissões (Req 03, 04, 05, 12, 13)
 
-* **ISSUE-004: Resolvedor de Domínios (Clientes) e Subdomínios (Subclientes)** — fundação E02.2 rastreada em [GitHub #13](https://github.com/agthinkindigital/IEPRCard/issues/13).
+* **ISSUE-004: Resolvedor de Domínios (Clientes) e Subdomínios (Subclientes)** — fundação E02.2 concluída em [GitHub #13](https://github.com/agthinkindigital/IEPRCard/issues/13); operação de domínios/DNS/TLS segue como slice futura de E02.
 * **Arquivos:** `config/tenant_resolver.php`, `index.php`
 * **Descrição:** Identificar pelo `$_SERVER['HTTP_HOST']` se o acesso pertence ao Admin Principal, a um Cliente (via domínio próprio CNAME ou subdomínio de 1º nível) ou a um Subcliente (via subdomínio de 2º nível ou subdomínio do domínio do Cliente), carregando o branding e escopo de banco correspondente.
 * **Critério de Aceite:** Passar no `TDD-02` (cenários de resolução de host).
