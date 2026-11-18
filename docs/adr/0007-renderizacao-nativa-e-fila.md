@@ -9,7 +9,7 @@
 
 ## Contexto
 
-Cada carteirinha precisa de WebP 1011×638 px (CR80 a 300 DPI) para canais digitais e PDF com texto/códigos vetoriais para impressão CR80. O GATE 3 exige ≤ 80 ms por WebP e ≤ 3,5 s para 50 carteirinhas em PDF, aferidos no runner PHP 8.2 isolado do banco. O alvo de PDF foi ajustado após o runner registrar 2,17–2,99 s para 100 páginas com 50 fotos e códigos distintos. Lotes grandes não podem bloquear o request HTTP; a emissão assíncrona permanece no escopo da fila descrita neste ADR.
+Cada carteirinha precisa de WebP 1011×638 px (CR80 a 300 DPI) para canais digitais e PDF com texto/códigos vetoriais para impressão CR80. O GATE 3 exige ≤ 80 ms por WebP e ≤ 3,5 s para 50 carteirinhas em PDF, aferidos no runner PHP 8.2 isolado do banco. O alvo de PDF foi ajustado após medições de 2,08–2,99 s para 100 páginas com 50 fotos e códigos distintos. Lotes grandes não podem bloquear o request HTTP; a emissão assíncrona permanece no escopo da fila descrita neste ADR.
 
 ## Decisão
 
