@@ -28,7 +28,7 @@ Cada design armazenado em `designs_carteirinha` possui uma estrutura padronizada
       "rotulo_amigavel": "Nome do Titular",
       "obrigatorio": true,
       "x": 340, "y": 180, "largura_max": 620,
-      "fonte_arquivo": "Inter-Bold.ttf", "tamanho_pt": 24,
+      "fonte_arquivo": "Inter-Bold.otf", "tamanho_pt": 24,
       "cor_hex": "#0F172A", "alinhamento": "left", "transformacao": "uppercase",
       "auto_reduzir_fonte_se_longo": true
     },
@@ -38,7 +38,7 @@ Cada design armazenado em `designs_carteirinha` possui uma estrutura padronizada
       "tipo": "qrcode_validacao",
       "chave_variavel": "_sistema_url_validacao",
       "x": 760, "y": 380, "tamanho": 200,
-      "margem_quiet_zone": 2
+      "margem_quiet_zone": 4
     }
   ]
 }

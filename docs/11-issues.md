@@ -77,7 +77,7 @@
 
 O contrato do design e o motor puro de mapeamento foram concluídos em [GitHub #33](https://github.com/agthinkindigital/IEPRCard/issues/33) e [GitHub #34](https://github.com/agthinkindigital/IEPRCard/issues/34); a especificação canônica permanece em `docs/06-design-e-mapeamento.md`. Interfaces seguem o gate de aprovação explícita de mockup e guia.
 
-O perfil GD/WebP/FreeType foi validado na CI; a [GitHub #35](https://github.com/agthinkindigital/IEPRCard/issues/35) está reaberta para incluir `mbstring`, necessário às transformações Unicode do renderizador. O comando `php scripts/check-rendering-runtime.php` permite verificar o runtime antes da emissão.
+O perfil GD/WebP/FreeType/`mbstring` foi validado na CI MySQL/MariaDB e concluído na [GitHub #35](https://github.com/agthinkindigital/IEPRCard/issues/35). O comando `php scripts/check-rendering-runtime.php` permite verificar o runtime antes da emissão.
 
 O renderizador backend de frente/verso WebP, dependente dos três contratos concluídos e ainda sem interface, está fatiado na [GitHub #36](https://github.com/agthinkindigital/IEPRCard/issues/36).
 
