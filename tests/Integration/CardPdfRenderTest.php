@@ -321,8 +321,7 @@ $failedBatch = cardRenderPdfBatch([$batchCards[0], $invalidBatchCard]);
 if (($failedBatch['valid'] ?? null) !== false || ($failedBatch['pdf'] ?? null) !== ''
     || ($failedBatch['errors'][0]['code'] ?? null) !== 'unsupported_text_encoding'
     || !str_starts_with($failedBatch['errors'][0]['path'] ?? '', '$.cards[1]')) {
-    throw new RuntimeException('A failed card in a batch must discard all PDF bytes and identify its index: '
-        . json_encode([$failedBatch['valid'] ?? null, strlen($failedBatch['pdf'] ?? ''), $failedBatch['errors'] ?? []]));
+    throw new RuntimeException('A failed card in a batch must discard all PDF bytes and identify its index.');
 }
 
 restore_error_handler();

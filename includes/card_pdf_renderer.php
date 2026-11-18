@@ -12,6 +12,8 @@ if (!class_exists('IEPRCardPdfDocument', false)) {
     {
         /** @var array<string, string> */
         private array $backgroundCache = [];
+        /** @var array<string, GdImage> */
+        private array $decodedBackgroundCache = [];
         /** @var array<string, resource> */
         private array $temporaryAssets = [];
 
@@ -28,6 +30,20 @@ if (!class_exists('IEPRCardPdfDocument', false)) {
         public function cacheBackground(string $source, string $png): void
         {
             $this->backgroundCache[hash('sha256', $source)] = $png;
+        }
+
+        public function decodedBackground(string $png): ?GdImage
+        {
+            $key = hash('sha256', $png);
+            if (isset($this->decodedBackgroundCache[$key])) {
+                return $this->decodedBackgroundCache[$key];
+            }
+            $decoded = cardRenderDecodeImage($png, '$.render.background');
+            if (!isset($decoded['image'])) {
+                return null;
+            }
+            $this->decodedBackgroundCache[$key] = $decoded['image'];
+            return $decoded['image'];
         }
 
         public function temporaryImagePath(string $bytes): ?string
@@ -59,6 +75,10 @@ if (!class_exists('IEPRCardPdfDocument', false)) {
                 fclose($temporary);
             }
             $this->temporaryAssets = [];
+            foreach ($this->decodedBackgroundCache as $image) {
+                imagedestroy($image);
+            }
+            $this->decodedBackgroundCache = [];
         }
     }
 }
