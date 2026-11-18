@@ -10,6 +10,12 @@ Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingT
 
 Para transferir dados, prepare um destino MySQL vazio com o schema canônico, configure `DB_DRIVER=mysql` e as demais variáveis do MySQL, defina `MIGRATION_SOURCE_SQLITE_PATH` para o arquivo de origem e execute `php database/migrate-sqlite-to-mysql.php` pelo CLI. A rotina não altera schemas nem aceita destinos com registros; gera contagens e hashes SHA-256 por tabela sem incluir dados pessoais.
 
+## Ambiente local no Windows
+
+Abra `localhost.cmd` para preparar o banco configurado e iniciar o servidor PHP em `http://localhost:8080`. O SQLite usa `var/ieprcard.sqlite`; o PHP cria o arquivo e aplica as migrações locais na inicialização. O launcher ativa `pdo_sqlite` ou `pdo_mysql` somente nos processos que ele inicia quando a DLL já acompanha o PHP, sem alterar o `php.ini`. Com `DB_DRIVER=mysql`, tenta iniciar um serviço MySQL/MariaDB local parado e aplica migrações somente a um host local. Se faltar a extensão PDO ou permissão para iniciar o serviço, a página de diagnóstico explica o que falta. Para encerrar o modo manual, digite `0` e pressione Enter ou feche a janela.
+
+Agentes podem iniciar com `localhost.cmd agent`; o servidor encerra após 15 minutos sem requisições HTTP. O prazo pode ser ajustado, por exemplo, `localhost.cmd agent 30`. A porta padrão é `8080` e pode ser alterada antes de abrir o CMD definindo `IEPRCARD_PORT` no ambiente.
+
 ## Documentação
 
 - [Visão e objetivo do produto](docs/00-visao-e-idealizacao.md)
