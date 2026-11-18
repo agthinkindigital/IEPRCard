@@ -28,6 +28,7 @@ try {
     $tenantInsert->execute(['name' => 'Staging cleanup', 'slug' => $suffixSlug]);
     $tenantId = (int) $pdo->lastInsertId();
     $storedKey = 'private://' . $tenantId . '/' . str_repeat('a', 48) . '.csv';
+    $completedStoredKey = 'private://' . $tenantId . '/' . str_repeat('b', 48) . '.csv';
     $lot = $pdo->prepare(
         'INSERT INTO lotes_importacao (tenant_id, origem_tipo, arquivo_original_url, colunas_detectadas_json, '
         . 'total_registros, status_lote, criado_em) '
@@ -42,13 +43,32 @@ try {
         'created' => gmdate('Y-m-d H:i:s', time() - 86401),
     ]);
     $lotId = (int) $pdo->lastInsertId();
+    $completedLot = $pdo->prepare(
+        'INSERT INTO lotes_importacao (tenant_id, origem_tipo, arquivo_original_url, colunas_detectadas_json, '
+        . 'total_registros, status_lote, criado_em) '
+        . 'VALUES (:tenant, :origin, :source, :columns, 1, :status, :created)'
+    );
+    $completedLot->execute([
+        'tenant' => $tenantId,
+        'origin' => 'csv',
+        'source' => $completedStoredKey,
+        'columns' => '["nome_completo"]',
+        'status' => 'concluido',
+        'created' => gmdate('Y-m-d H:i:s'),
+    ]);
+    $completedLotId = (int) $pdo->lastInsertId();
     $storedPath = $storagePath . DIRECTORY_SEPARATOR . $tenantId . DIRECTORY_SEPARATOR . str_repeat('a', 48) . '.csv';
+    $completedStoredPath = $storagePath . DIRECTORY_SEPARATOR . $tenantId . DIRECTORY_SEPARATOR . str_repeat('b', 48) . '.csv';
     if (!mkdir(dirname($storedPath), 0700, true) || file_put_contents($storedPath, 'temporary source') === false) {
         throw new RuntimeException('Could not prepare the CLI cleanup source file.');
     }
+    if (file_put_contents($completedStoredPath, 'completed source pending cleanup') === false) {
+        throw new RuntimeException('Could not prepare the completed import cleanup source file.');
+    }
     $tenantInsert->closeCursor();
     $lot->closeCursor();
-    unset($tenantInsert, $lot);
+    $completedLot->closeCursor();
+    unset($tenantInsert, $lot, $completedLot);
     unset($pdo);
 
     putenv('APP_ENV=test');
@@ -83,14 +103,20 @@ try {
     $state = $verify->prepare('SELECT status_lote, arquivo_original_url FROM lotes_importacao WHERE id = :id');
     $state->execute(['id' => $lotId]);
     $record = $state->fetch(PDO::FETCH_ASSOC);
+    $completedState = $verify->prepare('SELECT status_lote, arquivo_original_url FROM lotes_importacao WHERE id = :id');
+    $completedState->execute(['id' => $completedLotId]);
+    $completedRecord = $completedState->fetch(PDO::FETCH_ASSOC);
     if ($exitCode !== 0 || !str_contains((string) $output, 'Expired import lots: 1')
         || !is_array($record) || $record['status_lote'] !== 'expirado' || $record['arquivo_original_url'] !== null
-        || is_file($storedPath) || str_contains((string) $errors, 'cleanup.sqlite')) {
-        throw new RuntimeException('The cleanup CLI must expire the lot and remove its private file: ' . $errors . $output);
+        || !is_array($completedRecord) || $completedRecord['status_lote'] !== 'concluido'
+        || $completedRecord['arquivo_original_url'] !== null || is_file($storedPath) || is_file($completedStoredPath)
+        || str_contains((string) $errors, 'cleanup.sqlite')) {
+        throw new RuntimeException('The cleanup CLI must expire stale lots and remove terminal private files: ' . $errors . $output);
     }
     $state->closeCursor();
-    unset($state, $verify);
-    fwrite(STDOUT, "PASS: import cleanup CLI expires stale lots and removes their private files.\n");
+    $completedState->closeCursor();
+    unset($state, $completedState, $verify);
+    fwrite(STDOUT, "PASS: import cleanup CLI expires stale lots and retries completed-file cleanup.\n");
 } finally {
     if (isset($state) && $state instanceof PDOStatement) {
         unset($state);
