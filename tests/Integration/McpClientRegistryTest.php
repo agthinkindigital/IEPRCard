@@ -36,6 +36,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
     $fixture = tenantTestSeed($pdo);
     $suffix = bin2hex(random_bytes(5));
+    $adminId = null;
     try {
         $admin = $pdo->prepare(
             'INSERT INTO usuarios (tenant_id, subcliente_id, papel_sistema, nome, email, senha_hash, ativo) '
@@ -181,6 +182,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     } finally {
         $pdo->prepare('DELETE FROM auditoria_processos WHERE tenant_id = :tenant')->execute(['tenant' => $fixture['tenant_id']]);
         $pdo->prepare('DELETE FROM mcp_api_keys WHERE tenant_id = :tenant')->execute(['tenant' => $fixture['tenant_id']]);
+        if ($adminId !== null) {
+            $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $adminId]);
+        }
         tenantTestCleanup($pdo, $fixture);
     }
 }
