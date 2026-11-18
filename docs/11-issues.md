@@ -77,7 +77,7 @@
 
 O contrato do design e o motor puro de mapeamento foram concluídos em [GitHub #33](https://github.com/agthinkindigital/IEPRCard/issues/33) e [GitHub #34](https://github.com/agthinkindigital/IEPRCard/issues/34); a especificação canônica permanece em `docs/06-design-e-mapeamento.md`. Interfaces seguem o gate de aprovação explícita de mockup e guia.
 
-A verificação do perfil GD/WebP/FreeType exigido pela hospedagem está em desenvolvimento na [GitHub #35](https://github.com/agthinkindigital/IEPRCard/issues/35), antes da implementação dos renderizadores.
+O perfil GD/WebP/FreeType exigido pela hospedagem foi validado em [GitHub #35](https://github.com/agthinkindigital/IEPRCard/issues/35) e na CI; o comando `php scripts/check-rendering-runtime.php` permite verificar o runtime local antes da implementação dos renderizadores.
 
 * **ISSUE-009: Gestor de Múltiplos Designs e Editor Visual de Coordenadas**
 * **Arquivos:** `painel/designs.php`, `painel/editor-design.php`
