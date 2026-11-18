@@ -37,7 +37,7 @@
 * **ISSUE-018: Sessão administrativa, autenticação e CSRF** — E02.1 concluída em [GitHub #12](https://github.com/agthinkindigital/IEPRCard/issues/12); autenticação tenant E02.5 concluída em [GitHub #16](https://github.com/agthinkindigital/IEPRCard/issues/16). Critérios executáveis e evidências ficam nas Issues.
 
 
-* **ISSUE-005: Motor de Permissões em Cascata (Admin $\rightarrow$ Cliente $\rightarrow$ Subcliente)** — núcleo `pode()` e teto de plano concluídos na [GitHub #15](https://github.com/agthinkindigital/IEPRCard/issues/15), CI MySQL 8.4/MariaDB 10.11 aprovada; cotas permanecem na fatia E02 separada.
+* **ISSUE-005: Motor de Permissões em Cascata (Admin $\rightarrow$ Cliente $\rightarrow$ Subcliente)** — núcleo `pode()` e teto de plano concluídos na [GitHub #15](https://github.com/agthinkindigital/IEPRCard/issues/15), CI MySQL 8.4/MariaDB 10.11 aprovada; configuração da allowlist delegada pela Sede está na [GitHub #25](https://github.com/agthinkindigital/IEPRCard/issues/25). O contrato de delegação está em [ADR-0004](adr/0004-rbac-teto-descendente-e-cotas.md#contrato-executável-do-mvp); cotas permanecem na fatia E02 separada.
 * **Arquivos:** `includes/motor_permissoes.php`, `config/proteger_admin.php`, `config/proteger_painel.php`
 * **Descrição:** Implementar controle granular de permissões onde o Admin define as *Feature Flags* e limites do Cliente (Req 13), e o Cliente define quais permissões e fatias de cota libera para cada um de seus Subclientes (Req 12).
 * **Critério de Aceite:** Bloquear qualquer tentativa de escalonamento de privilégio (Subcliente tentando ativar permissão revogada pelo Cliente ou Admin).
