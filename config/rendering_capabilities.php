@@ -14,6 +14,7 @@ function renderingCapabilitiesCheck(): array
         'webp_decode' => $gdLoaded && function_exists('imagecreatefromwebp') && (bool) ($gdInfo['WebP Support'] ?? false),
         'webp_encode' => $gdLoaded && function_exists('imagewebp') && (bool) ($gdInfo['WebP Support'] ?? false),
         'freetype' => $gdLoaded && (bool) ($gdInfo['FreeType Support'] ?? false),
+        'mbstring' => extension_loaded('mbstring'),
         'ttf_text' => $gdLoaded && function_exists('imagettftext'),
         'ttf_measure' => $gdLoaded && function_exists('imagettfbbox'),
     ];

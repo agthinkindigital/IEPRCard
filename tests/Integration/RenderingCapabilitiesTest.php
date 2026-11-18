@@ -13,7 +13,7 @@ $unexpectedOutput = ob_get_clean();
 
 $expectedCapabilities = [
     'gd', 'truecolor', 'png_decode', 'jpeg_decode', 'webp_decode', 'webp_encode',
-    'freetype', 'ttf_text', 'ttf_measure',
+    'freetype', 'mbstring', 'ttf_text', 'ttf_measure',
 ];
 if ($unexpectedOutput !== '' || !is_array($report)
     || array_keys($report['capabilities'] ?? []) !== $expectedCapabilities
