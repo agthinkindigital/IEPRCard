@@ -18,6 +18,9 @@ function batchImportParserCsv(string $path): array
         }
         $contents = $converted;
     }
+    if (!batchImportParserCsvQuotesAreBalanced($contents)) {
+        throw new DomainException('IMPORT_CSV_INVALID');
+    }
 
     $stream = fopen('php://temp', 'r+');
     if ($stream === false) {
@@ -39,6 +42,24 @@ function batchImportParserCsv(string $path): array
     } finally {
         fclose($stream);
     }
+}
+
+function batchImportParserCsvQuotesAreBalanced(string $contents): bool
+{
+    $quoted = false;
+    $length = strlen($contents);
+    for ($index = 0; $index < $length; ++$index) {
+        if ($contents[$index] !== '"') {
+            continue;
+        }
+        if ($quoted && $index + 1 < $length && $contents[$index + 1] === '"') {
+            ++$index;
+            continue;
+        }
+        $quoted = !$quoted;
+    }
+
+    return !$quoted;
 }
 
 /** @return list<array{line:int,values:list<mixed>}> */

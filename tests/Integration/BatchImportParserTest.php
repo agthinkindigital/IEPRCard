@@ -17,6 +17,7 @@ $overflowXlsxPath = $basePath . '-overflow.xlsx';
 $overflowJsonPath = $basePath . '-overflow.json';
 $invalidXlsxPath = $basePath . '-invalid.xlsx';
 $invalidJsonPath = $basePath . '-invalid.json';
+$truncatedCsvPath = $basePath . '-truncated.csv';
 
 try {
     $headers = ['Nome Completo', 'CPF', 'Matrícula', 'WhatsApp'];
@@ -107,10 +108,19 @@ try {
             }
         }
     }
+    file_put_contents($truncatedCsvPath, "Nome Completo;CPF\n\"Titular sem fechamento;52998224725\n");
+    try {
+        batchImportParse($truncatedCsvPath);
+        throw new RuntimeException('Truncated quoted CSV input must fail deterministically.');
+    } catch (DomainException $exception) {
+        if ($exception->getMessage() !== 'IMPORT_CSV_INVALID') {
+            throw $exception;
+        }
+    }
 
     fwrite(STDOUT, "PASS: CSV/XLSX/JSON import parser normalization, preview, validation and row bounds.\n");
 } finally {
-    foreach ([$csvPath, $xlsxPath, $jsonPath, $invalidPath, $overflowCsvPath, $overflowXlsxPath, $overflowJsonPath, $invalidXlsxPath, $invalidJsonPath] as $path) {
+    foreach ([$csvPath, $xlsxPath, $jsonPath, $invalidPath, $overflowCsvPath, $overflowXlsxPath, $overflowJsonPath, $invalidXlsxPath, $invalidJsonPath, $truncatedCsvPath] as $path) {
         if (is_file($path)) {
             unlink($path);
         }
