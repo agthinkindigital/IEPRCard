@@ -2,7 +2,13 @@
 declare(strict_types=1);
 
 /** @return array{code: string, path: string}|null */
-function cardPdfDrawTextElement(FPDF $pdf, array $element, string $value): ?array
+function cardPdfDrawTextElement(
+    FPDF $pdf,
+    array $element,
+    string $value,
+    float $offsetXmm = 0,
+    float $offsetYmm = 0
+): ?array
 {
     if ($value === '') {
         return null;
@@ -76,13 +82,13 @@ function cardPdfDrawTextElement(FPDF $pdf, array $element, string $value): ?arra
         return ['code' => 'text_out_of_bounds', 'path' => '$.design.elementos.' . $element['id']];
     }
 
-    $x = $element['x'] * 25.4 / 300;
+    $x = $offsetXmm + $element['x'] * 25.4 / 300;
     if ($element['alinhamento'] === 'center') {
         $x += ($maxWidth - $textWidth) / 2;
     } elseif ($element['alinhamento'] === 'right') {
         $x += $maxWidth - $textWidth;
     }
-    $baseline = ($element['y'] - $minY) * 25.4 / 300;
+    $baseline = $offsetYmm + ($element['y'] - $minY) * 25.4 / 300;
     $pdf->SetTextColor(
         hexdec(substr($element['cor_hex'], 1, 2)),
         hexdec(substr($element['cor_hex'], 3, 2)),

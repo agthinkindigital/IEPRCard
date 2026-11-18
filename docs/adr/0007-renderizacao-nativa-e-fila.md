@@ -19,7 +19,7 @@ Cada carteirinha precisa de WebP 1011×638 px (CR80 a 300 DPI) para canais digit
 - `includes/card_pdf_renderer.php` usa FPDF 1.9.0, single-file fixado no commit `051b70e4c57dedc88df41b1eff1c62894e5f9ed0`, para gerar duas páginas CR80 paisagem a 85,6×53,98 mm. A licença MIT acompanha a cópia em `includes/libs/`; o runtime não requer Composer nem daemon.
 - `cardRenderPdfBatch()` limita cada PDF a 50 carteirinhas (100 páginas) e reutiliza buffers e imagens de fundo no escopo do documento. Um erro em qualquer cartão descarta a saída inteira.
 - Fundos e fotos continuam raster; texto, QR, CODE128 e EAN13 são vetoriais. Inter Regular/Bold estática derivada da versão variável 3.19 é incorporada ao PDF com métricas e subconjuntos locais gerados para FPDF. O texto usa Windows-1252 e qualquer caractere não representável gera erro estável sem PDF parcial. A licença SIL OFL 1.1 original está em `assets/fonts/OFL-1.1.txt`.
-- A4, imposição 8/10 por página, sangria e marcas de corte são decisão e fatia posteriores; não fazem parte do contrato CR80 atual.
+- A4 portrait usa grade 2×4 com sangria de 3 mm por cartão ou 2×5 sem sangria; ambos mantêm trim CR80 e marcas de corte. As páginas frente/verso são pareadas por folha e o verso espelha as colunas para duplex pela borda longa. A implementação está na fatia [#38](https://github.com/agthinkindigital/IEPRCard/issues/38).
 - Contrato único de layout `mapa_campos_json` (`versao_schema`, `dimensoes`, `elementos`) compartilhado pelos renderizadores; `config/design_mapping.php` resolve variáveis hierárquicas antes da renderização.
 - Fila em banco: `lotes_importacao.status_lote` + processamento em chunks de 25 via AJAX, com `cron.php` como fallback em hospedagem compartilhada.
 - Snapshot exato dos dados impressos em `snapshot_dados_json` para reimpressão fiel; versionamento de design registrado na carteirinha.
@@ -33,7 +33,7 @@ O runtime PHP que executa emissão deve oferecer as capacidades registradas em `
 | Headless browser (Puppeteer/Playwright) para PDF | CSS completo, layout flexível | Dependência pesada, uso de memória alto, viola ADR-0001, difícil de atingir 80 ms | Rejeitada |
 | Serviço externo de renderização | Escala e qualidade | Custo por carteirinha, latência de rede, dados pessoais saindo do tenant | Rejeitada |
 | Somente raster (PNG/JPEG) | Implementação simples | Sem vetor 300 DPI para gráfica; falha requisito de impressão PVC | Rejeitada |
-| GD + FPDF single-file + fila em banco (escolhida) | Nativo, rápido, portável, sem dados fora e compatível com hospedagem compartilhada | Requer gestão de fontes; texto limitado a Windows-1252; imposição A4 fica separada | Aceita |
+| GD + FPDF single-file + fila em banco (escolhida) | Nativo, rápido, portável, sem dados fora e compatível com hospedagem compartilhada | Requer gestão de fontes; texto limitado a Windows-1252; imposição A4 tem regras físicas próprias | Aceita |
 
 ## Consequências
 

@@ -12,6 +12,8 @@ if (!class_exists('IEPRCardPdfDocument', false)) {
     {
         /** @var array<string, string> */
         private array $backgroundCache = [];
+        /** @var array<string, string> */
+        private array $bleedBackgroundCache = [];
         /** @var array<string, GdImage> */
         private array $decodedBackgroundCache = [];
         /** @var array<string, resource> */
@@ -30,6 +32,19 @@ if (!class_exists('IEPRCardPdfDocument', false)) {
         public function cacheBackground(string $source, string $png): void
         {
             $this->backgroundCache[hash('sha256', $source)] = $png;
+        }
+
+        public function bleedBackground(string $png): ?string
+        {
+            $key = hash('sha256', $png);
+            if (isset($this->bleedBackgroundCache[$key])) {
+                return $this->bleedBackgroundCache[$key];
+            }
+            $bleed = cardPdfCreateBleedBackground($png);
+            if ($bleed !== null) {
+                $this->bleedBackgroundCache[$key] = $bleed;
+            }
+            return $bleed;
         }
 
         public function decodedBackground(string $png): ?GdImage
@@ -89,7 +104,12 @@ function cardRenderPdfSides(
     mixed $values,
     mixed $backgrounds,
     mixed $photoAssets = [],
-    ?IEPRCardPdfDocument $document = null
+    ?IEPRCardPdfDocument $document = null,
+    ?string $onlySide = null,
+    bool $addPages = true,
+    float $offsetXmm = 0,
+    float $offsetYmm = 0,
+    bool $withBleed = false
 ): array
 {
     $ownsDocument = $document === null;
@@ -126,6 +146,9 @@ function cardRenderPdfSides(
     $pdf->SetMargins(0, 0, 0);
     $pdf->SetAutoPageBreak(false, 0);
     foreach (['frente', 'verso'] as $side) {
+        if ($onlySide !== null && $onlySide !== $side) {
+            continue;
+        }
         if (!isset($backgrounds[$side]) || !is_string($backgrounds[$side])) {
             return cardPdfFailure('missing_background', '$.fundos.' . $side);
         }
@@ -154,13 +177,20 @@ function cardRenderPdfSides(
             }
             $pdf->cacheBackground($backgroundSource, $backgroundPng);
         }
-        $imagePath = $pdf->temporaryImagePath($backgroundPng);
+        $imageBytes = $withBleed ? $pdf->bleedBackground($backgroundPng) : $backgroundPng;
+        if ($imageBytes === null) {
+            return cardPdfFailure('image_encode_failed', '$.fundos.' . $side);
+        }
+        $imagePath = $pdf->temporaryImagePath($imageBytes);
         if ($imagePath === null) {
             return cardPdfFailure('temporary_asset_failed', '$.fundos.' . $side);
         }
-        $pdf->AddPage('L');
+        if ($addPages) {
+            $pdf->AddPage('L');
+        }
         try {
-            $pdf->Image($imagePath, 0, 0, 85.6, 53.98, 'png');
+            $pdf->Image($imagePath, $offsetXmm, $offsetYmm,
+                $withBleed ? 91.6 : 85.6, $withBleed ? 59.98 : 53.98, 'png');
         } catch (Throwable) {
             return cardPdfFailure('image_embed_failed', '$.fundos.' . $side);
         }
@@ -173,13 +203,24 @@ function cardRenderPdfSides(
                 'texto_dinamico' => cardPdfDrawTextElement(
                     $pdf,
                     $element,
-                    $values[$element['chave_variavel']] ?? ''
+                    $values[$element['chave_variavel']] ?? '',
+                    $offsetXmm + ($withBleed ? 3 : 0),
+                    $offsetYmm + ($withBleed ? 3 : 0)
                 ),
-                'foto_titular' => cardPdfDrawPhotoElement($pdf, $element, $photoAssets, $backgroundPng),
+                'foto_titular' => cardPdfDrawPhotoElement(
+                    $pdf,
+                    $element,
+                    $photoAssets,
+                    $backgroundPng,
+                    $offsetXmm + ($withBleed ? 3 : 0),
+                    $offsetYmm + ($withBleed ? 3 : 0)
+                ),
                 'qrcode_validacao', 'codigo_barras' => cardPdfDrawCodeElement(
                     $pdf,
                     $element,
-                    $values[$element['chave_variavel']] ?? ''
+                    $values[$element['chave_variavel']] ?? '',
+                    $offsetXmm + ($withBleed ? 3 : 0),
+                    $offsetYmm + ($withBleed ? 3 : 0)
                 ),
                 default => ['code' => 'unsupported_element', 'path' => '$.design.elementos.' . $element['id']],
             };
@@ -204,50 +245,5 @@ function cardRenderPdfSides(
     return ['valid' => true, 'pdf' => $bytes, 'errors' => []];
 }
 
-/** @param list<array{design: mixed, values: mixed, backgrounds: mixed, photo_assets?: mixed}> $cards
- *  @return array{valid: bool, pdf: string, errors: list<array{code: string, path: string}>}
- */
-function cardRenderPdfBatch(array $cards): array
-{
-    if (!array_is_list($cards) || $cards === []) {
-        return cardPdfFailure('invalid_batch', '$.cards');
-    }
-    if (count($cards) > 50) {
-        return cardPdfFailure('batch_size_exceeded', '$.cards');
-    }
-    $pdf = new IEPRCardPdfDocument('L', 'mm', [85.6, 53.98]);
-    $pdf->usePdf14();
-    foreach ($cards as $index => $card) {
-        if (!is_array($card) || !array_key_exists('design', $card)
-            || !array_key_exists('values', $card) || !array_key_exists('backgrounds', $card)) {
-            return cardPdfFailure('invalid_batch_card', '$.cards[' . $index . ']');
-        }
-        $result = cardRenderPdfSides(
-            $card['design'],
-            $card['values'],
-            $card['backgrounds'],
-            $card['photo_assets'] ?? [],
-            $pdf
-        );
-        if (!$result['valid']) {
-            $error = $result['errors'][0];
-            return cardPdfFailure($error['code'], '$.cards[' . $index . ']' . substr($error['path'], 1));
-        }
-    }
-    try {
-        $bytes = $pdf->Output('S');
-    } catch (Throwable) {
-        return cardPdfFailure('pdf_generation_failed', '$.render');
-    }
-    if (!is_string($bytes) || !str_starts_with($bytes, '%PDF-1.4')) {
-        return cardPdfFailure('pdf_generation_failed', '$.render');
-    }
-    $pdf->cleanupTemporaryAssets();
-    return ['valid' => true, 'pdf' => $bytes, 'errors' => []];
-}
-
-/** @return array{valid: false, pdf: '', errors: list<array{code: string, path: string}>} */
-function cardPdfFailure(string $code, string $path): array
-{
-    return ['valid' => false, 'pdf' => '', 'errors' => [['code' => $code, 'path' => $path]]];
-}
+require_once __DIR__ . '/card_pdf_renderer_a4.php';
+require_once __DIR__ . '/card_pdf_renderer_batch.php';

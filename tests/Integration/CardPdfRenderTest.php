@@ -143,6 +143,19 @@ function cardPdfHasVectorRectangles(string $pdfBytes, int $minimum): bool
     return $rectangles >= $minimum;
 }
 
+function cardPdfCountVectorLines(string $pdfBytes): int
+{
+    preg_match_all('/\/Filter\s*\/FlateDecode[^\r\n]*\s*stream\r?\n(.*?)\r?\nendstream/s', $pdfBytes, $streams);
+    $lines = 0;
+    foreach ($streams[1] ?? [] as $stream) {
+        $decoded = @gzuncompress($stream);
+        if (is_string($decoded)) {
+            $lines += substr_count($decoded, ' l S');
+        }
+    }
+    return $lines;
+}
+
 set_error_handler(static function (int $severity, string $message, string $file, int $line): never {
     throw new ErrorException($message, 0, $severity, $file, $line);
 });
@@ -228,6 +241,101 @@ if (($eanResult['valid'] ?? null) !== true) {
 }
 cardPdfAssertScans($eanResult['pdf'], 2, '4006381333931');
 
+$frontColor = imagecreatetruecolor(1011, 638);
+imagefill($frontColor, 0, 0, imagecolorallocate($frontColor, 210, 20, 20));
+ob_start();
+imagepng($frontColor);
+$frontColorPng = ob_get_clean();
+imagedestroy($frontColor);
+$backColor = imagecreatetruecolor(1011, 638);
+imagefill($backColor, 0, 0, imagecolorallocate($backColor, 20, 40, 210));
+ob_start();
+imagepng($backColor);
+$backColorPng = ob_get_clean();
+imagedestroy($backColor);
+$a4Design = $design;
+$a4Design['elementos'] = [
+    [
+        'id' => 'el_qr', 'lado' => 'frente', 'tipo' => 'qrcode_validacao',
+        'chave_variavel' => '_sistema_url_validacao', 'x' => 100, 'y' => 100, 'tamanho' => 200,
+    ],
+    [
+        'id' => 'el_barras', 'lado' => 'verso', 'tipo' => 'codigo_barras', 'chave_variavel' => 'codigo',
+        'formato' => 'CODE128', 'x' => 400, 'y' => 100, 'largura' => 500, 'altura' => 120,
+    ],
+];
+$a4Card = [
+    'design' => $a4Design,
+    'values' => ['_sistema_url_validacao' => $qrValue, 'codigo' => 'ABC123'],
+    'backgrounds' => ['frente' => $frontColorPng, 'verso' => $backColorPng],
+];
+$a4Bleed = cardRenderPdfA4Batch([$a4Card], '8up');
+if (($a4Bleed['valid'] ?? null) !== true || preg_match_all('/\/Type\s*\/Page\b/', $a4Bleed['pdf']) !== 2
+    || !str_contains($a4Bleed['pdf'], '/MediaBox [0 0 595.28 841.89]')
+    || !str_contains($a4Bleed['pdf'], '/Width 1082') || !str_contains($a4Bleed['pdf'], '/Height 709')
+    || !cardPdfHasVectorRectangles($a4Bleed['pdf'], 10) || cardPdfCountVectorLines($a4Bleed['pdf']) < 16) {
+    throw new RuntimeException('An 8-up A4 sheet must be paired, full size, include 3 mm bleed, and keep QR vectors.');
+}
+cardPdfAssertScans($a4Bleed['pdf'], 1, $qrValue);
+cardPdfAssertScans($a4Bleed['pdf'], 2, 'ABC123');
+$frontPage = imagecreatefromstring(cardPdfRenderPage($a4Bleed['pdf'], 1));
+if (!$frontPage instanceof GdImage || abs(imagesx($frontPage) - 2480) > 1 || abs(imagesy($frontPage) - 3508) > 1) {
+    if ($frontPage instanceof GdImage) {
+        imagedestroy($frontPage);
+    }
+    throw new RuntimeException('A4 pages must render to 300 DPI portrait dimensions.');
+}
+$frontPixel = imagecolorsforindex($frontPage, imagecolorat($frontPage, 700, 700));
+imagedestroy($frontPage);
+$backPage = imagecreatefromstring(cardPdfRenderPage($a4Bleed['pdf'], 2));
+if (!$backPage instanceof GdImage || abs(imagesx($backPage) - 2480) > 1 || abs(imagesy($backPage) - 3508) > 1) {
+    if ($backPage instanceof GdImage) {
+        imagedestroy($backPage);
+    }
+    throw new RuntimeException('A4 pages must render to 300 DPI portrait dimensions.');
+}
+$backPixel = imagecolorsforindex($backPage, imagecolorat($backPage, 1780, 700));
+imagedestroy($backPage);
+if ($frontPixel['red'] < 180 || $backPixel['blue'] < 180) {
+    throw new RuntimeException('A4 front/back sheet positions must align for long-edge duplex printing.');
+}
+$a4NoBleed = cardRenderPdfA4Batch([$a4Card], '10up');
+if (($a4NoBleed['valid'] ?? null) !== true || preg_match_all('/\/Type\s*\/Page\b/', $a4NoBleed['pdf']) !== 2
+    || str_contains($a4NoBleed['pdf'], '/Width 1082') || !cardPdfHasVectorRectangles($a4NoBleed['pdf'], 10)) {
+    throw new RuntimeException('A 10-up A4 sheet must pair two pages, keep CR80 artwork, and omit bleed.');
+}
+cardPdfAssertScans($a4NoBleed['pdf'], 1, $qrValue);
+cardPdfAssertScans($a4NoBleed['pdf'], 2, 'ABC123');
+$fiftyCards = array_fill(0, 50, [
+    'design' => $design,
+    'values' => [],
+    'backgrounds' => ['frente' => $backgroundPng, 'verso' => $backgroundPng],
+]);
+$a4EightUpFifty = cardRenderPdfA4Batch($fiftyCards, '8up');
+$a4TenUpFifty = cardRenderPdfA4Batch($fiftyCards, '10up');
+if (($a4EightUpFifty['valid'] ?? null) !== true
+    || preg_match_all('/\/Type\s*\/Page\b/', $a4EightUpFifty['pdf']) !== 14
+    || ($a4TenUpFifty['valid'] ?? null) !== true
+    || preg_match_all('/\/Type\s*\/Page\b/', $a4TenUpFifty['pdf']) !== 10) {
+    throw new RuntimeException('A 50-card A4 batch must produce paired 8-up and 10-up sheet counts.');
+}
+$invalidA4 = cardRenderPdfA4Batch([$a4Card], 'unknown');
+if (($invalidA4['valid'] ?? null) !== false || ($invalidA4['pdf'] ?? null) !== ''
+    || ($invalidA4['errors'][0]['code'] ?? null) !== 'invalid_a4_layout') {
+    throw new RuntimeException('Unknown A4 layouts must fail without returning partial pages.');
+}
+$invalidA4Card = $a4Card;
+$invalidA4Card['design']['elementos'] = $textDesign['elementos'];
+$invalidA4Card['values'] = ['nome' => '東京'];
+$failedA4 = cardRenderPdfA4Batch([$a4Card, $invalidA4Card], '8up');
+if (($failedA4['valid'] ?? null) !== false || ($failedA4['pdf'] ?? null) !== ''
+    || ($failedA4['errors'][0]['code'] ?? null) !== 'unsupported_text_encoding'
+    || !str_starts_with($failedA4['errors'][0]['path'] ?? '', '$.cards[1]')) {
+    throw new RuntimeException('An invalid card must discard all A4 pages and identify its batch position.');
+}
+unset($a4Bleed, $a4NoBleed, $a4EightUpFifty, $a4TenUpFifty, $fiftyCards);
+gc_collect_cycles();
+
 $photo = imagecreatetruecolor(100, 60);
 $red = imagecolorallocate($photo, 210, 20, 20);
 imagefill($photo, 0, 0, $red);
@@ -303,14 +411,19 @@ for ($index = 0; $index < 50; ++$index) {
         'photo_assets' => ['foto' => $benchmarkPhotoPng],
     ];
 }
+gc_collect_cycles();
+$memoryBaseline = memory_get_usage(false);
+if (function_exists('memory_reset_peak_usage')) {
+    memory_reset_peak_usage();
+}
 $start = hrtime(true);
 $benchmark = cardRenderPdfBatch($batchCards);
 $elapsedMs = (hrtime(true) - $start) / 1_000_000;
-$peakMemoryMb = memory_get_peak_usage(true) / 1_048_576;
+$peakMemoryMb = max(0, memory_get_peak_usage(false) - $memoryBaseline) / 1_048_576;
 if (($benchmark['valid'] ?? null) !== true || preg_match_all('/\/Type\s*\/Page\b/', $benchmark['pdf']) !== 100) {
     throw new RuntimeException('A batch of 50 cards must render as one 100-page CR80 PDF.');
 }
-fwrite(STDOUT, sprintf("BENCHMARK: PDF CR80 em lote, 50 carteirinhas/100 páginas, %.2f ms, pico PHP %.1f MiB.\n",
+fwrite(STDOUT, sprintf("BENCHMARK: PDF CR80 em lote, 50 carteirinhas/100 páginas, %.2f ms, pico incremental PHP %.1f MiB.\n",
     $elapsedMs, $peakMemoryMb));
 if (getenv('PDF_BENCHMARK_GATE') === 'true' && $elapsedMs > 3500) {
     throw new RuntimeException('The 50-card CR80 PDF batch must complete within the 3.5 second Gate 3 target.');

@@ -4,7 +4,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/card_webp_renderer_photo.php';
 
 /** @return array{code: string, path: string}|null */
-function cardPdfDrawPhotoElement(FPDF $pdf, array $element, array $photoAssets, string $backgroundPng): ?array
+function cardPdfDrawPhotoElement(
+    FPDF $pdf,
+    array $element,
+    array $photoAssets,
+    string $backgroundPng,
+    float $offsetXmm = 0,
+    float $offsetYmm = 0
+): ?array
 {
     if (!$pdf instanceof IEPRCardPdfDocument) {
         return ['code' => 'invalid_pdf_document', 'path' => '$.render'];
@@ -44,7 +51,7 @@ function cardPdfDrawPhotoElement(FPDF $pdf, array $element, array $photoAssets, 
         return ['code' => 'temporary_asset_failed', 'path' => '$.assets.foto'];
     }
     try {
-        $pdf->Image($imagePath, $x * 25.4 / 300, $y * 25.4 / 300,
+        $pdf->Image($imagePath, $offsetXmm + $x * 25.4 / 300, $offsetYmm + $y * 25.4 / 300,
             $width * 25.4 / 300, $height * 25.4 / 300, 'jpg');
     } catch (Throwable) {
         return ['code' => 'image_embed_failed', 'path' => '$.design.elementos.' . $element['id']];

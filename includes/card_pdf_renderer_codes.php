@@ -2,7 +2,13 @@
 declare(strict_types=1);
 
 /** @return array{code: string, path: string}|null */
-function cardPdfDrawCodeElement(FPDF $pdf, array $element, string $value): ?array
+function cardPdfDrawCodeElement(
+    FPDF $pdf,
+    array $element,
+    string $value,
+    float $offsetXmm = 0,
+    float $offsetYmm = 0
+): ?array
 {
     $path = '$.values.' . $element['chave_variavel'];
     $idPath = '$.design.elementos.' . $element['id'];
@@ -56,15 +62,24 @@ function cardPdfDrawCodeElement(FPDF $pdf, array $element, string $value): ?arra
         $y = (int) round($element['y']);
     }
 
-    cardPdfDrawBitmapVector($pdf, $bitmap, $x, $y, $width, $height);
+    cardPdfDrawBitmapVector($pdf, $bitmap, $x, $y, $width, $height, $offsetXmm, $offsetYmm);
     imagedestroy($bitmap);
     return null;
 }
 
-function cardPdfDrawBitmapVector(FPDF $pdf, GdImage $bitmap, int $x, int $y, int $width, int $height): void
+function cardPdfDrawBitmapVector(
+    FPDF $pdf,
+    GdImage $bitmap,
+    int $x,
+    int $y,
+    int $width,
+    int $height,
+    float $offsetXmm = 0,
+    float $offsetYmm = 0
+): void
 {
-    $pdfX = $x * 25.4 / 300;
-    $pdfY = $y * 25.4 / 300;
+    $pdfX = $offsetXmm + $x * 25.4 / 300;
+    $pdfY = $offsetYmm + $y * 25.4 / 300;
     $scaleX = $width / imagesx($bitmap) * 25.4 / 300;
     $scaleY = $height / imagesy($bitmap) * 25.4 / 300;
     $pdf->SetFillColor(255, 255, 255);

@@ -19,7 +19,7 @@
 
 Fornecer, em um único deploy, a emissão automatizada de documentos de identificação (carteirinhas estudantis, crachás, credenciais eclesiásticas, carteiras de clubes/sindicatos) em dois formatos complementares:
 
-- **PDF vetorial 300 DPI** para gráfica e impressora térmica PVC (CR80 individual e folha A4 com sangria);
+- **PDF** com texto/códigos vetoriais e fotos raster para impressão CR80 individual ou A4: 8-up com 3 mm de sangria, 10-up sem sangria;
 - **WebP leve** para carteira digital online, WhatsApp e validação anti-fraude por QR Code.
 
 O valor de negócio está na hierarquia operacional: uma **Sede** contrata o plano, cria **Subclientes** (filiais, congregações, polos), distribui cotas e delega sub-acessos; o **Titular final** recebe apenas a carteirinha e, quando liberado, acessa diretamente a própria carteira digital.
@@ -79,7 +79,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-01 | Compatibilidade de banco | Alternar `DB_DRIVER=sqlite\|mysql` sem alterar nenhum arquivo consumidor | `docs/11` ISSUE-001 |
 | NFR-02 | Paridade e portabilidade de dados | Catálogo versionado comum em SQLite e MySQL; self-healing apenas em dev/test, drift sem DDL em produção e cópia validada por contagem/checksum | TDD-01, ADR-0005, ADR-0010 |
 | NFR-03 | Volume planejado | > 50.000 carteirinhas/mês em VPS 2 vCPU / 4 GB RAM | `docs/14` |
-| NFR-04 | Performance de render | ≤ 80 ms por carteirinha WebP (frente+verso); ≤ 1,5 s para lote PDF de 50 | `docs/12` GATE 3 |
+| NFR-04 | Performance de render | ≤ 80 ms por carteirinha WebP (frente+verso); ≤ 3,5 s para lote PDF de 50 no runner PHP 8.2 isolado | `docs/12` GATE 3; ADR-0007 |
 | NFR-05 | Importação | 500 registros em 3 formatos sem estourar memória; 1.000+ em lotes de 25 via AJAX | `docs/11` ISSUE-007, `docs/16` |
 | NFR-06 | Isolamento | Nenhum Subcliente lê/edita dados de outro Subcliente ou Cliente, mesmo manipulando IDs | `docs/12` GATE 2 |
 | NFR-07 | Idempotência de webhook financeiro | Mesmo `event.id` processado 2× não duplica cobrança nem estado; requisito da fase futura de pagamentos | `docs/07`, ADR-0008 |
@@ -168,7 +168,7 @@ Infraestrutura (PDO dual, filesystem de tenants, fila em banco)
 | Eventos | `includes/motor_eventos.php` | `eventoDisparar`, `hookAplicarFiltro`, gravação de telemetria | Não faz I/O externo direto (usa outbox) |
 | Importação | `includes/motor_importacao.php` | CSV/XLSX/JSON, ZIP de fotos, normalização | Não renderiza |
 | Mapeamento | `includes/motor_mapeamento.php` | Modo fixo e De→Para, variáveis hierárquicas | Não persiste carteirinha |
-| Renderização | `motor_carteirinha_webp.php`, `motor_carteirinha_pdf.php` | WebP 1011×638 e PDF CR80/A4 300 DPI | Não debita cota (evento faz isso) |
+| Renderização | `config/card_webp_renderer.php`, `includes/card_pdf_renderer.php` | WebP 1011×638, PDF CR80 e imposição A4 | Não debita cota (evento faz isso) |
 | Pagamentos (futuro) | Código de referência Asaas/Mercado Pago | Avaliar checkout, assinatura, idempotência e estados quando entrar no escopo | Não faz parte do MVP nem altera status de conta no lançamento |
 | Telemetria | `includes/motor_telemetria.php` | Append-only de negócio + agregação diária | Não contém PII |
 | MCP | `mcp/server.php`, `tools_registry.php`, `safety_guard.php` | JSON-RPC 2.0, escopos, auditoria | Não executa patch em produção |
