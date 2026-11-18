@@ -102,7 +102,14 @@ $rpc = static fn(string $method, string $version = '2026-07-28', array $methodPa
 
 try {
     $url = $baseUrl . '/mcp.php';
-    [$status] = mcpServerHttpRequest($url, 'GET');
+    $status = 0;
+    for ($attempt = 0; $attempt < 40; ++$attempt) {
+        [$status] = mcpServerHttpRequest($url, 'GET');
+        if ($status !== 0) {
+            break;
+        }
+        usleep(100_000);
+    }
     if ($status !== 405) {
         throw new RuntimeException('MCP transport must reject GET and remain POST-only.');
     }
