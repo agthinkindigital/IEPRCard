@@ -46,7 +46,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'plan' => $planId,
             'name' => 'Titular Sede',
             'slug' => 'titular-' . $suffix,
-            'permissions' => json_encode(['titular.criar'], JSON_THROW_ON_ERROR),
+            'permissions' => json_encode([], JSON_THROW_ON_ERROR),
         ]);
         $tenantId = (int) $pdo->lastInsertId();
 
@@ -149,6 +149,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             || str_contains((string) $auditRow['depois_json'], 'A-001')) {
             throw new RuntimeException($driver . ': individual holder creation must normalize data, stay offline, and audit without PII.');
         }
+        $pdo->prepare('UPDATE tenants SET permissoes_unidade_json = :permissions WHERE id = :id')->execute([
+            'permissions' => json_encode(['titular.criar'], JSON_THROW_ON_ERROR),
+            'id' => $tenantId,
+        ]);
 
         $triggerName = 'titular_audit_fail';
         if (strtolower($driver) === 'sqlite') {

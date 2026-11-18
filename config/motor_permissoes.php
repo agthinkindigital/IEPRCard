@@ -163,7 +163,7 @@ function motorPermissoesAvaliar(PDO $pdo, TenantContext $context, array $identit
         return false;
     }
 
-    $delegated = $targetSubclienteId === null
+    $delegated = $role === 'titular_cliente' || $targetSubclienteId === null
         || (motorPermissoesCanDelegateToUnit($permission)
             && in_array($permission, motorPermissoesDecodeList($root['permissoes_unidade_json']), true));
     $roleAllows = match ($role) {
