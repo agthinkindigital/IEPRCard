@@ -153,10 +153,32 @@ return 'pass';
 /** @return array{int, string|null, list<string>} */
 function adminHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null, ?string $host = null): array
 {
-    $headers = ['Accept: text/html'];
     if ($host !== null) {
-        $headers[] = 'Host: ' . $host;
+        $urlParts = parse_url($url);
+        $port = (int) ($urlParts['port'] ?? 80);
+        $socket = @stream_socket_client('tcp://127.0.0.1:' . $port, $errorCode, $errorMessage, 3);
+        if ($socket === false) {
+            return [0, null, []];
+        }
+        $path = (string) ($urlParts['path'] ?? '/');
+        if (isset($urlParts['query'])) $path .= '?' . $urlParts['query'];
+        $requestHeaders = ['Host: ' . $host, 'Accept: text/html', 'Connection: close'];
+        if ($cookie !== null) $requestHeaders[] = 'Cookie: ' . $cookie;
+        if ($method === 'POST') {
+            $requestHeaders[] = 'Content-Type: application/x-www-form-urlencoded';
+            $requestHeaders[] = 'Content-Length: ' . strlen($body ?? '');
+        }
+        fwrite($socket, $method . ' ' . $path . " HTTP/1.1\r\n" . implode("\r\n", $requestHeaders) . "\r\n\r\n" . ($body ?? ''));
+        $rawResponse = stream_get_contents($socket);
+        fclose($socket);
+        $responseParts = explode("\r\n\r\n", (string) $rawResponse, 2);
+        $responseLines = explode("\r\n", $responseParts[0] ?? '');
+        $status = isset($responseLines[0]) && preg_match('/\s(\d{3})\s/', $responseLines[0], $match) ? (int) $match[1] : 0;
+
+        return [$status, $responseParts[1] ?? null, array_slice($responseLines, 1)];
     }
+
+    $headers = ['Accept: text/html'];
     if ($cookie !== null) {
         $headers[] = 'Cookie: ' . $cookie;
     }
