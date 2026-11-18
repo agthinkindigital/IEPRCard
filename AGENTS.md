@@ -4,6 +4,7 @@
 - Use GitHub Issues como tracker. Não mantenha backlog paralelo em arquivos locais.
 - Antes de planejar ou alterar arquitetura, consulte o [SAD](docs/architecture/SAD.md), as [regras de negócio](docs/01-regras-de-negocio.md) e os ADRs relevantes.
 - O [roadmap existente](docs/14-roadmap.md), o [backlog](docs/11-issues.md) e os [quality gates](docs/12-quality-gates.md) são canônicos. Atualize-os no lugar; não crie cópias de roadmap ou backlog.
+- O contexto de domínio, os adaptadores do roadmap e a governança de Issues estão em [`CONTEXT.md`](CONTEXT.md), [`DEVELOPER-ROADMAP.md`](DEVELOPER-ROADMAP.md) e [`docs/agents/`](docs/agents/); apontam às fontes canônicas sem duplicá-las.
 - No MVP, não implemente pagamentos, checkout, repasses ou webhooks Asaas/Mercado Pago. A ativação de contas é manual; ver [pagamentos e financeiro](docs/07-pagamentos-e-financeiro.md).
 - Para documentação, atualize o documento existente que é dono do assunto e referencie-o nos demais. Crie documento separado apenas quando o conteúdo precisar de ciclo de vida próprio.
 - Não implemente telas novas antes de haver mockup e guia funcional aprovados pelo usuário, conforme a skill `architect`.

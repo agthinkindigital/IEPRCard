@@ -44,6 +44,8 @@
 
 **Login e cadastro**
 
+O acesso do Administrador SaaS segue o [mockup de login](../design-system/mockups/admin-login-mockup.svg) aprovado e o [guia funcional](userguide/admin-login.md). A autorização exige conta global ativa `superadmin`; o primeiro acesso é provisionado apenas pelo CLI.
+
 ![Login e cadastro](/telas/02-login.png)
 
 **Seletor “Visualizar como” (persona)**

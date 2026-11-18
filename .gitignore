@@ -2,5 +2,7 @@
 .env.*.local
 /var/*.sqlite
 /var/*.sqlite-*
+/var/admin-login-rate-limit.json
+/var/admin-bootstrap.lock
 *.sqlite
 *.sqlite-*
