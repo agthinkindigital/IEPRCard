@@ -77,6 +77,8 @@
 
 O contrato do design e o motor puro de mapeamento foram concluídos em [GitHub #33](https://github.com/agthinkindigital/IEPRCard/issues/33) e [GitHub #34](https://github.com/agthinkindigital/IEPRCard/issues/34); a especificação canônica permanece em `docs/06-design-e-mapeamento.md`. Interfaces seguem o gate de aprovação explícita de mockup e guia.
 
+A verificação do perfil GD/WebP/FreeType exigido pela hospedagem está em desenvolvimento na [GitHub #35](https://github.com/agthinkindigital/IEPRCard/issues/35), antes da implementação dos renderizadores.
+
 * **ISSUE-009: Gestor de Múltiplos Designs e Editor Visual de Coordenadas**
 * **Arquivos:** `painel/designs.php`, `painel/editor-design.php`
 * **Descrição:** Permitir que o Cliente faça upload da arte de fundo (Frente e Verso) de múltiplos modelos de carteirinha e posicione visualmente (arrastar e soltar no canvas) os campos variáveis (textos, foto do titular, QR Code, código de barras), salvando o `mapa_campos_json` e o `mapeamento_fixo_json`.

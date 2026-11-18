@@ -19,6 +19,8 @@ Cada carteirinha precisa de duas representações: WebP 1011×638 px (CR80 a 300
 - Fila em banco: `lotes_importacao.status_lote` + processamento em chunks de 25 via AJAX, com `cron.php` como fallback em hospedagem compartilhada.
 - Snapshot exato dos dados impressos em `snapshot_dados_json` para reimpressão fiel; versionamento de design registrado na carteirinha.
 
+O runtime PHP que executa emissão deve oferecer GD truecolor, leitura PNG/JPEG/WebP, escrita e leitura WebP, e FreeType com medição e desenho TTF. Verificar o CLI do host com `php scripts/check-rendering-runtime.php` e confirmar que a mesma versão e extensões estão ativas no PHP-FPM/Apache; a CI exige o mesmo perfil. A checagem não substitui a validação do provedor de hospedagem.
+
 ## Alternativas consideradas
 
 | Alternativa | Prós | Contras | Veredito |
