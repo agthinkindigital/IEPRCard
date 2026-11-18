@@ -12,7 +12,7 @@ As fases agrupam as issues existentes. Prazo e custo serão estimados após o fa
 - [**[E04] Designs, mapeamento e emissão de carteirinhas**](https://github.com/agthinkindigital/IEPRCard/issues/4) - `todo`
 - [**[E05] WhatsApp e IA sem cobrança**](https://github.com/agthinkindigital/IEPRCard/issues/5) - `todo`
 - [**[E06] Telemetria e painel operacional**](https://github.com/agthinkindigital/IEPRCard/issues/6) - `todo`
-- [**[E07] MCP, segurança e prontidão operacional**](https://github.com/agthinkindigital/IEPRCard/issues/7) - `in_progress` (E07.1–E07.3 concluídas em [Issues #19](https://github.com/agthinkindigital/IEPRCard/issues/19), [#20](https://github.com/agthinkindigital/IEPRCard/issues/20) e [#21](https://github.com/agthinkindigital/IEPRCard/issues/21); registry e `system.read` E07.4 em [Issue #22](https://github.com/agthinkindigital/IEPRCard/issues/22))
+- [**[E07] MCP, segurança e prontidão operacional**](https://github.com/agthinkindigital/IEPRCard/issues/7) - `in_progress` (E07.1–E07.4 concluídas em [Issues #19](https://github.com/agthinkindigital/IEPRCard/issues/19) a [#22](https://github.com/agthinkindigital/IEPRCard/issues/22); ferramenta MCP de telemetria depende do recorte por Sede definido no E06)
 
 Os issues GitHub acima são as fontes de escopo dos Epics; este arquivo continua sendo o roadmap canônico do repositório.
 
