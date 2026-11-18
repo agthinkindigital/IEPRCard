@@ -24,14 +24,11 @@ putenv('DB_SQLITE_PATH=:memory:');
 $dbValue = "bound value'); DROP TABLE connection_contract_items;--";
 dbExecute('CREATE TABLE connection_contract_items (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL)');
 $insertedRows = dbExecute('INSERT INTO connection_contract_items (value) VALUES (:value)', ['value' => $dbValue]);
+$insertId = dbInsertId();
 $item = dbFetchOne('SELECT id, value FROM connection_contract_items WHERE value = :value', ['value' => $dbValue]);
 
-if ($insertedRows !== 1 || $item === null || $item['value'] !== $dbValue || $item['id'] !== 1) {
+if ($insertedRows !== 1 || $insertId !== '1' || $item === null || $item['value'] !== $dbValue || $item['id'] !== 1) {
     throw new RuntimeException('Database helpers must bind values and return inserted rows consistently.');
-}
-
-if (dbInsertId() !== '1') {
-    throw new RuntimeException('dbInsertId() must return the identifier of the last inserted row.');
 }
 
 fwrite(STDOUT, "PASS: query helpers bind values and return rows and insert IDs.\n");
