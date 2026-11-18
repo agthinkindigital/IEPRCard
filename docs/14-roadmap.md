@@ -6,7 +6,7 @@ As fases agrupam as issues existentes. Prazo e custo serão estimados após o fa
 
 ## Epics rastreáveis no GitHub
 
-- [**[E01] Fundação técnica, banco dual e migrações**](https://github.com/agthinkindigital/IEPRCard/issues/1) - `todo`
+- [**[E01] Fundação técnica, banco dual e migrações**](https://github.com/agthinkindigital/IEPRCard/issues/1) - `in_progress`
 - [**[E02] Multi-tenancy, domínios e controle de acesso**](https://github.com/agthinkindigital/IEPRCard/issues/2) - `todo`
 - [**[E03] Cadastro, importação e gestão de titulares**](https://github.com/agthinkindigital/IEPRCard/issues/3) - `todo`
 - [**[E04] Designs, mapeamento e emissão de carteirinhas**](https://github.com/agthinkindigital/IEPRCard/issues/4) - `todo`
