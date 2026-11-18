@@ -174,7 +174,7 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 * **Perfis Prontos (Presets):** Ao criar um Cliente novo, o sistema já semeia 4 perfis editáveis: *Dirigente de Subcliente*, *Secretário (Emissor de Carteirinhas)*, *Tesoureiro* e *Cadastrador de Membros*.
 
 
-* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)** — provisionamento inicial da Sede e do titular foi entregue como serviço de backend na [Issue #17](https://github.com/agthinkindigital/IEPRCard/issues/17). Permanecem gestão posterior de status, cotas e sua distribuição hierárquica; sem cobrança, checkout ou automação por webhook. Os contratos e critérios executáveis devem ser fatiados em Issues antes da implementação.
+* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)** — provisionamento inicial da Sede e do titular foi entregue na [Issue #17](https://github.com/agthinkindigital/IEPRCard/issues/17); ciclo de vida manual da Sede, na [Issue #18](https://github.com/agthinkindigital/IEPRCard/issues/18). Permanecem gestão de cotas e sua distribuição hierárquica; sem cobrança, checkout ou automação por webhook. Os contratos e critérios executáveis devem ser fatiados em Issues antes da implementação.
 
 
 
