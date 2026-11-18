@@ -4,13 +4,15 @@
 
 A página administrativa prepara e acompanha uma cópia de dados do arquivo SQLite para um banco MySQL/MariaDB já configurado. O acesso é exclusivo do Administrador do sistema. A tela nunca apresenta registros pessoais, senhas ou credenciais.
 
+Configure `MIGRATION_SOURCE_SQLITE_PATH` e as variáveis `MIGRATION_TARGET_*` no ambiente do PHP. O destino precisa estar vazio e receber previamente o schema canônico pelo runner de migrations versionadas (`schemaAplicarMigracoes(PDO, 'production')`); a interface não altera schema. Em hospedagem compartilhada, agende `php /caminho/privado/do-projeto/database/process-admin-migration.php` pelo Cron do servidor, por exemplo a cada minuto, e disponibilize ao processo Cron as mesmas variáveis de ambiente protegidas. O worker aceita um único job por vez; a interface mantém o estado disponível mesmo quando o Administrador fecha a página.
+
 ## Fluxo principal
 
 1. Confira a origem e o destino. A origem é identificada pelo nome do arquivo, sem expor seu caminho completo; o destino mostra o nome do banco e o tipo de servidor, com segredos ocultos.
 2. Selecione **Validar novamente** para repetir as pré-verificações. A origem precisa ter o schema canônico e integridade referencial; o destino precisa ter o mesmo schema e zero registros.
 3. Leia a estimativa de registros e marque a confirmação de que revisou os dois bancos.
 4. Selecione **Revisar e iniciar**. Uma confirmação final resume a operação e oferece **Cancelar** ou **Confirmar cópia**.
-5. Acompanhe o estado da execução e o progresso verificável. Sair da página não cancela o trabalho; ao voltar, o Administrador consulta o estado atual.
+5. Acompanhe o estado da execução e o progresso verificável. O worker CLI pega o job enfileirado; sair da página não cancela o trabalho e, ao voltar, o Administrador consulta o estado atual.
 6. Ao concluir, confira quantidade e checksum por tabela. A ativação do MySQL é uma etapa de implantação separada: esta operação apenas copia os dados.
 
 ## Estados e recuperação

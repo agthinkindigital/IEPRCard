@@ -8,7 +8,7 @@ Configure `APP_ENV` e as variáveis do banco no ambiente do processo PHP; `.env.
 
 Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingTest.php`. A suíte completa `php tests/run_all.php` também exige `pdo_mysql` e `TEST_MYSQL_HOST`, `TEST_MYSQL_DATABASE` e `TEST_MYSQL_USERNAME`; se o smoke test MySQL for ignorado, o runner retorna código diferente de zero. O CI usa serviços descartáveis MySQL 8.4 e MariaDB 10.11.
 
-Para transferir dados, prepare um destino MySQL vazio com o schema canônico, configure `DB_DRIVER=mysql` e as demais variáveis do MySQL, defina `MIGRATION_SOURCE_SQLITE_PATH` para o arquivo de origem e execute `php database/migrate-sqlite-to-mysql.php` pelo CLI. A rotina não altera schemas nem aceita destinos com registros; gera contagens e hashes SHA-256 por tabela sem incluir dados pessoais.
+Para transferir dados pelo CLI, prepare um destino MySQL vazio com o schema canônico, configure `DB_DRIVER=mysql` e defina `MIGRATION_SOURCE_SQLITE_PATH`; execute `php database/migrate-sqlite-to-mysql.php`. A interface administrativa usa `MIGRATION_SOURCE_SQLITE_PATH` e `MIGRATION_TARGET_*`, exige o worker CLI agendado por Cron e não troca o banco ativo. Os dois fluxos chamam o mesmo serviço, não alteram schema e recusam destinos com registros. Consulte o [guia da interface de migração](docs/userguide/migracao-banco.md).
 
 ## Ambiente local no Windows
 

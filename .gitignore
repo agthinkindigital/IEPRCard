@@ -4,5 +4,8 @@
 /var/*.sqlite-*
 /var/admin-login-rate-limit.json
 /var/admin-bootstrap.lock
+/var/admin-migration-job.json
+/var/admin-migration-job.json.lock
+/var/admin-migration-job.json.worker.lock
 *.sqlite
 *.sqlite-*

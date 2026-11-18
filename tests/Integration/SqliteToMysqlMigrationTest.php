@@ -57,7 +57,10 @@ for ($sequence = 0; $sequence < 1000; $sequence++) {
 }
 $source->commit();
 
-$result = ieprMigrarSqliteParaMysql($source, $target);
+$progress = [];
+$result = ieprMigrarSqliteParaMysql($source, $target, static function (array $update) use (&$progress): void {
+    $progress[] = $update;
+});
 $planCount = (int) $target->query('SELECT COUNT(*) FROM planos')->fetchColumn();
 $tenantName = $target->query('SELECT nome_organizacao FROM tenants WHERE id = 1')->fetchColumn();
 
@@ -65,6 +68,9 @@ if (($result['total_records'] ?? null) !== 1002
     || ($result['tables']['planos']['row_count'] ?? null) !== 1
     || ($result['tables']['tenants']['row_count'] ?? null) !== 1
     || ($result['tables']['telemetria_eventos']['row_count'] ?? null) !== 1000
+    || count($progress) !== 27
+    || ($progress[26]['completed_tables'] ?? null) !== 27
+    || ($progress[26]['completed_records'] ?? null) !== 1002
     || $planCount !== 1
     || $tenantName !== 'Cliente de teste'
     || ($result['duration_ms'] ?? PHP_INT_MAX) >= 5000) {

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-function ieprMigrarSqliteParaMysql(PDO $source, PDO $target): array
+function ieprMigrarSqliteParaMysql(PDO $source, PDO $target, ?callable $onProgress = null): array
 {
     if ($source->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'sqlite'
         || $target->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
@@ -49,6 +49,7 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target): array
         $foreignKeysDisabled = true;
         $tableReports = [];
         $totalRecords = 0;
+        $completedTables = 0;
 
         foreach ($catalog as $table => $definition) {
             $columns = array_keys($definition['columns']);
@@ -83,6 +84,16 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target): array
                 'duration_ms' => (int) ((hrtime(true) - $tableStartedAt) / 1_000_000),
             ];
             $totalRecords += $rowCount;
+            $completedTables++;
+            if ($onProgress !== null) {
+                $onProgress([
+                    'completed_tables' => $completedTables,
+                    'total_tables' => count($catalog),
+                    'completed_records' => $totalRecords,
+                    'table' => $table,
+                    'table_report' => $tableReports[$table],
+                ]);
+            }
         }
 
         ieprMigracaoValidarForeignKeys($target, $catalog);
