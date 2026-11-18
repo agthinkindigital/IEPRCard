@@ -7,7 +7,7 @@ As fases agrupam as issues existentes. Prazo e custo serão estimados após o fa
 ## Epics rastreáveis no GitHub
 
 - [**[E01] Fundação técnica, banco dual e migrações**](https://github.com/agthinkindigital/IEPRCard/issues/1) - `done`
-- [**[E02] Multi-tenancy, domínios e controle de acesso**](https://github.com/agthinkindigital/IEPRCard/issues/2) - `in_progress` (E02.1–E02.10 concluídas com CI MySQL 8.4/MariaDB 10.11; E02.11 [#26](https://github.com/agthinkindigital/IEPRCard/issues/26), operadores de Subcliente com cota, está em execução. Ainda faltam aplicar limites nos fluxos de titulares/emissão, interfaces e gate operacional TLS/aliases.)
+- [**[E02] Multi-tenancy, domínios e controle de acesso**](https://github.com/agthinkindigital/IEPRCard/issues/2) - `in_progress` (E02.1–E02.11 concluídas, todas com CI MySQL 8.4/MariaDB 10.11; [#26](https://github.com/agthinkindigital/IEPRCard/issues/26) incluiu corrida concorrente de criação com cota. Ainda faltam aplicar limites nos fluxos de titulares/emissão, interfaces e gate operacional TLS/aliases.)
 - [**[E03] Cadastro, importação e gestão de titulares**](https://github.com/agthinkindigital/IEPRCard/issues/3) - `todo`
 - [**[E04] Designs, mapeamento e emissão de carteirinhas**](https://github.com/agthinkindigital/IEPRCard/issues/4) - `todo`
 - [**[E05] WhatsApp e IA sem cobrança**](https://github.com/agthinkindigital/IEPRCard/issues/5) - `todo`
