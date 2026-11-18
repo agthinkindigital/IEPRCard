@@ -69,7 +69,7 @@ try {
     $baseUrl = 'http://127.0.0.1:' . $port;
     [$tenantHostStatus, $tenantHostBody] = adminHttpRequest($baseUrl . '/admin/login.php', 'GET', null, null, 'customer.example.test');
     if ($tenantHostStatus !== 404 || str_contains((string) $tenantHostBody, 'Entrar na administração')) {
-        throw new RuntimeException('Administrative login must not be exposed through a tenant or unknown Host.');
+        throw new RuntimeException('Administrative login Host gate returned status ' . $tenantHostStatus . ' and body: ' . substr((string) $tenantHostBody, 0, 160));
     }
 
     $page = null;
