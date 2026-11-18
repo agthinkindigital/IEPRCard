@@ -9,13 +9,13 @@ Nenhum módulo de negócio será considerado pronto sem passar pela suíte autom
 | ID da Suíte | Arquivo de Teste | O que é Testado (Asserções Obrigatórias) |
 | --- | --- | --- |
 | **TDD-01** | `tests/Integration/DualDatabaseSelfHealingTest.php`, `tests/Integration/MySqlConnectionSmokeTest.php` | 1. Confirma seleção do driver por `DB_DRIVER`, contrato dos helpers com parâmetros preparados e timestamp ISO UTC; em SQLite, confirma foreign keys e WAL.<br>2. Em SQLite vazio, aplica o schema canônico e verifica as 27 tabelas do MVP, sem as cinco tabelas financeiras reservadas para fase futura.<br>3. Em `APP_ENV=dev|test`, simula colunas ausentes e confirma *self-healing* sem perda de dados; em produção, confirma que a verificação de drift não executa DDL.<br>4. Repete os cenários de driver, schema e *self-healing* no MySQL/MariaDB. |
-| **TDD-02** | `tests/Unit/TenantResolverAndRbacTest.php` | 1. Simula `HTTP_HOST = painel.saas.com` $\rightarrow$ resolve contexto `admin`.<br>
+| **TDD-02** | `tests/Integration/TenantResolverTest.php`, `tests/Integration/TenantScopeTest.php`, `tests/Integration/PermissionEngineTest.php` | 1. Resolve somente hosts explícitos, ativos, verificados e com TLS; tenants pendentes, inativos ou desconhecidos são negados.<br>
 
 <br>2. Simula `HTTP_HOST = escolaX.com.br` $\rightarrow$ resolve `cliente` (`id=10`).<br>
 
 <br>3. Simula `HTTP_HOST = polo1.escolaX.com.br` $\rightarrow$ resolve `subcliente` (`id=25`, `parent_id=10`).<br>
 
-<br>4. Tenta conceder a um Subcliente uma permissão que o Cliente pai não possui $\rightarrow$ deve lançar bloqueio de segurança. |
+<br>4. Revalida usuário/papel/escopo persistidos, intersecta perfil e overrides com as flags do plano e a delegação da Sede; negativa prevalece e adulteração de sessão/IDs não amplia acesso. |
 | **TDD-03** | `tests/Integration/BatchImportParserTest.php` | 1. Importa um arquivo `.csv` (separado por `;` e encoding ISO-8859-1), um `.xlsx` e um `.json` contendo 50 titulares cada.<br>
 
 <br>2. Verifica que todos os 3 formatos produzem exatamente o mesmo array normalizado de colunas e linhas.<br>

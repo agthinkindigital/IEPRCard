@@ -32,12 +32,9 @@
 | Telemetria | Global | Rede | Sede | Unidade | Unidade (se delegado) | Não |
 | Auditoria | Global | Rede | Não | Unidade (leitura) | Não | Não |
 
-## Implementação (PHP)
-- `includes/rbac.php`: `pode(string $perm, ?int $subclienteId = null): bool`.
-- Tabelas: `papeis`, `permissoes`, `papel_permissoes`, `usuario_permissoes` (overrides), `plano_feature_flags` (teto).
-- Resolução: `efetivas = (papel ∪ overrides) ∩ teto_plano ∩ teto_cliente`.
-- Cache por requisição; invalidado pelo evento `permissao.alterada`.
-- Toda alteração gera registro em `auditoria` (quem, quando, antes/depois).
+## Contrato executável
+
+O formato canônico dos perfis, flags de plano, overrides, escopos e algoritmo de avaliação está em [ADR-0004](adr/0004-rbac-teto-descendente-e-cotas.md#contrato-executável-do-mvp). A implementação usa o schema canônico `perfis_acesso`, `permissoes`, `usuario_permissoes` e `plano_feature_flags`; as tabelas históricas `papeis`/`papel_permissoes` não são usadas.
 
 
 ## Telas do MVP

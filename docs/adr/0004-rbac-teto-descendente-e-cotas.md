@@ -20,6 +20,16 @@ O modelo real é Sede + congregações/filiais. Apenas Admin SaaS e Cliente Mast
 5. **Débito linearizável:** `UPDATE tenants SET consumo = consumo + :n WHERE id = :id AND consumo + :n <= limite`; `rowCount() === 1` confirma reserva; índice único `(titular_id, design_id, lote_id)` impede duplicidade.
 6. **Cache e auditoria:** cache de RBAC por requisição, invalidado pelo evento `permissao.alterada` (adicionado ao catálogo de `docs/05`); toda alteração grava `auditoria_processos` com antes/depois.
 
+### Contrato executável do MVP
+
+- `permissoes.chave` é o identificador canônico de uma permissão. `plano_feature_flags.feature_key` usa o mesmo valor; falta de linha ou `habilitado = 0` significa negado.
+- `perfis_acesso.permissoes_acoes_json` é uma lista JSON de chaves de permissão, por exemplo `["titular.ver","titular.criar"]`. `escopo_permitido` aceita `sede`, `subcliente` ou `rede`: Sede limita ao próprio cadastro; subcliente limita à unidade associada ao usuário; rede permite ao subacesso delegado selecionar Sede ou unidades do mesmo tenant.
+- `tenants.permissoes_unidade_json` é a lista JSON que a Sede delega a todos os operadores de seus Subclientes. Ela é um teto: papel, perfil e override nunca concedem permissão fora dessa lista ou do plano.
+- `usuario_permissoes` substitui a permissão do perfil no escopo da linha: um registro `permitido = 0` nega; `permitido = 1` permite se o teto do plano e, para Subcliente, o da Sede também permitem. Um override por unidade prevalece sobre o override geral do usuário.
+- Antes de avaliar permissão, `pode()` relê o usuário e a hierarquia no banco; sessão, host e IDs do request não substituem identidade persistida nem `TenantContext`. Usuário inativo, conta suspensa, contexto incompatível, perfil de outro tenant, estado/escopo desconhecido ou JSON inválido falham fechados.
+- `titular_cliente` atua em qualquer unidade da própria Sede conforme o plano. `responsavel_sub` só atua na própria unidade e dentro da lista delegada pela Sede. `subacesso` usa perfil e overrides dentro do `escopo_permitido`. `titular_final` não recebe permissões administrativas. `superadmin` só recebe `admin.*` em contexto global e sem tenant associado.
+- A implementação canônica fica em `config/motor_permissoes.php`; o formato é especificado aqui para evitar cópias em backlog e telas.
+
 ## Alternativas consideradas
 
 | Alternativa | Prós | Contras | Veredito |
