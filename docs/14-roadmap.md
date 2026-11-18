@@ -12,7 +12,7 @@ As fases agrupam as issues existentes. Prazo e custo serão estimados após o fa
 - [**[E04] Designs, mapeamento e emissão de carteirinhas**](https://github.com/agthinkindigital/IEPRCard/issues/4) - `todo`
 - [**[E05] WhatsApp e IA sem cobrança**](https://github.com/agthinkindigital/IEPRCard/issues/5) - `todo`
 - [**[E06] Telemetria e painel operacional**](https://github.com/agthinkindigital/IEPRCard/issues/6) - `todo`
-- [**[E07] MCP, segurança e prontidão operacional**](https://github.com/agthinkindigital/IEPRCard/issues/7) - `in_progress` (núcleo MCP read-only antecipado para o lançamento; E07.1 registrado em [Issue #19](https://github.com/agthinkindigital/IEPRCard/issues/19))
+- [**[E07] MCP, segurança e prontidão operacional**](https://github.com/agthinkindigital/IEPRCard/issues/7) - `in_progress` (núcleo MCP read-only antecipado para o lançamento; cadastro OAuth E07.1 concluído em [Issue #19](https://github.com/agthinkindigital/IEPRCard/issues/19); token e descoberta E07.2 em [Issue #20](https://github.com/agthinkindigital/IEPRCard/issues/20))
 
 Os issues GitHub acima são as fontes de escopo dos Epics; este arquivo continua sendo o roadmap canônico do repositório.
 
