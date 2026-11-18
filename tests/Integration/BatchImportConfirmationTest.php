@@ -19,6 +19,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $planId = null;
     $ownerId = null;
     $lotId = null;
+    $rollbackLotId = null;
+    $auditTrigger = 'import_confirm_audit_fail';
+    $auditTriggerExists = false;
 
     try {
         $testTenant = batchImportStagingTestCreateTenant($pdo, $suffix);
@@ -72,10 +75,82 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             throw new RuntimeException($driver . ': confirming a staged lot must create the holder and finish the lot.');
         }
 
+        $rollbackPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'rollback.csv';
+        file_put_contents($rollbackPath, "nome\nAtomic one\nAtomic two\n");
+        $rollbackLotId = batchImportStageFile(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $rollbackPath,
+            'rollback.csv'
+        )['lote_id'];
+        if (strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite') {
+            $pdo->exec(
+                "CREATE TRIGGER {$auditTrigger} BEFORE INSERT ON auditoria_processos "
+                . "WHEN NEW.acao = 'titular.created' BEGIN SELECT RAISE(ABORT, 'test audit failure'); END"
+            );
+        } else {
+            $pdo->exec(
+                "CREATE TRIGGER {$auditTrigger} BEFORE INSERT ON auditoria_processos FOR EACH ROW "
+                . "BEGIN IF NEW.acao = 'titular.created' THEN SIGNAL SQLSTATE '45000' "
+                . "SET MESSAGE_TEXT = 'test audit failure'; END IF; END"
+            );
+        }
+        $auditTriggerExists = true;
+        $rolledBack = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $rollbackLotId,
+                ['nome_completo' => 'nome_completo']
+            );
+        } catch (RuntimeException $exception) {
+            $rolledBack = $exception->getMessage() === 'TITULAR_CREATE_FAILED';
+        } finally {
+            $pdo->exec("DROP TRIGGER {$auditTrigger}");
+            $auditTriggerExists = false;
+        }
+        $holderCount = $pdo->prepare('SELECT COUNT(*) FROM titulares WHERE tenant_id = :tenant');
+        $holderCount->execute(['tenant' => $fixture['tenant_id']]);
+        $rollbackState = $pdo->prepare(
+            'SELECT status_lote, arquivo_original_url FROM lotes_importacao WHERE id = :id'
+        );
+        $rollbackState->execute(['id' => $rollbackLotId]);
+        $rollbackRecord = $rollbackState->fetch(PDO::FETCH_ASSOC);
+        if (!$rolledBack || (int) $holderCount->fetchColumn() !== 1 || !is_array($rollbackRecord)
+            || $rollbackRecord['status_lote'] !== 'aguardando_mapa'
+            || !is_string($rollbackRecord['arquivo_original_url'])) {
+            throw new RuntimeException($driver . ': an audit failure must roll back every holder and leave the lot retryable.');
+        }
+        $retry = batchImportConfirm(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $rollbackLotId,
+            ['nome_completo' => 'nome_completo']
+        );
+        $holderCount->execute(['tenant' => $fixture['tenant_id']]);
+        if (($retry['imported'] ?? null) !== 2 || (int) $holderCount->fetchColumn() !== 3) {
+            throw new RuntimeException($driver . ': retry must import each holder once after a full rollback.');
+        }
+
         fwrite(STDOUT, 'PASS: ' . $driver . ' confirms a staged titular import and completes the lot.' . "\n");
     } finally {
-        if ($lotId !== null) {
-            $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $lotId]);
+        if ($auditTriggerExists) {
+            $pdo->exec("DROP TRIGGER {$auditTrigger}");
+        }
+        foreach ([$lotId, $rollbackLotId] as $cleanupLotId) {
+            if ($cleanupLotId !== null) {
+                $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $cleanupLotId]);
+            }
         }
         if ($fixture !== null) {
             $pdo->prepare('DELETE FROM titulares WHERE tenant_id = :tenant')->execute(['tenant' => $fixture['tenant_id']]);
