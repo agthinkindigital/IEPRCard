@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/config/admin_migration_preflight.php';
+require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 
 $directory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-migration-preflight-' . bin2hex(random_bytes(6));
 mkdir($directory, 0700, true);
@@ -27,11 +28,13 @@ try {
     schemaGarantirEstrutura($pdo, 'test');
     $pdo->exec("INSERT INTO planos (nome, preco) VALUES ('Fixture restrito', 10.00)");
     $pdo->exec("INSERT INTO tenants (plano_id, tipo, nome_organizacao) VALUES (1, 'cliente', 'Titular Confidencial')");
+    schemaAplicarMigracoes($pdo, 'test');
+    $permissionCount = (int) $pdo->query('SELECT COUNT(*) FROM permissoes')->fetchColumn();
     unset($pdo);
 
     $report = adminMigrationPreflight();
     $serialized = json_encode($report, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-    if (($report['ready'] ?? true) !== false || ($report['source_records'] ?? null) !== 2
+    if (($report['ready'] ?? true) !== false || ($report['source_records'] ?? null) !== 2 + $permissionCount
         || ($report['destination_records'] ?? null) !== 0
         || ($report['source_name'] ?? null) !== 'source.sqlite'
         || str_contains($serialized, $path) || str_contains($serialized, 'Titular Confidencial')
@@ -58,6 +61,7 @@ try {
         ];
         $target = dbConnect($mysqlConfiguration);
         schemaGarantirEstrutura($target, 'test');
+        schemaAplicarMigracoes($target, 'test');
         unset($target);
         putenv('MIGRATION_TARGET_HOST=' . $mysqlConfiguration['DB_HOST']);
         putenv('MIGRATION_TARGET_PORT=' . $mysqlConfiguration['DB_PORT']);
@@ -66,10 +70,10 @@ try {
         putenv('MIGRATION_TARGET_PASSWORD=' . $mysqlConfiguration['DB_PASSWORD']);
         $mysqlReport = adminMigrationPreflight();
         $mysqlSerialized = json_encode($mysqlReport, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        if (($mysqlReport['ready'] ?? false) !== true || ($mysqlReport['destination_records'] ?? null) !== 0
+        if (($mysqlReport['ready'] ?? false) !== true || ($mysqlReport['destination_records'] ?? null) !== $permissionCount
             || ($mysqlConfiguration['DB_PASSWORD'] !== '' && str_contains($mysqlSerialized, $mysqlConfiguration['DB_PASSWORD']))
             || str_contains($mysqlSerialized, $mysqlConfiguration['DB_USERNAME'])) {
-            throw new RuntimeException('MySQL/MariaDB preflight must approve the canonical empty destination without exposing connection settings.');
+            throw new RuntimeException('MySQL/MariaDB preflight must accept only the matching permission catalog and hide connection settings.');
         }
     }
     fwrite(STDOUT, "PASS: migration preflight is read-only, counts records, and redacts paths, credentials, and row data.\n");

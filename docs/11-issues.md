@@ -20,7 +20,7 @@
 * **Critério de Aceite:** Passar no `TDD-01`.
 
 
-* **ISSUE-003: Utilitário de Migração automatizada SQLite $\rightarrow$ MySQL/MariaDB** — serviço e CLI entregues em [GitHub #10](https://github.com/agthinkindigital/IEPRCard/issues/10); interface administrativa E01.4 concluída em [GitHub #11](https://github.com/agthinkindigital/IEPRCard/issues/11).
+* **ISSUE-003: Utilitário de Migração automatizada SQLite $\rightarrow$ MySQL/MariaDB** — serviço e CLI entregues em [GitHub #10](https://github.com/agthinkindigital/IEPRCard/issues/10); interface administrativa E01.4 concluída em [GitHub #11](https://github.com/agthinkindigital/IEPRCard/issues/11). Destino permite apenas o catálogo `permissoes` pre-semeado e idêntico à origem; qualquer outro dado preexistente bloqueia.
 * **Arquivos:** serviço `database/migration/sqlite_to_mysql.php`, comando CLI `database/migrate-sqlite-to-mysql.php` e interface administrativa protegida em `public/admin/migracao-banco.php`.
 * **Descrição:** Serviço e script CLI transferem as tabelas SQLite para MySQL/MariaDB com verificação de integridade. A interface aprovada permite pré-verificar, enfileirar e acompanhar o worker sem repetir a lógica de migração.
 * **Critério de Aceite:** Migrar o fixture de 1.000 registros em menos de 5 segundos no ambiente de referência, com contagens e checksums idênticos, chaves estrangeiras válidas e rollback integral se a transferência falhar.

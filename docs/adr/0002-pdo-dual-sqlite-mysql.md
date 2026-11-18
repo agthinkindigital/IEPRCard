@@ -41,4 +41,5 @@ Centralizar todo acesso em `config/conn.php`, com:
 
 - `TDD-01`: schema vazio nos dois drivers + self-healing sem perda de colunas.
 - `ISSUE-003`: 1.000 registros migrados com checksum idêntico em < 5 s.
+- Se o schema de destino já contém o catálogo global `permissoes` da migration `0002`, ele só é aceito quando contagem e checksum coincidem com a origem; a transferência preserva esse catálogo e bloqueia qualquer outro dado preexistente.
 - Revisão de SQL: nenhum `NOW()`, `ENUM`, `JSON_EXTRACT` ou concatenação de parâmetro fora do wrapper.

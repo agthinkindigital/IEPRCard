@@ -54,8 +54,11 @@ $state = adminMigrationStateRead();
 $preflight = adminMigrationPreflight();
 $activeJob = in_array($state['status'] ?? '', ['queued', 'running'], true);
 $results = is_array($state['result'] ?? null) ? $state['result'] : null;
-$destinationReady = (int) $preflight['destination_records'] === 0
-    && count(array_filter($preflight['checks'], static fn(array $check): bool => str_contains($check['label'], 'destino') && $check['status'] === 'Bloqueado')) === 0;
+$destinationChecks = array_values(array_filter(
+    $preflight['checks'],
+    static fn(array $check): bool => $check['label'] === 'Destino pronto para receber'
+));
+$destinationReady = count($destinationChecks) === 1 && $destinationChecks[0]['status'] === 'Aprovado';
 function migrationEscape(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -97,7 +100,7 @@ $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) /
     <div class="page-heading"><div><h1>Migração de banco</h1><p>Copie os dados do SQLite para o MySQL após validar a origem e o destino.</p></div><span class="service-badge <?= $preflight['ready'] ? 'good' : 'warn' ?>"><span aria-hidden="true"></span><?= $preflight['ready'] ? 'Serviço conectado' : 'Revisão necessária' ?></span></div>
 
     <?php if ($notice !== ''): ?><p class="notice" role="status"><?= migrationEscape($notice) ?></p><?php endif; ?>
-    <section class="warning-banner" aria-label="Orientação de segurança"><span class="warning-icon" aria-hidden="true">!</span><div><strong>A cópia só começa após todas as verificações passarem.</strong><p>O destino precisa estar vazio. Nenhum registro pessoal será exibido nesta tela.</p></div></section>
+    <section class="warning-banner" aria-label="Orientação de segurança"><span class="warning-icon" aria-hidden="true">!</span><div><strong>A cópia só começa após todas as verificações passarem.</strong><p>O destino não pode conter dados operacionais; o catálogo de permissões só é aceito quando confere com a origem. Nenhum registro pessoal será exibido nesta tela.</p></div></section>
 
     <section class="connection-grid" aria-label="Bancos envolvidos">
         <article class="panel connection-card" id="source">
@@ -107,7 +110,7 @@ $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) /
         </article>
         <article class="panel connection-card">
             <div class="card-heading"><span class="database-icon" aria-hidden="true">▤</span><h2>Destino MySQL / MariaDB</h2><span class="status-chip <?= $destinationReady ? 'good' : 'bad' ?>"><?= $destinationReady ? 'Válido' : 'Bloqueado' ?></span></div>
-            <dl><div><dt>Banco</dt><dd><?= migrationEscape((string) $preflight['target_name']) ?></dd></div><div><dt>Conexão</dt><dd>Credenciais ocultas</dd></div><div><dt>Registros atuais</dt><dd><?= $destinationReady ? '0 · pronto para receber' : ((int) $preflight['destination_records'] > 0 ? 'Contém registros' : 'Aguardando validação') ?></dd></div></dl>
+            <dl><div><dt>Banco</dt><dd><?= migrationEscape((string) $preflight['target_name']) ?></dd></div><div><dt>Conexão</dt><dd>Credenciais ocultas</dd></div><div><dt>Registros atuais</dt><dd><?= $destinationReady ? ((int) $preflight['destination_records'] > 0 ? migrationCount((int) $preflight['destination_records']) . ' permissões · catálogo compatível' : '0 · pronto para receber') : ((int) $preflight['destination_records'] > 0 ? 'Contém registros' : 'Aguardando validação') ?></dd></div></dl>
             <small class="subtle">A ferramenta não cria nem altera schema.</small>
         </article>
     </section>

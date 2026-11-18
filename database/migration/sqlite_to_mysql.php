@@ -12,6 +12,7 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target, ?callable $onProgre
     }
 
     $catalog = \IEPRCard\Database\Schema\catalogoCanonico();
+    $preseededTables = [];
     $source->beginTransaction();
     try {
         ieprMigracaoValidarSchema($source, $catalog, 'origem');
@@ -31,10 +32,19 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target, ?callable $onProgre
             throw new RuntimeException('O destino precisa conter exatamente o schema canônico de 27 tabelas.');
         }
         foreach ($catalog as $table => $_definition) {
-            $hasRows = $target->query('SELECT 1 FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql') . ' LIMIT 1')->fetchColumn() !== false;
-            if ($hasRows) {
+            $targetCount = (int) $target->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql'))->fetchColumn();
+            if ($targetCount === 0) {
+                continue;
+            }
+            $sourceMatchesTarget = $table === 'permissoes'
+                && ieprMigracaoCatalogoPermissoesPrecarregadoConfere($source, $target, $catalog);
+            if (!$sourceMatchesTarget) {
+                if ($table === 'permissoes') {
+                    throw new RuntimeException('O catálogo de permissões preexistente precisa corresponder ao catálogo da origem SQLite.');
+                }
                 throw new RuntimeException('O destino contém dados; a execução pode já ter ocorrido. Nenhum dado foi alterado.');
             }
+            $preseededTables[$table] = true;
         }
     } catch (Throwable $exception) {
         $source->rollBack();
@@ -69,7 +79,9 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target, ?callable $onProgre
             while (($row = $sourceStatement->fetch(PDO::FETCH_ASSOC)) !== false) {
                 $normalizedRow = ieprMigracaoNormalizarLinha($row, $definition['columns']);
                 hash_update($sourceHash, json_encode($normalizedRow, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n");
-                $insertStatement->execute(array_values($row));
+                if (!isset($preseededTables[$table])) {
+                    $insertStatement->execute(array_values($row));
+                }
                 $rowCount++;
             }
             $sourceChecksum = hash_final($sourceHash);
@@ -123,6 +135,20 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target, ?callable $onProgre
         'duration_ms' => (int) ((hrtime(true) - $startedAt) / 1_000_000),
         'tables' => $tableReports,
     ];
+}
+
+function ieprMigracaoCatalogoPermissoesPrecarregadoConfere(PDO $source, PDO $target, array $catalog): bool
+{
+    if (!isset($catalog['permissoes'])) {
+        return false;
+    }
+    $sourceCount = (int) $source->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar('permissoes', 'sqlite'))->fetchColumn();
+    $targetCount = (int) $target->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar('permissoes', 'mysql'))->fetchColumn();
+    return $sourceCount > 0 && $sourceCount === $targetCount
+        && hash_equals(
+            ieprMigracaoChecksumTabela($source, 'permissoes', $catalog['permissoes']),
+            ieprMigracaoChecksumTabela($target, 'permissoes', $catalog['permissoes'])
+        );
 }
 
 function ieprMigracaoValidarSchema(PDO $pdo, array $catalog, string $role): void

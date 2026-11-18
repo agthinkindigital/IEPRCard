@@ -67,6 +67,7 @@ function adminMigrationPreflight(): array
     }
 
     $destinationRecords = 0;
+    $destinationHasUnmatchedData = false;
     if ($targetPdo instanceof PDO) {
         $targetSchemaValid = false;
         $foreignKeysEnabled = false;
@@ -94,26 +95,38 @@ function adminMigrationPreflight(): array
         if ($targetSchemaValid && $foreignKeysEnabled) {
             try {
                 foreach ($catalog as $table => $_definition) {
-                    if ($targetPdo->query('SELECT 1 FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql') . ' LIMIT 1')->fetchColumn() !== false) {
-                        $destinationRecords = 1;
-                        break;
+                    $count = (int) $targetPdo->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql'))->fetchColumn();
+                    $destinationRecords += $count;
+                    if ($count === 0) {
+                        continue;
                     }
+                    if ($table === 'permissoes' && $sourcePdo instanceof PDO
+                        && ieprMigracaoCatalogoPermissoesPrecarregadoConfere($sourcePdo, $targetPdo, $catalog)) {
+                        continue;
+                    }
+                    $destinationHasUnmatchedData = true;
                 }
+                $destinationReady = !$destinationHasUnmatchedData;
+                $destinationDetail = $destinationHasUnmatchedData
+                    ? 'Há dados diferentes do catálogo de permissões correspondente à origem; a cópia foi bloqueada.'
+                    : ($destinationRecords > 0
+                        ? 'Somente o catálogo de permissões idêntico à origem já está presente e será preservado.'
+                        : 'Nenhum registro será mesclado ou sobrescrito.');
                 $checks[] = adminMigrationCheck(
-                    'Destino vazio e pronto para receber',
-                    $destinationRecords === 0 ? 'Aprovado' : 'Bloqueado',
-                    $destinationRecords === 0 ? 'Nenhum registro será mesclado ou sobrescrito.' : 'Há registros no destino; a cópia foi bloqueada.'
+                    'Destino pronto para receber',
+                    $destinationReady ? 'Aprovado' : 'Bloqueado',
+                    $destinationDetail
                 );
             } catch (Throwable) {
-                $checks[] = adminMigrationCheck('Destino vazio e pronto para receber', 'Bloqueado', 'Não foi possível confirmar as contagens das tabelas do destino.');
+                $checks[] = adminMigrationCheck('Destino pronto para receber', 'Bloqueado', 'Não foi possível confirmar as contagens e o catálogo preexistente do destino.');
             }
         } else {
-            $checks[] = adminMigrationCheck('Destino vazio e pronto para receber', 'Bloqueado', 'Disponível após validar o schema e a integridade do destino.');
+            $checks[] = adminMigrationCheck('Destino pronto para receber', 'Bloqueado', 'Disponível após validar o schema e a integridade do destino.');
         }
     } else {
         $checks[] = adminMigrationCheck('Schema do destino compatível', 'Bloqueado', 'Disponível após conectar ao destino.');
         $checks[] = adminMigrationCheck('Integridade referencial habilitada no destino', 'Bloqueado', 'Disponível após conectar ao destino.');
-        $checks[] = adminMigrationCheck('Destino vazio e pronto para receber', 'Bloqueado', 'Disponível após conectar ao destino.');
+        $checks[] = adminMigrationCheck('Destino pronto para receber', 'Bloqueado', 'Disponível após conectar ao destino.');
     }
 
     unset($sourcePdo, $targetPdo);
