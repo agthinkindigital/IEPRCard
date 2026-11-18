@@ -31,7 +31,7 @@ function cardPdfDrawPhotoElement(FPDF $pdf, array $element, array $photoAssets, 
         return $error;
     }
     ob_start();
-    $encoded = imagepng($patch);
+    $encoded = imagejpeg($patch, null, 92);
     $png = ob_get_clean();
     imagedestroy($patch);
     if (!$encoded || !is_string($png) || $png === '') {
@@ -47,7 +47,7 @@ function cardPdfDrawPhotoElement(FPDF $pdf, array $element, array $photoAssets, 
     }
     try {
         $pdf->Image($imagePath, $x * 25.4 / 300, $y * 25.4 / 300,
-            $width * 25.4 / 300, $height * 25.4 / 300, 'png');
+            $width * 25.4 / 300, $height * 25.4 / 300, 'jpg');
     } catch (Throwable) {
         return ['code' => 'image_embed_failed', 'path' => '$.design.elementos.' . $element['id']];
     }
