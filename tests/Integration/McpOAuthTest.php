@@ -57,6 +57,21 @@ if ($metadata['resource'] !== 'https://mcp.example.test/mcp'
     || $authorizationMetadata['token_endpoint_auth_methods_supported'] !== ['client_secret_basic']) {
     throw new RuntimeException('MCP OAuth metadata must expose canonical configured URLs.');
 }
+foreach ([
+    static fn() => mcpOauthSigningKey(['MCP_OAUTH_SIGNING_KEY' => base64_encode(random_bytes(16))]),
+    static fn() => mcpOauthSigningKey(['MCP_OAUTH_SIGNING_KEY' => '']),
+    static fn() => mcpOauthPublicBaseUrl(['APP_ENV' => 'production', 'MCP_PUBLIC_BASE_URL' => 'http://mcp.example.test']),
+] as $unsafeConfiguration) {
+    try {
+        $unsafeConfiguration();
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() === 'MCP_OAUTH_CONFIGURATION_INVALID') {
+            continue;
+        }
+        throw $exception;
+    }
+    throw new RuntimeException('MCP OAuth must reject missing or weak signing keys and non-HTTPS production URLs.');
+}
 
 $rejected = static function (array $input, string $expectedCode) use ($pdo, $configuration, $rateDirectory): void {
     try {
