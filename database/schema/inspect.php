@@ -121,7 +121,12 @@ function colunaDiverge(array $actual, array $expected, string $driver): bool
         return true;
     }
     $expectedDefault = array_key_exists('default', $expected) ? normalizarPadrao($expected['default']) : null;
-    return normalizarPadrao($actual['default']) !== $expectedDefault;
+    $actualDefault = normalizarPadrao($actual['default']);
+    if ($type === 'decimal') {
+        $expectedDefault = normalizarDecimal($expectedDefault);
+        $actualDefault = normalizarDecimal($actualDefault);
+    }
+    return $actualDefault !== $expectedDefault;
 }
 
 function normalizarPadrao(mixed $value): ?string
@@ -132,7 +137,19 @@ function normalizarPadrao(mixed $value): ?string
     if (is_bool($value)) {
         return $value ? '1' : '0';
     }
-    return trim((string) $value, "'\"");
+    $normalized = trim((string) $value, "'\"");
+    return strtoupper($normalized) === 'NULL' ? null : $normalized;
+}
+
+function normalizarDecimal(?string $value): ?string
+{
+    if ($value === null || !is_numeric($value)) {
+        return $value;
+    }
+    if (str_contains($value, '.')) {
+        $value = rtrim(rtrim($value, '0'), '.');
+    }
+    return $value === '-0' ? '0' : $value;
 }
 
 function tabelasExistentes(PDO $pdo, string $driver): array
