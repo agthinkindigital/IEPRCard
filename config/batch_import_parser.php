@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/cpf.php';
+require_once __DIR__ . '/phone.php';
 
 const BATCH_IMPORT_MAX_FILE_BYTES = 10485760;
 const BATCH_IMPORT_MAX_ROWS = 500;
@@ -74,7 +75,7 @@ function batchImportParse(string $path): array
             }
             if ($cell !== null && $column === 'whatsapp') {
                 try {
-                    $cell = batchImportNormalizeBrPhone($cell);
+                    $cell = phoneNormalizeBr($cell);
                 } catch (InvalidArgumentException) {
                     $errors[] = ['linha' => $line, 'campo' => 'whatsapp', 'codigo' => 'IMPORT_PHONE_INVALID'];
                 }

@@ -187,12 +187,15 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'nome_completo' => 'Bruno unidade',
             'cpf' => '',
             'categoria_id' => null,
+            'whatsapp' => '+55 (11) 90000-0001',
         ]);
-        $optionalCpf = $pdo->prepare('SELECT cpf, acesso_app_liberado FROM titulares WHERE id = :id');
+        $optionalCpf = $pdo->prepare('SELECT cpf, whatsapp, acesso_app_liberado FROM titulares WHERE id = :id');
         $optionalCpf->execute(['id' => $operatorHolderId]);
         $optionalValues = $optionalCpf->fetch(PDO::FETCH_ASSOC);
-        if (!is_array($optionalValues) || $optionalValues['cpf'] !== null || (int) $optionalValues['acesso_app_liberado'] !== 0) {
-            throw new RuntimeException($driver . ': an absent CPF must remain NULL and portal access must stay disabled.');
+        if (!is_array($optionalValues) || $optionalValues['cpf'] !== null
+            || $optionalValues['whatsapp'] !== '+5511900000001'
+            || (int) $optionalValues['acesso_app_liberado'] !== 0) {
+            throw new RuntimeException($driver . ': optional CPF, normalized WhatsApp, and disabled portal access must persist.');
         }
 
         $unitQuotaRejected = false;
@@ -217,6 +220,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         }
         if (!$invalidCpfRejected) {
             throw new RuntimeException($driver . ': invalid CPF check digits must be rejected.');
+        }
+
+        $invalidPhoneRejected = false;
+        try {
+            titularCreate($pdo, $ownerContext, $ownerIdentity, $tenantId, $poolChildId, [
+                'nome_completo' => 'Invalid phone', 'whatsapp' => '(11) 80000-0000',
+            ]);
+        } catch (DomainException $exception) {
+            $invalidPhoneRejected = $exception->getMessage() === 'TITULAR_CREATE_INVALID';
+        }
+        if (!$invalidPhoneRejected) {
+            throw new RuntimeException($driver . ': an invalid WhatsApp number must be rejected.');
         }
 
         $duplicateCpfRejected = false;

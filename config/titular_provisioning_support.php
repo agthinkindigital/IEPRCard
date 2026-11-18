@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** @param list<array<string, mixed>> $inputs @return list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int}> */
+/** @param list<array<string, mixed>> $inputs @return list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string}> */
 function titularCreateBatchNormalize(array $inputs): array
 {
     if (!array_is_list($inputs) || $inputs === [] || count($inputs) > 25) {
@@ -77,7 +77,7 @@ function titularCreateBatchValidateScope(PDO $pdo, int $tenantId, ?int $subclien
     }
 }
 
-/** @param list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int}> $records */
+/** @param list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string}> $records */
 function titularCreateBatchValidateTargets(PDO $pdo, int $tenantId, array $records): void
 {
     $category = $pdo->prepare(
@@ -100,13 +100,13 @@ function titularCreateBatchValidateTargets(PDO $pdo, int $tenantId, array $recor
     }
 }
 
-/** @param array<string, mixed> $identity @param array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int} $record */
+/** @param array<string, mixed> $identity @param array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string} $record */
 function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $subclienteId, array $record): int
 {
     $insert = $pdo->prepare(
         'INSERT INTO titulares (tenant_id, subcliente_id, categoria_id, nome_completo, cpf, cargo_funcao, '
-        . 'matricula, acesso_app_liberado, ativo, criado_em) '
-        . 'VALUES (:tenant, :subclient, :category, :name, :cpf, :role, :registration, 0, 1, :created_at)'
+        . 'matricula, whatsapp, acesso_app_liberado, ativo, criado_em) '
+        . 'VALUES (:tenant, :subclient, :category, :name, :cpf, :role, :registration, :whatsapp, 0, 1, :created_at)'
     );
     $insert->execute([
         'tenant' => $tenantId,
@@ -116,6 +116,7 @@ function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $sub
         'cpf' => $record['cpf'],
         'role' => $record['cargo_funcao'],
         'registration' => $record['matricula'],
+        'whatsapp' => $record['whatsapp'],
         'created_at' => gmdate('Y-m-d H:i:s'),
     ]);
     $titularId = (int) $pdo->lastInsertId();
@@ -142,10 +143,10 @@ function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $sub
     return $titularId;
 }
 
-/** @param array<string, mixed> $input @return array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int} */
+/** @param array<string, mixed> $input @return array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string} */
 function titularCreateNormalize(array $input): array
 {
-    $allowedKeys = ['nome_completo', 'cpf', 'matricula', 'cargo_funcao', 'categoria_id'];
+    $allowedKeys = ['nome_completo', 'cpf', 'matricula', 'cargo_funcao', 'categoria_id', 'whatsapp'];
     if (array_diff(array_keys($input), $allowedKeys) !== []) {
         throw new DomainException('TITULAR_CREATE_INVALID');
     }
@@ -153,6 +154,7 @@ function titularCreateNormalize(array $input): array
     $registration = titularCreateText($input['matricula'] ?? null, 80, true);
     $role = titularCreateText($input['cargo_funcao'] ?? null, 120, true);
     $cpf = titularCreateCpf($input['cpf'] ?? null);
+    $whatsapp = titularCreatePhone($input['whatsapp'] ?? null);
     $categoryValue = $input['categoria_id'] ?? null;
     $categoryId = null;
     if ($categoryValue !== null && $categoryValue !== '') {
@@ -171,7 +173,23 @@ function titularCreateNormalize(array $input): array
         'matricula' => $registration,
         'cargo_funcao' => $role,
         'categoria_id' => $categoryId,
+        'whatsapp' => $whatsapp,
     ];
+}
+
+function titularCreatePhone(mixed $value): ?string
+{
+    if ($value === null || is_string($value) && trim($value) === '') {
+        return null;
+    }
+    if (!is_string($value)) {
+        throw new DomainException('TITULAR_CREATE_INVALID');
+    }
+    try {
+        return phoneNormalizeBr($value);
+    } catch (InvalidArgumentException) {
+        throw new DomainException('TITULAR_CREATE_INVALID');
+    }
 }
 
 function titularCreateText(mixed $value, int $maximumLength, bool $nullable): ?string

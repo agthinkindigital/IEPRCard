@@ -67,12 +67,12 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'papel_sistema' => 'titular_cliente',
         ];
         $records = [
-            ['nome_completo' => 'Ana batch', 'cpf' => titularBatchTestCpf(0), 'matricula' => 'B-001'],
-            ['nome_completo' => 'Bruno batch', 'cpf' => titularBatchTestCpf(1), 'matricula' => 'B-002'],
+            ['nome_completo' => 'Ana batch', 'cpf' => titularBatchTestCpf(0), 'matricula' => 'B-001', 'whatsapp' => '(11) 90000-0000'],
+            ['nome_completo' => 'Bruno batch', 'cpf' => titularBatchTestCpf(1), 'matricula' => 'B-002', 'whatsapp' => ''],
         ];
         $ids = titularCreateBatch($pdo, $context, $identity, $tenantId, $childId, $records);
         $holders = $pdo->prepare(
-            'SELECT id, nome_completo, cpf, subcliente_id FROM titulares WHERE tenant_id = :tenant ORDER BY id'
+            'SELECT id, nome_completo, cpf, whatsapp, subcliente_id FROM titulares WHERE tenant_id = :tenant ORDER BY id'
         );
         $holders->execute(['tenant' => $tenantId]);
         $saved = $holders->fetchAll(PDO::FETCH_ASSOC);
@@ -84,6 +84,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if (count($ids) !== 2 || count($saved) !== 2 || count($auditRows) !== 2
             || $ids !== [(int) $saved[0]['id'], (int) $saved[1]['id']]
             || $saved[0]['nome_completo'] !== 'Ana batch' || $saved[0]['cpf'] !== titularBatchTestCpf(0)
+            || $saved[0]['whatsapp'] !== '+5511900000000' || $saved[1]['whatsapp'] !== null
             || (int) $saved[0]['subcliente_id'] !== $childId
             || (int) $auditRows[0]['entidade_id'] !== $ids[0]
             || str_contains((string) $auditRows[0]['depois_json'], 'Ana batch')
@@ -99,6 +100,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $tenantId,
             $childId,
             array_fill(0, 26, ['nome_completo' => 'Over limit']),
+            'TITULAR_CREATE_INVALID'
+        );
+        titularBatchAssertFailure(
+            $pdo,
+            $context,
+            $identity,
+            $tenantId,
+            $childId,
+            [
+                ['nome_completo' => 'Would otherwise create'],
+                ['nome_completo' => 'Invalid phone', 'whatsapp' => '(11) 80000-0000'],
+            ],
             'TITULAR_CREATE_INVALID'
         );
         titularBatchAssertFailure(

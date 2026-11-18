@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/tenant_quota_policy.php';
 require_once __DIR__ . '/cpf.php';
+require_once __DIR__ . '/phone.php';
 require_once __DIR__ . '/titular_provisioning_support.php';
 
 /** @param array<string, mixed> $identity @param array<string, mixed> $input */
