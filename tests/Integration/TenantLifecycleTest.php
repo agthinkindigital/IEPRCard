@@ -31,8 +31,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
 
         $adminContext = new TenantContext('admin', null, null, []);
         $identity = ['id' => $adminId, 'tenant_id' => null, 'subcliente_id' => null, 'papel_sistema' => 'superadmin'];
-        $root = $pdo->prepare('UPDATE tenants SET plano_id = :plan, slug_subdominio = :slug WHERE id = :id');
-        $root->execute(['plan' => $planId, 'slug' => $fixture['slug'], 'id' => $fixture['tenant_id']]);
+        $root = $pdo->prepare('UPDATE tenants SET plano_id = :plan, slug_subdominio = :slug, status_conta = :status WHERE id = :id');
+        $root->execute(['plan' => $planId, 'slug' => $fixture['slug'], 'status' => 'pendente', 'id' => $fixture['tenant_id']]);
+        if (tenantLifecycleSetRootStatus($pdo, $adminContext, $identity, $fixture['tenant_id'], 'ativo') !== true) {
+            throw new RuntimeException($driver . ': a pending tenant must be activatable.');
+        }
 
         $changed = tenantLifecycleSetRootStatus($pdo, $adminContext, $identity, $fixture['tenant_id'], 'suspenso');
         $storedRootStatus = $pdo->prepare('SELECT status_conta FROM tenants WHERE id = :id');
@@ -69,7 +72,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'SELECT COUNT(*) FROM auditoria_processos WHERE tenant_id = :tenant AND acao = :action AND entidade_id = :entity'
         );
         $auditCount->execute(['tenant' => $fixture['tenant_id'], 'action' => 'tenant.status_changed', 'entity' => $fixture['tenant_id']]);
-        if ((int) $auditCount->fetchColumn() !== 1) {
+        if ((int) $auditCount->fetchColumn() !== 2) {
             throw new RuntimeException($driver . ': idempotent lifecycle requests must not create duplicate audit entries.');
         }
         if (tenantLifecycleSetRootStatus($pdo, $adminContext, $identity, $fixture['tenant_id'], 'ativo') !== true
@@ -80,6 +83,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $storedChildStatus->execute(['id' => $fixture['subcliente_id']]);
         if ($storedChildStatus->fetchColumn() !== 'ativo') {
             throw new RuntimeException($driver . ': reactivation must preserve the independently stored child status.');
+        }
+
+        $pdo->prepare('UPDATE usuarios SET ativo = 0 WHERE id = :id')->execute(['id' => $adminId]);
+        $inactiveAdminRejected = false;
+        try {
+            tenantLifecycleSetRootStatus($pdo, $adminContext, $identity, $fixture['tenant_id'], 'suspenso');
+        } catch (DomainException $exception) {
+            $inactiveAdminRejected = $exception->getMessage() === 'TENANT_LIFECYCLE_DENIED';
+        }
+        $pdo->prepare('UPDATE usuarios SET ativo = 1 WHERE id = :id')->execute(['id' => $adminId]);
+        if (!$inactiveAdminRejected) {
+            throw new RuntimeException($driver . ': an inactive superadmin must not change tenant lifecycle state.');
         }
 
         if ($driver === 'SQLite') {

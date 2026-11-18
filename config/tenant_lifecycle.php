@@ -14,6 +14,7 @@ function tenantLifecycleSetRootStatus(
     if ($pdo->inTransaction()) {
         throw new RuntimeException('TENANT_LIFECYCLE_FAILED');
     }
+    motorPermissoesCacheLimpar($pdo);
     if ($context->tipo !== 'admin' || $context->tenantId !== null || $context->subclienteId !== null
         || !pode($pdo, $context, $identity, 'admin.clientes')) {
         throw new DomainException('TENANT_LIFECYCLE_DENIED');
