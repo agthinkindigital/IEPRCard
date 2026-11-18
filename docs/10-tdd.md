@@ -16,7 +16,7 @@ Nenhum módulo de negócio será considerado pronto sem passar pela suíte autom
 <br>3. Simula `HTTP_HOST = polo1.escolaX.com.br` $\rightarrow$ resolve `subcliente` (`id=25`, `parent_id=10`).<br>
 
 <br>4. Revalida usuário/papel/escopo persistidos, intersecta perfil e overrides com as flags do plano e a delegação da Sede; negativa prevalece e adulteração de sessão/IDs não amplia acesso. |
-| **TDD-03** | `tests/Integration/BatchImportParserTest.php` | Lê 500 registros CSV (`;`, UTF-8/ISO-8859-1), XLSX e JSON; compara a saída normalizada; valida CPF/telefone BR, prévia de 10 linhas, erros sem PII e rejeição acima do limite. Contrato e formatos aceitos: [issue #28](https://github.com/agthinkindigital/IEPRCard/issues/28). |
+| **TDD-03** | `tests/Integration/BatchImportParserTest.php`, `tests/Integration/TitularBatchProvisioningTest.php`, `tests/Integration/TitularBatchProvisioningConcurrencyTest.php` | Lê 500 registros CSV (`;`, UTF-8/ISO-8859-1), XLSX e JSON; compara a saída normalizada; valida CPF/telefone BR, prévia de 10 linhas, erros sem PII e rejeição acima do limite. Também verifica criação atômica de chunks de até 25 titulares sob autorização/cotas e concorrência. Contratos: [issue #28](https://github.com/agthinkindigital/IEPRCard/issues/28) e [#29](https://github.com/agthinkindigital/IEPRCard/issues/29). |
 | **TDD-04** | `tests/Visual/CardMappingAndRenderTest.php` | 1. Testa o Mapeamento Fixo e o Mapeamento Dinâmico De$\rightarrow$Para (Req 17.1).<br>
 
 <br>2. Renderiza uma carteirinha Frente/Verso em **WebP** e verifica: arquivo existe, mime-type é `image/webp`, dimensões exatas `1011x638` px.<br>
