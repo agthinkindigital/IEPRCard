@@ -66,7 +66,7 @@
 * **Critério de Aceite:** Passar no `TDD-03` importando 500 registros nos 3 formatos sem estourar memória.
 
 
-* **ISSUE-008: Preenchimento Manual Individual (com Webcam/Crop) e em Lote (Grade Web)** — os serviços backend de cadastro individual com cota ([#27](https://github.com/agthinkindigital/IEPRCard/issues/27)) e criação atômica em chunks de até 25 ([#29](https://github.com/agthinkindigital/IEPRCard/issues/29)) são entregas separadas; webcam/crop, grade em lote e demais fluxos visuais continuam fora dessas fatias.
+* **ISSUE-008: Preenchimento Manual Individual (com Webcam/Crop) e em Lote (Grade Web)** — os serviços backend de cadastro individual com cota ([#27](https://github.com/agthinkindigital/IEPRCard/issues/27)) e criação atômica em chunks de até 25 ([#29](https://github.com/agthinkindigital/IEPRCard/issues/29)) foram concluídos com CI MySQL/MariaDB; webcam/crop, grade em lote e demais fluxos visuais continuam fora dessas fatias.
 * **Arquivos:** `painel/preencher-manual.php`, `painel/titulares.php`
 * **Descrição:** Duas abas operacionais: (1) Formulário individual dinâmico com captura de foto por webcam ou upload com recorte 3x4 no navegador; (2) Planilha editável diretamente na tela web permitindo digitar ou colar (`Ctrl+V`) múltiplos titulares de uma vez e fazer upload rápido de foto por linha.
 * **Critério de Aceite:** Salvar lote manual de 20 registros em uma única submissão e disponibilizá-los imediatamente para geração de carteirinha.
