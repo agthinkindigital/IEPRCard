@@ -9,7 +9,7 @@ function cardRenderQrElement(GdImage $canvas, array $element, string $value): ?a
     }
     $quietZone = max(4, (int) round($element['margem_quiet_zone'] ?? 4));
     $generator = new barcode_generator();
-    $qr = cardRenderSilence(static fn () => $generator->render_image('qr-h', $value, [
+    $qr = cardRenderSilence(static fn () => $generator->render_image('qr-q', $value, [
         'sf' => 1,
         'p' => 0,
         'wq' => $quietZone,

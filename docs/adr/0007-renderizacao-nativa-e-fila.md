@@ -15,7 +15,7 @@ Cada carteirinha precisa de duas representações: WebP 1011×638 px (CR80 a 300
 
 - `motor_carteirinha_webp.php` usa GD/Imagick nativo com FreeType para fontes TTF; saída `image/webp`, dimensões exatas validadas em teste.
 - O gerador single-file `kreativekorp/barcode.php` é fixado no commit `dac436dc29d6fedd1e994c8778f0b53892e1f739`, acompanhado pela licença MIT e incluído fora da raiz pública em `includes/libs/`. A integração chama a API em memória, sem expor o arquivo como endpoint. A coleção interna de fontes contém Inter v3.19 em OTF sob SIL Open Font License 1.1.
-- QR Code preserva módulos inteiros no redimensionamento e uma quiet zone mínima de quatro módulos; texto, foto e barras são compostos dentro do canvas CR80. EAN13 valida o dígito verificador antes da renderização.
+- QR Code usa nível de correção Q, preserva módulos inteiros no redimensionamento e uma quiet zone mínima de quatro módulos; texto, foto e barras são compostos dentro do canvas CR80. EAN13 valida o dígito verificador antes da renderização.
 - `motor_carteirinha_pdf.php` gera PDF vetorial via biblioteca single-file em `includes/libs/`, com cabeçalho `%PDF-1.4`, CR80 e A4, marcas de corte e QR Code vetorial.
 - Contrato único de layout `mapa_campos_json` (`versao_schema`, `dimensoes`, `elementos`) compartilhado por ambos os renderizadores; variáveis hierárquicas `{{sede.*}}`, `{{unidade.*}}`, `{{titular.categoria}}` resolvidas pelo `motor_mapeamento.php` antes da renderização (Modo A fixo e Modo B De→Para).
 - Fila em banco: `lotes_importacao.status_lote` + processamento em chunks de 25 via AJAX, com `cron.php` como fallback em hospedagem compartilhada.
