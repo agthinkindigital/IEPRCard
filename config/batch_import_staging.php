@@ -221,7 +221,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
 
     $terminal = $pdo->prepare(
         "SELECT id, tenant_id, arquivo_original_url FROM lotes_importacao "
-        . "WHERE (status_lote = 'cancelado' OR status_lote = 'expirado' AND criado_em <= :cutoff) "
+        . "WHERE (status_lote IN ('cancelado', 'concluido') OR status_lote = 'expirado' AND criado_em <= :cutoff) "
         . 'AND arquivo_original_url IS NOT NULL ORDER BY id LIMIT ' . $limit
     );
     $terminal->execute(['cutoff' => $cutoff]);

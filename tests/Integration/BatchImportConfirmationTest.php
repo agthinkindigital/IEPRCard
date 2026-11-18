@@ -5,7 +5,7 @@ require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once __DIR__ . '/BatchImportStagingTestSupport.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/motor_permissoes.php';
-require_once dirname(__DIR__, 2) . '/config/batch_import_staging.php';
+require_once dirname(__DIR__, 2) . '/config/batch_import_confirmation.php';
 
 foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
