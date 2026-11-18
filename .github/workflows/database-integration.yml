@@ -12,9 +12,13 @@ permissions:
 jobs:
   php-database-tests:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        database-image: ['mysql:8.4', 'mariadb:10.11']
     services:
       mysql:
-        image: mysql:8.4
+        image: ${{ matrix.database-image }}
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_ROOT_HOST: '%'
@@ -35,6 +39,17 @@ jobs:
         with:
           php-version: '8.2'
           extensions: pdo_sqlite, pdo_mysql
+
+      - name: Wait for database service
+        run: |
+          for attempt in $(seq 1 30); do
+            if php -r '$pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=ieprcard_test;charset=utf8mb4", "root", "root");' >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Database service did not become ready."
+          exit 1
 
       - name: Run integration tests
         run: php tests/run_all.php

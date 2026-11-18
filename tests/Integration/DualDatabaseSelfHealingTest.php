@@ -33,8 +33,15 @@ if ($insertedRows !== 1 || $insertId !== '1' || $item === null || $item['value']
 
 fwrite(STDOUT, "PASS: query helpers bind values and return rows and insert IDs.\n");
 
-$date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', dbAgora(), new DateTimeZone('UTC'));
-if ($date === false || $date->getTimezone()->getName() !== 'UTC') {
+$previousTimezone = date_default_timezone_get();
+date_default_timezone_set('Asia/Tokyo');
+try {
+    $timestamp = dbAgora();
+} finally {
+    date_default_timezone_set($previousTimezone);
+}
+$date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $timestamp, new DateTimeZone('UTC'));
+if ($date === false || $timestamp !== gmdate('Y-m-d H:i:s')) {
     throw new RuntimeException('dbAgora() must return an ISO timestamp in UTC.');
 }
 

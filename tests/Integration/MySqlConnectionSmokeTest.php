@@ -51,6 +51,9 @@ $connection = dbConnection();
 if ($connection->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
     throw new RuntimeException('DB_DRIVER=mysql must select the MySQL PDO driver.');
 }
+if ($connection->getAttribute(PDO::ATTR_EMULATE_PREPARES) !== false) {
+    throw new RuntimeException('MySQL must use native PDO prepared statements.');
+}
 
 dbExecute('CREATE TEMPORARY TABLE connection_contract_items (id INT AUTO_INCREMENT PRIMARY KEY, value VARCHAR(255) NOT NULL)');
 $dbValue = "bound value'); DROP TABLE connection_contract_items;--";

@@ -4,7 +4,7 @@ Projeto de sistema multi-tenant para emissão e validação de carteirinhas digi
 
 ## Banco e testes
 
-Configure as variáveis do banco no ambiente do processo PHP; `.env.example` lista os nomes, mas o projeto não carrega arquivos `.env`. SQLite é o padrão local. Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingTest.php`. A suíte completa `php tests/run_all.php` também exige `pdo_mysql` e `TEST_MYSQL_HOST`, `TEST_MYSQL_DATABASE` e `TEST_MYSQL_USERNAME`; se o smoke test MySQL for ignorado, o runner retorna código diferente de zero. Em CI essas configurações são obrigatórias.
+Configure as variáveis do banco no ambiente do processo PHP; `.env.example` lista os nomes, mas o projeto não carrega arquivos `.env`. SQLite é o padrão local. Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingTest.php`. A suíte completa `php tests/run_all.php` também exige `pdo_mysql` e `TEST_MYSQL_HOST`, `TEST_MYSQL_DATABASE` e `TEST_MYSQL_USERNAME`; se o smoke test MySQL for ignorado, o runner retorna código diferente de zero. O CI usa serviços descartáveis MySQL 8.4 e MariaDB 10.11.
 
 ## Documentação
 
