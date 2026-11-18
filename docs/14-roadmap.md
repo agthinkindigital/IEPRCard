@@ -1,0 +1,15 @@
+# Roadmap, Recursos e Prazos
+
+## 10. Roadmap Executivo, Previsão de Recursos e Prazos
+
+As fases agrupam as issues existentes. Prazo e custo serão estimados após o fatiamento e um benchmark no perfil de hospedagem escolhido; ainda não há base para prometer dias de execução ou capacidade mensal.
+
+| Fase / Sprint | Escopo Entregue (Épicos & Issues) | Prazo Humano | Prazo com Agente IA | Recursos de Infraestrutura Necessários |
+| --- | --- | --- | --- | --- |
+| **Sprint 1: Fundação & Multi-Tenancy** | **Épicos 1 e 2** (`ISSUE-001` a `ISSUE-006`) + schema de operação/privacidade + núcleo MCP read-only do `ISSUE-017` + **Gate 1 & 2** | A estimar após fatiamento | A estimar | PHP 8.2+, SQLite para dev/test, MySQL no host e cron; confirmar DNS/TLS e armazenamento privado do plano. |
+| **Sprint 2: Importação & Motor Gráfico** | **Épicos 3 e 4** (`ISSUE-007` a `ISSUE-012`) + **Gate 3** | A estimar após fatiamento | A estimar | Extensões `php-gd` (FreeType/WebP), `php-zip` e `php-mbstring`; confirmar limites de memória e execução. |
+| **Sprint 3: Integrações sem cobrança & Telemetria** | Parte ativa do **Épico 5** (`ISSUE-015` WhatsApp/IA sem cobrança) + Épico 6 (`ISSUE-016`) + **Gate 4**; `ISSUE-013` e `ISSUE-014` adiadas | A estimar após fatiamento | A estimar | Validar conexões de saída e cron para integrações ativas; sem sandbox, credencial ou webhook Asaas/Mercado Pago no MVP. |
+| **Sprint 4: MCP avançado & Hardening** | Conclusão do **Épico 7** (`ISSUE-017`), tools avançadas e **Gate 5** | A estimar após fatiamento | A estimar | Plano compartilhado ou VPS validado; cópia externa cifrada, gestão de chaves e restore testados. Binlogs só se o host os oferecer. |
+| **TOTAL DO PROJETO** | **17 Issues + 8 Suítes TDD + 5 Quality Gates** | A estimar após fatiamento e benchmark | A estimar | Custo depende do plano, storage externo e gestão de chaves. |
+
+---

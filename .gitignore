@@ -1,0 +1,13 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# PHP dependencies and runtime data
+/vendor/
+/storage/
+/assets/uploads/
+*.log
+
+# Superseded archive; the current documentation is in /docs
+/cardsaas-planejamento.zip
