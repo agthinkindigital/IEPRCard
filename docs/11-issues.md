@@ -174,11 +174,7 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 * **Perfis Prontos (Presets):** Ao criar um Cliente novo, o sistema já semeia 4 perfis editáveis: *Dirigente de Subcliente*, *Secretário (Emissor de Carteirinhas)*, *Tesoureiro* e *Cadastrador de Membros*.
 
 
-* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)**
-* **Arquivos:** `includes/motor_cotas.php`, `admin/clientes-cotas.php`, `painel/distribuir-cotas.php`
-* **Descrição:**
-1. Permitir que o Admin atribua plano/limites e ative, suspenda ou encerre manualmente uma conta, propagando o status para Subclientes e titulares conforme regra documentada.
-2. Validar limites (`limite_subclientes`, `limite_usuarios_equipe`, `limite_titulares`, `limite_carteirinhas`) e distribuição das cotas da Sede entre Subclientes, com override auditável do Admin. Sem cobrança, checkout ou automação por webhook.
+* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)** — provisionamento inicial da Sede e do titular foi entregue como serviço de backend na [Issue #17](https://github.com/agthinkindigital/IEPRCard/issues/17). Permanecem gestão posterior de status, cotas e sua distribuição hierárquica; sem cobrança, checkout ou automação por webhook. Os contratos e critérios executáveis devem ser fatiados em Issues antes da implementação.
 
 
 
