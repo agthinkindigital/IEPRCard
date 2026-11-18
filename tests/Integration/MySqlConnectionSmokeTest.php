@@ -40,22 +40,32 @@ if (!$driverAvailable || $host === false || $database === false || $username ===
     return 'skip';
 }
 
-$pdo = dbConnect([
-    'DB_DRIVER' => 'mysql',
-    'DB_HOST' => $host,
-    'DB_PORT' => getenv('TEST_MYSQL_PORT') ?: '3306',
-    'DB_DATABASE' => $database,
-    'DB_USERNAME' => $username,
-    'DB_PASSWORD' => getenv('TEST_MYSQL_PASSWORD') ?: '',
-]);
-$statement = $pdo->prepare('SELECT :answer AS answer');
-$statement->execute(['answer' => 42]);
-$answer = $statement->fetchColumn();
+putenv('DB_DRIVER=mysql');
+putenv('DB_HOST=' . $host);
+putenv('DB_PORT=' . (getenv('TEST_MYSQL_PORT') ?: '3306'));
+putenv('DB_DATABASE=' . $database);
+putenv('DB_USERNAME=' . $username);
+putenv('DB_PASSWORD=' . (getenv('TEST_MYSQL_PASSWORD') ?: ''));
 
-if ((int) $answer !== 42 || $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
-    throw new RuntimeException('MySQL PDO connection or prepared-statement smoke test failed.');
+$connection = dbConnection();
+if ($connection->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
+    throw new RuntimeException('DB_DRIVER=mysql must select the MySQL PDO driver.');
 }
 
-fwrite(STDOUT, "PASS: MySQL PDO connection and prepared statements.\n");
+dbExecute('CREATE TEMPORARY TABLE connection_contract_items (id INT AUTO_INCREMENT PRIMARY KEY, value VARCHAR(255) NOT NULL)');
+$dbValue = "bound value'); DROP TABLE connection_contract_items;--";
+$insertedRows = dbExecute('INSERT INTO connection_contract_items (value) VALUES (:value)', ['value' => $dbValue]);
+$item = dbFetchOne('SELECT id, value FROM connection_contract_items WHERE value = :value', ['value' => $dbValue]);
+$items = dbFetchAll('SELECT id, value FROM connection_contract_items');
+
+if ($insertedRows !== 1 || $item === null || $item['value'] !== $dbValue || (int) $item['id'] !== 1 || count($items) !== 1) {
+    throw new RuntimeException('MySQL query helpers must bind values and return rows consistently.');
+}
+
+if (dbInsertId() !== '1') {
+    throw new RuntimeException('dbInsertId() must return the MySQL inserted identifier.');
+}
+
+fwrite(STDOUT, "PASS: MySQL PDO connection and query helpers.\n");
 
 return 'pass';
