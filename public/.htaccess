@@ -2,3 +2,4 @@ RewriteEngine On
 RewriteRule ^\.well-known/oauth-protected-resource/mcp/?$ .well-known/oauth-protected-resource-mcp.php [END]
 RewriteRule ^\.well-known/oauth-authorization-server/?$ .well-known/oauth-authorization-server.php [END]
 RewriteRule ^oauth/token/?$ oauth/token.php [END]
+RewriteRule ^mcp/?$ mcp.php [END]
