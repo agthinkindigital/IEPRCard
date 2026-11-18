@@ -1,8 +1,8 @@
-# ADR-0009: Servidor MCP com escopos e patch restrito a dev
+# ADR-0009: MCP stateless com OAuth, escopos e patch restrito a dev
 
 | Campo | Valor |
 | --- | --- |
-| Status | Proposta (refina `docs/09`, `docs/11` ISSUE-017) |
+| Status | Aceita para MVP: MCP 2026-07-28 stateless + OAuth 2.1 para agentes machine-to-machine |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + dono do produto + segurança |
 | Relacionados | [SAD §6.3, §9 R2](../architecture/SAD.md), ADR-0001, ADR-0011 |
@@ -13,12 +13,13 @@
 
 ## Decisão
 
-- O endpoint MCP estará disponível desde o primeiro lançamento, inclusive no ambiente de produção, para que inspeção e telemetria sejam capacidades iniciais do produto.
-- O transporte remoto de produção é Streamable HTTP stateless: um endpoint HTTP, cada chamada em um POST independente, sem sessão em memória nem daemon MCP residente. A resposta pode ser JSON; tools longas iniciam trabalho idempotente e devolvem um `job_id` consultável em outra chamada. STDIO fica opcional para desenvolvimento local. O servidor valida `Origin`, autentica cada requisição, valida versão/cabeçalhos do protocolo e não confia no `tenant_id` fornecido pelo cliente.
-- JSON-RPC 2.0 mantido, com chaves em `mcp_api_keys` e escopos explícitos: `system.read`, `telemetry.read`, `db.inspect`, `design.read`, `design.write`, `batch.dry_run`, `code.patch`.
+- O endpoint MCP estará disponível desde o primeiro lançamento, inclusive em produção. O protocolo MCP `2026-07-28` é a versão inicial fixada; seu contrato oficial define Streamable HTTP sem handshake nem sessão, metadados por requisição e cabeçalhos espelhados validados contra o corpo ([transport](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http), [tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)).
+- O transporte remoto é Streamable HTTP stateless em um endpoint POST, sem daemon residente. Inicialmente as respostas são JSON; GET/DELETE e sessões não são implementados. Cada requisição inclui `MCP-Protocol-Version`, `Mcp-Method` e, quando exigido, `Mcp-Name`, validados contra o JSON-RPC. `Origin` presente é validado contra allowlist configurada; a aplicação nunca usa `tenant_id` enviado pelo cliente.
+- Autorização remota usa OAuth 2.1 como resource server, com `client_credentials` para agentes machine-to-machine e clientes pré-cadastrados pelo Admin. O MVP não implementa consentimento interativo nem registro dinâmico. Publica Protected Resource Metadata, exige `resource` canônico, aceita client authentication `client_secret_basic` no token endpoint e Bearer token em cada POST MCP. Tokens de acesso são assinados pelo servidor, curtos e vinculados ao cliente, escopo, tenant e audiência; toda chamada revalida cliente e Sede ativos para revogação e suspensão imediatas. Ver [Authorization](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization).
+- `mcp_api_keys` é o registro de clientes OAuth: `client_id` público aleatório, segredo criptograficamente aleatório armazenado somente como hash, tenant, escopos explícitos, limite por minuto e estado/expiração. Escopos iniciais: `system.read`, `telemetry.read`, `db.inspect`, `design.read`, `design.write`, `batch.dry_run`, `code.patch`.
 - **Em produção, apenas tools de leitura são registradas** (`system.read`, `telemetry.read`, `db.inspect`, `design.read`, `batch.dry_run`). `design.write` exige aprovação humana; `code.patch` não é registrado de forma alguma.
 - `code.patch` existe somente quando `APP_ENV=dev|staging`, com allowlist de diretórios, backup, `php -l`, suíte TDD correspondente e rollback — exatamente como especificado, mas cercado por ambiente.
-- Toda chamada grava `mcp_audit_logs` com chave, escopo, tool, parâmetros sanitizados, IP, `correlation_id` e resultado; logs de telemetria respeitam o recorte do ADR-0003.
+- Toda chamada grava `mcp_audit_logs` com cliente, escopo, método/tool, `correlation_id` e resultado; não persiste segredo, token, IP bruto, parâmetros livres ou PII. Logs e respostas de telemetria respeitam o recorte do ADR-0003.
 - Rate limit por chave e validação de schema de entrada (tipos e limites de tamanho) antes de qualquer execução.
 - A autenticação e autorização são avaliadas por chamada; cada chave tem escopo mínimo, tenant permitido e revogação imediata. Tools de leitura retornam somente campos explicitamente permitidos, nunca consultas SQL arbitrárias ou PII do titular.
 - Nunca expor valores de `configuracoes_gateway`, senhas ou CPF em resposta de tool.
@@ -28,8 +29,9 @@
 | Alternativa | Prós | Contras | Veredito |
 | --- | --- | --- | --- |
 | Liberar todas as tools em produção com chave forte | Facilita manutenção remota | RCE, vazamento e violação de auditoria com uma única chave comprometida | Rejeitada |
+| API key estática enviada diretamente em cada POST MCP | Implementação inicial menor | Não segue o modelo OAuth de discovery/resource audience esperado por clientes interoperáveis | Rejeitada |
 | Desativar MCP em produção | Segurança máxima | Perde telemetria agêntica e inspeção remota previstas no produto | Rejeitada |
-| Escopos + somente leitura em prod + patch em dev (escolhida) | Mantém valor do MCP sem RCE em produção | Duas configurações de registry a testar | Aceita |
+| OAuth client credentials + escopos + somente leitura em produção (escolhida) | Interoperável, stateless e compatível com cliente de agente em hospedagem sem daemon | Exige token endpoint, metadata OAuth e rotação de segredo | Aceita |
 
 ## Consequências
 
@@ -42,4 +44,4 @@
 - `TDD-07`: `tools/list`, `tools/call`, preview WebP atualizado e patch com erro de sintaxe rejeitado com rollback.
 - Spec de segurança: com `APP_ENV=production`, chave com escopo `code.patch` recebe `-32601 Method not found` e nenhum arquivo é alterado.
 - `mcp_audit_logs` cobre 100% das chamadas, sem segredos nos parâmetros.
-- Transporte stateless funciona com duas requisições concorrentes em processos PHP distintos, sem estado em memória; cabeçalhos `Origin` e de versão MCP inválidos são rejeitados.
+- Transporte stateless funciona com duas requisições concorrentes em processos PHP distintos, sem estado em memória; cabeçalhos `Origin`, versão e metadados espelhados inválidos são rejeitados. Token OAuth com audiência incorreta, assinatura inválida, expiração ou cliente revogado é negado.

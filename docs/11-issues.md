@@ -149,7 +149,7 @@
 
 * **ISSUE-017: Implementação do Servidor MCP (Streamable HTTP stateless) + Safety Guard**
 * **Arquivos:** `mcp/server.php`, `mcp/tools_registry.php`, `mcp/safety_guard.php`, `admin/mcp-config.php`
-* **Descrição:** Construir o servidor Model Context Protocol nativo em PHP e disponibilizá-lo desde o primeiro lançamento por HTTP stateless, sem depender de processo residente. Em produção, expor tools de leitura com escopos por chave, isolamento de tenant, rate limit e auditoria; ajustes de design exigem aprovação humana e patches de código ficam restritos a dev/staging. O núcleo autenticado e somente leitura é iniciado na Fase 1; as tools avançadas e a suíte ponta-a-ponta completam o `ISSUE-017` até o Gate 5. STDIO é opcional no ambiente local.
+* **Descrição:** Construir o servidor Model Context Protocol nativo em PHP e disponibilizá-lo desde o primeiro lançamento por HTTP stateless, sem processo residente. O protocolo, OAuth, escopos e limites de produção são definidos em [ADR-0009](adr/0009-mcp-escopos-e-patch-seguro.md). O fatiamento começou pela [Issue #19](https://github.com/agthinkindigital/IEPRCard/issues/19); tools avançadas e Gate 5 completam esta Issue. STDIO é opcional no ambiente local.
 * **Critério de Aceite:** Passar no `TDD-07`; em produção, `tools/list` não anuncia `code.patch`, tools respeitam escopo/tenant e 100% das chamadas ficam auditadas sem PII ou segredos.
 
 
