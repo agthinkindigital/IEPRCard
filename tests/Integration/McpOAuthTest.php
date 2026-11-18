@@ -109,6 +109,8 @@ $rejected($baseInput, 'MCP_OAUTH_INVALID_CLIENT');
 $restore = $pdo->prepare("UPDATE tenants SET status_conta = 'ativo' WHERE id = :tenant");
 $restore->execute(['tenant' => $fixture['tenant_id']]);
 
+$pdo->prepare('UPDATE mcp_api_keys SET limite_requisicoes_minuto = 1 WHERE client_id = :client')
+    ->execute(['client' => $clientId]);
 $limited = false;
 for ($attempt = 0; $attempt < 5; ++$attempt) {
     try {
