@@ -72,10 +72,15 @@ function dbConnect(?array $configuration = null): PDO
 
 function dbConnection(): PDO
 {
-    static $connection;
-    $connection ??= dbConnect();
+    static $connections = [];
+    $configuration = dbReadEnvironment();
+    $key = hash('sha256', serialize($configuration));
 
-    return $connection;
+    if (!isset($connections[$key])) {
+        $connections[$key] = dbConnect($configuration);
+    }
+
+    return $connections[$key];
 }
 
 /** @param array<string|int, mixed> $parameters */
