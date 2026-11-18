@@ -58,7 +58,7 @@
 
 ### ÉPICO 3: Importação em Lote, Preenchimento Manual e Gestão de Titulares (Req 06, 07)
 
-* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — o parser backend de CSV/XLSX/JSON sem persistência foi concluído na [GitHub #28](https://github.com/agthinkindigital/IEPRCard/issues/28), conforme TDD-03; `.xls` binário, upload e vínculo de fotos ZIP ficam para decisões/fatias próprias.
+* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — o parser backend de CSV/XLSX/JSON foi concluído na [GitHub #28](https://github.com/agthinkindigital/IEPRCard/issues/28); o staging de arquivo original em storage privado, prévia, cancelamento e expiração está na [#31](https://github.com/agthinkindigital/IEPRCard/issues/31). `.xls` binário e vínculo de fotos ZIP permanecem em fatias próprias.
 * **Arquivos:** `includes/motor_importacao.php`, `includes/libs/SimpleXLSX.php`, `painel/importar-dados.php`
 * **Descrição:** Upload e leitura de arquivos `.csv`, `.xls`, `.xlsx` e `.json` com detecção automática de cabeçalhos, pré-visualização das primeiras 10 linhas, validação de CPF/Telefone e vínculo automático de fotos enviadas em pacote `.zip` (associadas por CPF ou matrícula).
 

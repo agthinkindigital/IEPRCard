@@ -10,6 +10,8 @@ Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingT
 
 Para transferir dados pelo CLI, prepare um destino MySQL vazio com o schema canônico, configure `DB_DRIVER=mysql` e defina `MIGRATION_SOURCE_SQLITE_PATH`; execute `php database/migrate-sqlite-to-mysql.php`. A interface administrativa usa `MIGRATION_SOURCE_SQLITE_PATH` e `MIGRATION_TARGET_*`, exige o worker CLI agendado por Cron e não troca o banco ativo. Os dois fluxos chamam o mesmo serviço, não alteram schema e recusam destinos com registros. Consulte o [guia da interface de migração](docs/userguide/migracao-banco.md).
 
+Arquivos de importação aguardando confirmação ficam temporariamente fora de `public/`. O padrão é `var/private`; em hospedagem compartilhada, configure `IEPR_PRIVATE_STORAGE_PATH` com um diretório absoluto gravável e fora da raiz pública. Agende `php database/cleanup-import-staging.php` pelo Cron a cada 15 minutos para remover lotes pendentes após 24 horas.
+
 ## Ambiente local no Windows
 
 Abra `localhost.cmd` para preparar o banco configurado e iniciar o servidor PHP em `http://localhost:8080`. O SQLite usa `var/ieprcard.sqlite`; o PHP cria o arquivo e aplica as migrações locais na inicialização. O launcher ativa `pdo_sqlite` ou `pdo_mysql` somente nos processos que ele inicia quando a DLL já acompanha o PHP, sem alterar o `php.ini`. Com `DB_DRIVER=mysql`, tenta iniciar um serviço MySQL/MariaDB local parado e aplica migrações somente a um host local. Se faltar a extensão PDO ou permissão para iniciar o serviço, a página de diagnóstico explica o que falta. Para encerrar o modo manual, digite `0` e pressione Enter ou feche a janela.

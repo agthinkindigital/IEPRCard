@@ -441,7 +441,7 @@ erDiagram
         int id PK
         int tenant_id FK
         int subcliente_id FK
-        varchar status_lote "aguardando_mapa|na_fila|processando|concluido|falha"
+        varchar status_lote "aguardando_mapa|na_fila|processando|concluido|falha|cancelado|expirado"
         int total_registros
         int processados_sucesso
         int processados_erro
@@ -565,7 +565,7 @@ erDiagram
 2. `TenantScope` constrói a cláusula obrigatória: para Cliente, `WHERE tenant_id = :tid`; para Subcliente, `WHERE tenant_id = :tid AND subcliente_id = :sid`; para Admin, escopo explícito por filtro de tela (nunca "sem WHERE" por padrão).
 3. Nenhum endpoint aceita `tenant_id`/`subcliente_id` do corpo/query para fins de autorização. IDs recebidos são apenas filtros dentro do escopo resolvido.
 4. **RLS nativo não é usado:** SQLite não tem RLS e MySQL 8 não oferece RLS equivalente ao PostgreSQL; a imposição é na camada de acesso a dados, com testes negativos (GATE 2). Trade-off: uma query escrita fora do TenantScope pode vazar — por isso o helper é obrigatório e revisado via lint/QA.
-5. Uploads isolados em `assets/uploads/tenants/{tenant_id}/`, com validação de `realpath()` para impedir path traversal.
+5. Arquivos de importação ficam em storage privado fora de `public/`, sob chave opaca por tenant; validar `realpath()` e não seguir symlinks. O `IEPR_PRIVATE_STORAGE_PATH` aceita diretório absoluto do host e o padrão local é `var/private/`. Lotes não confirmados expiram após 24 h.
 
 ### 5.3. Consistência, concorrência e cotas
 
@@ -638,7 +638,7 @@ Estados propagados para todos os Subclientes filhos; `carteirinha.status_carteir
 | Auth | senha com `password_hash`, identidade e escopo revalidados no banco; sessões tenant e `superadmin` isoladas; token de carteira com 32+ bytes aleatórios, compare com `hash_equals` |
 | Credenciais | Segredos de integrações ativas fora do Git; credenciais financeiras em `configuracoes_gateway` cifradas quando pagamentos forem priorizados |
 | Escalonamento | `efetivas = (papel ∪ overrides) ∩ teto_plano ∩ teto_cliente`; negação por padrão; teste TDD-02B |
-| Upload | whitelist de MIME extensão real, limite de tamanho, `realpath()`, storage fora da raiz pública |
+| Upload | whitelist de formatos e conteúdo, limite de tamanho, `realpath()`, storage fora da raiz pública e chave opaca |
 | Segurança de ataque | suítes negativas `*.spec.sec.php` para login, QR, webhooks, RBAC e MCP |
 
 ---
@@ -647,7 +647,7 @@ Estados propagados para todos os Subclientes filhos; `carteirinha.status_carteir
 
 ### 7.1. Topologia
 
-- **Perfil compartilhado (compatibilidade obrigatória):** PHP 8.1+/8.2 + MySQL fornecido pelo host, PDO, GD, ZipArchive para importação XLSX e cron PHP/CLI. Não exige processo residente, Redis, Docker, shell privilegiado ou acesso root. `cron.php` coordena fila, outbox, retenção e agregações em execuções curtas, com checkpoint, lease no banco, idempotência e limite de trabalho por execução. Cada invocação é um processo worker novo; lê a versão ativa ao iniciar. Artefatos ficam fora da raiz pública. Se o host não fornecer diretório privado nem regra confiável de acesso, usar storage externo privado; nunca deixar fotos ou carteirinhas sensíveis acessíveis por URL direta.
+- **Perfil compartilhado (compatibilidade obrigatória):** PHP 8.1+/8.2 + MySQL fornecido pelo host, PDO, GD, ZipArchive para importação XLSX e cron PHP/CLI. Não exige processo residente, Redis, Docker, shell privilegiado ou acesso root. Os workers e limpezas rodam em processos curtos agendados; `php database/cleanup-import-staging.php` remove arquivos de importação pendentes após 24 h. Cada invocação é um processo novo; lê a versão ativa ao iniciar. Artefatos ficam fora da raiz pública. Se o host não fornecer diretório privado nem regra confiável de acesso, usar storage externo privado; nunca deixar fotos ou carteirinhas sensíveis acessíveis por URL direta.
 - **Perfil VPS/produção reforçada:** VPS 2 vCPU / 4 GB RAM, Nginx → PHP-FPM 8.2, MySQL e storage privado; permitir worker CLI dedicado e releases imutáveis. Adicionar backup externo frequente e, para 99,9%, redundância de aplicação/banco/storage. A migração para esse perfil não exige mudar domínio ou regras de negócio.
 - **Pré-verificação de host:** confirmar extensões PHP, limite de execução/memória, intervalo e quantidade de cron jobs, conexões MySQL, limite de arquivos, política de backup/restauração, TLS e espaço privado antes de contratar ou fazer deploy. Estes limites variam por plano e podem mudar.
 
