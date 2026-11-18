@@ -75,7 +75,7 @@
 
 ### ÉPICO 4: Editor de Layouts, Mapeamento Duplo e Renderização PDF/WebP (Req 08, 09, 10, 11, 17, 17.1)
 
-O primeiro slice backend do contrato e validação do mapa está rastreado em [GitHub #33](https://github.com/agthinkindigital/IEPRCard/issues/33); a especificação canônica permanece em `docs/06-design-e-mapeamento.md`. Interfaces seguem o gate de aprovação explícita de mockup e guia.
+O contrato versionado e seu validador backend foram concluídos em [GitHub #33](https://github.com/agthinkindigital/IEPRCard/issues/33); a especificação canônica permanece em `docs/06-design-e-mapeamento.md`. Interfaces seguem o gate de aprovação explícita de mockup e guia.
 
 * **ISSUE-009: Gestor de Múltiplos Designs e Editor Visual de Coordenadas**
 * **Arquivos:** `painel/designs.php`, `painel/editor-design.php`
