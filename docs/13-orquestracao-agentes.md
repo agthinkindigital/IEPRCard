@@ -1,5 +1,9 @@
 # Orquestração Agêntica
 
+## GitHub Issues e triagem
+
+GitHub é o tracker obrigatório. Labels de categoria: `bug`, `enhancement`. Labels de estado: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`; os nomes das labels correspondem diretamente aos papéis do fluxo de triagem. Cada Issue triada mantém exatamente uma categoria e um estado.
+
 ## 7. Orquestração Agêntica e Fluxo de Trabalho (Agent Workflow)
 
 Para que um agente de IA construa este projeto sem alucinações, regressões ou perda de contexto, a execução segue um ciclo determinístico de **6 fases orquestradas**:

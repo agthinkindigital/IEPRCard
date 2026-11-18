@@ -4,6 +4,18 @@
 
 As fases agrupam as issues existentes. Prazo e custo serão estimados após o fatiamento e um benchmark no perfil de hospedagem escolhido; ainda não há base para prometer dias de execução ou capacidade mensal.
 
+## Epics rastreáveis no GitHub
+
+- [**[E01] Fundação técnica, banco dual e migrações**](https://github.com/agthinkindigital/IEPRCard/issues/1) - `todo`
+- [**[E02] Multi-tenancy, domínios e controle de acesso**](https://github.com/agthinkindigital/IEPRCard/issues/2) - `todo`
+- [**[E03] Cadastro, importação e gestão de titulares**](https://github.com/agthinkindigital/IEPRCard/issues/3) - `todo`
+- [**[E04] Designs, mapeamento e emissão de carteirinhas**](https://github.com/agthinkindigital/IEPRCard/issues/4) - `todo`
+- [**[E05] WhatsApp e IA sem cobrança**](https://github.com/agthinkindigital/IEPRCard/issues/5) - `todo`
+- [**[E06] Telemetria e painel operacional**](https://github.com/agthinkindigital/IEPRCard/issues/6) - `todo`
+- [**[E07] MCP, segurança e prontidão operacional**](https://github.com/agthinkindigital/IEPRCard/issues/7) - `todo`
+
+Os issues GitHub acima são as fontes de escopo dos Epics; este arquivo continua sendo o roadmap canônico do repositório.
+
 | Fase / Sprint | Escopo Entregue (Épicos & Issues) | Prazo Humano | Prazo com Agente IA | Recursos de Infraestrutura Necessários |
 | --- | --- | --- | --- | --- |
 | **Sprint 1: Fundação & Multi-Tenancy** | **Épicos 1 e 2** (`ISSUE-001` a `ISSUE-006`) + schema de operação/privacidade + núcleo MCP read-only do `ISSUE-017` + **Gate 1 & 2** | A estimar após fatiamento | A estimar | PHP 8.2+, SQLite para dev/test, MySQL no host e cron; confirmar DNS/TLS e armazenamento privado do plano. |

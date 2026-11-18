@@ -12,3 +12,10 @@ Projeto de sistema multi-tenant para emissão e validação de carteirinhas digi
 - [Decisões arquiteturais](docs/adr/)
 
 Consulte o SAD para a arquitetura vigente e os ADRs para decisões específicas. Os demais documentos detalham requisitos e módulos do produto.
+
+## Branches
+
+- `DEV` é a branch de trabalho e validação.
+- `PROD` é a branch principal estável. Recebe somente mudanças verificadas, revisadas e promovidas de `DEV`; não faça push direto nela.
+
+As instruções para agentes estão em [AGENTS.md](AGENTS.md).

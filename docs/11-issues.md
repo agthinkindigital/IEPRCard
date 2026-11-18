@@ -12,9 +12,9 @@
 * **Critério de Aceite:** Alternar a variável `DB_DRIVER` conecta nos dois bancos sem alterar uma única linha nos arquivos consumidores.
 
 
-* **ISSUE-002: Motor de *Self-Healing* de Schema Compatível com SQLite e MySQL**
+* **ISSUE-002: Schema canônico e migrações compatíveis com SQLite e MySQL**
 * **Arquivos:** `config/schema_self_healing.php`, `tests/Integration/DualDatabaseSelfHealingTest.php`
-* **Descrição:** Evoluir o padrão de `motorPagtoGarantirEstrutura` e `pagamentoGarantirEstrutura` para criar automaticamente todas as tabelas e colunas faltantes usando `PRAGMA table_info()` no SQLite e `SHOW COLUMNS` no MySQL.
+* **Descrição:** Validar paridade do schema mínimo de 27 tabelas nos dois drivers. Autocorreção estrutural fica restrita a dev/test; produção usa migrações versionadas, expand-only e compatíveis com ADR-0010. Tabelas financeiras adiadas não entram neste escopo.
 
 
 * **Critério de Aceite:** Passar no `TDD-01`.
@@ -172,11 +172,11 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 * **Perfis Prontos (Presets):** Ao criar um Cliente novo, o sistema já semeia 4 perfis editáveis: *Dirigente de Subcliente*, *Secretário (Emissor de Carteirinhas)*, *Tesoureiro* e *Cadastrador de Membros*.
 
 
-* **Nova `ISSUE-005B`: Motor de Cotas Elásticas e Controle Comercial do Admin (Trial / Cortesia / Plano Único)**
+* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)**
 * **Arquivos:** `includes/motor_cotas.php`, `admin/clientes-cotas.php`, `painel/distribuir-cotas.php`
 * **Descrição:**
-1. Implementar no painel do Admin os seletores de regime comercial por Cliente: `Assinatura Recorrente`, `Plano Único`, `Período de Teste (Trial até DD/MM/AAAA)` e `Cortesia / Bypass de Assinatura (Ativo sem cobrança)`, além do botão de **Ativar/Desativar Cadastro** imediato (com propagação para Subclientes e Titulares).
-2. Implementar a validação de limites (`limite_subclientes`, `limite_usuarios_equipe`, `limite_titulares`, `limite_carteirinhas`) permitindo que o Cliente distribua fatias arbitrárias do seu limite global entre seus Subclientes e que o Admin possa sobrescrever qualquer limite.
+1. Permitir que o Admin atribua plano/limites e ative, suspenda ou encerre manualmente uma conta, propagando o status para Subclientes e titulares conforme regra documentada.
+2. Validar limites (`limite_subclientes`, `limite_usuarios_equipe`, `limite_titulares`, `limite_carteirinhas`) e distribuição das cotas da Sede entre Subclientes, com override auditável do Admin. Sem cobrança, checkout ou automação por webhook.
 
 
 
