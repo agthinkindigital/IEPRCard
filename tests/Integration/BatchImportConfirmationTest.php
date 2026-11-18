@@ -20,6 +20,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $ownerId = null;
     $lotId = null;
     $rollbackLotId = null;
+    $largeLotId = null;
     $auditTrigger = 'import_confirm_audit_fail';
     $auditTriggerExists = false;
 
@@ -42,6 +43,44 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'titulares.csv'
         );
         $lotId = $staged['lote_id'];
+
+        $invalidMappingRejected = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $lotId,
+                ['nome_completo' => 'nome_completo', 'whatsapp' => 'nome_completo']
+            );
+        } catch (DomainException $exception) {
+            $invalidMappingRejected = $exception->getMessage() === 'IMPORT_MAPPING_INVALID';
+        }
+        $unitContext = new TenantContext('subcliente', $fixture['tenant_id'], $fixture['subcliente_id'], []);
+        $scopeRejected = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $unitContext,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $lotId,
+                ['nome_completo' => 'nome_completo', 'whatsapp' => 'whatsapp']
+            );
+        } catch (DomainException $exception) {
+            $scopeRejected = $exception->getMessage() === 'IMPORT_LOT_NOT_FOUND';
+        }
+        $pendingLot = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
+        $pendingLot->execute(['id' => $lotId]);
+        $holderCount = $pdo->prepare('SELECT COUNT(*) FROM titulares WHERE tenant_id = :tenant');
+        $holderCount->execute(['tenant' => $fixture['tenant_id']]);
+        if (!$invalidMappingRejected || !$scopeRejected || $pendingLot->fetchColumn() !== 'aguardando_mapa'
+            || (int) $holderCount->fetchColumn() !== 0) {
+            throw new RuntimeException($driver . ': invalid mapping or out-of-scope confirmation must leave the lot untouched.');
+        }
 
         $result = batchImportConfirm(
             $pdo,
@@ -142,12 +181,40 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             throw new RuntimeException($driver . ': retry must import each holder once after a full rollback.');
         }
 
+        $pdo->prepare('UPDATE tenants SET limite_titulares = 600 WHERE id = :tenant')
+            ->execute(['tenant' => $fixture['tenant_id']]);
+        $largePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'large.csv';
+        $largeRows = array_map(static fn(int $number): string => 'Large import ' . $number, range(1, 500));
+        file_put_contents($largePath, "nome\n" . implode("\n", $largeRows) . "\n");
+        $largeLotId = batchImportStageFile(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $largePath,
+            'large.csv'
+        )['lote_id'];
+        $largeResult = batchImportConfirm(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $largeLotId,
+            ['nome_completo' => 'nome_completo']
+        );
+        $holderCount->execute(['tenant' => $fixture['tenant_id']]);
+        if (($largeResult['imported'] ?? null) !== 500 || (int) $holderCount->fetchColumn() !== 503) {
+            throw new RuntimeException($driver . ': a complete 500-row import must fit in one atomic operation.');
+        }
+
         fwrite(STDOUT, 'PASS: ' . $driver . ' confirms a staged titular import and completes the lot.' . "\n");
     } finally {
         if ($auditTriggerExists) {
             $pdo->exec("DROP TRIGGER {$auditTrigger}");
         }
-        foreach ([$lotId, $rollbackLotId] as $cleanupLotId) {
+        foreach ([$lotId, $rollbackLotId, $largeLotId] as $cleanupLotId) {
             if ($cleanupLotId !== null) {
                 $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $cleanupLotId]);
             }
