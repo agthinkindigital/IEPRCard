@@ -22,8 +22,8 @@
 
 * **ISSUE-003: Utilitário de Migração automatizada SQLite $\rightarrow$ MySQL/MariaDB**
 * **Arquivos:** `admin/migracao-banco.php`, `includes/motor_migracao_db.php`
-* **Descrição:** Tela e script CLI que lê todas as tabelas do arquivo SQLite local e transfere em transações seguras para o servidor MySQL/MariaDB configurado, validando contagem de linhas.
-* **Critério de Aceite:** Migrar banco populado em menos de 5 segundos com zero perda de chaves estrangeiras.
+* **Descrição:** Serviço e script CLI que leem todas as tabelas do SQLite e transferem os dados para o MySQL/MariaDB configurado, com verificação de integridade. A tela administrativa correspondente fica na slice E01.4 e depende de mockup e guia funcional aprovados.
+* **Critério de Aceite:** Migrar o fixture de 1.000 registros em menos de 5 segundos no ambiente de referência, com contagens e checksums idênticos, chaves estrangeiras válidas e rollback integral se a transferência falhar.
 
 
 
