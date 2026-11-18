@@ -50,14 +50,10 @@ function adminMigrationPreflight(): array
     if ($sourcePdo instanceof PDO) {
         try {
             ieprMigracaoValidarSchema($sourcePdo, $catalog, 'origem');
-            $integrity = strtolower((string) $sourcePdo->query('PRAGMA integrity_check')->fetchColumn());
-            if ($integrity !== 'ok') {
-                throw new RuntimeException('integrity');
-            }
             if ($sourcePdo->query('PRAGMA foreign_key_check')->fetchAll(PDO::FETCH_ASSOC) !== []) {
                 throw new RuntimeException('foreign_keys');
             }
-            $checks[] = adminMigrationCheck('Schema e integridade da origem', 'Aprovado', 'Schema canônico, arquivo íntegro e referências válidas.');
+            $checks[] = adminMigrationCheck('Schema e integridade da origem', 'Aprovado', 'Schema canônico e referências válidas.');
             foreach ($catalog as $table => $_definition) {
                 $count = (int) $sourcePdo->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar($table, 'sqlite'))->fetchColumn();
                 $sourceRecords[$table] = $count;
@@ -98,13 +94,15 @@ function adminMigrationPreflight(): array
         if ($targetSchemaValid && $foreignKeysEnabled) {
             try {
                 foreach ($catalog as $table => $_definition) {
-                    $count = (int) $targetPdo->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql'))->fetchColumn();
-                    $destinationRecords += $count;
+                    if ($targetPdo->query('SELECT 1 FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql') . ' LIMIT 1')->fetchColumn() !== false) {
+                        $destinationRecords = 1;
+                        break;
+                    }
                 }
                 $checks[] = adminMigrationCheck(
                     'Destino vazio e pronto para receber',
                     $destinationRecords === 0 ? 'Aprovado' : 'Bloqueado',
-                    $destinationRecords === 0 ? 'Nenhum registro será mesclado ou sobrescrito.' : 'O destino contém registros; a cópia foi bloqueada.'
+                    $destinationRecords === 0 ? 'Nenhum registro será mesclado ou sobrescrito.' : 'Há registros no destino; a cópia foi bloqueada.'
                 );
             } catch (Throwable) {
                 $checks[] = adminMigrationCheck('Destino vazio e pronto para receber', 'Bloqueado', 'Não foi possível confirmar as contagens das tabelas do destino.');

@@ -107,7 +107,7 @@ $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) /
         </article>
         <article class="panel connection-card">
             <div class="card-heading"><span class="database-icon" aria-hidden="true">▤</span><h2>Destino MySQL / MariaDB</h2><span class="status-chip <?= $destinationReady ? 'good' : 'bad' ?>"><?= $destinationReady ? 'Válido' : 'Bloqueado' ?></span></div>
-            <dl><div><dt>Banco</dt><dd><?= migrationEscape((string) $preflight['target_name']) ?></dd></div><div><dt>Conexão</dt><dd>Credenciais ocultas</dd></div><div><dt>Registros atuais</dt><dd><?= migrationCount((int) $preflight['destination_records']) ?><?= $destinationReady ? ' · pronto para receber' : ' · aguardando validação' ?></dd></div></dl>
+            <dl><div><dt>Banco</dt><dd><?= migrationEscape((string) $preflight['target_name']) ?></dd></div><div><dt>Conexão</dt><dd>Credenciais ocultas</dd></div><div><dt>Registros atuais</dt><dd><?= $destinationReady ? '0 · pronto para receber' : ((int) $preflight['destination_records'] > 0 ? 'Contém registros' : 'Aguardando validação') ?></dd></div></dl>
             <small class="subtle">A ferramenta não cria nem altera schema.</small>
         </article>
     </section>

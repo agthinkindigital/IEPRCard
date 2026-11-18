@@ -31,8 +31,8 @@ function ieprMigrarSqliteParaMysql(PDO $source, PDO $target, ?callable $onProgre
             throw new RuntimeException('O destino precisa conter exatamente o schema canônico de 27 tabelas.');
         }
         foreach ($catalog as $table => $_definition) {
-            $count = (int) $target->query('SELECT COUNT(*) FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql'))->fetchColumn();
-            if ($count !== 0) {
+            $hasRows = $target->query('SELECT 1 FROM ' . \IEPRCard\Database\Schema\citar($table, 'mysql') . ' LIMIT 1')->fetchColumn() !== false;
+            if ($hasRows) {
                 throw new RuntimeException('O destino contém dados; a execução pode já ter ocorrido. Nenhum dado foi alterado.');
             }
         }
