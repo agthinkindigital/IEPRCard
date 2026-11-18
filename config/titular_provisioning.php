@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/tenant_quota_policy.php';
+require_once __DIR__ . '/cpf.php';
 
 /** @param array<string, mixed> $identity @param array<string, mixed> $input */
 function titularCreate(
@@ -207,38 +208,11 @@ function titularCreateText(mixed $value, int $maximumLength, bool $nullable): ?s
 
 function titularCreateCpf(mixed $value): ?string
 {
-    if ($value === null || is_string($value) && trim($value) === '') {
-        return null;
-    }
-    if (!is_string($value)) {
+    try {
+        return cpfNormalizeBr($value);
+    } catch (InvalidArgumentException) {
         throw new DomainException('TITULAR_CREATE_INVALID');
     }
-    $digits = preg_replace('/[.\-\/\s]/', '', trim($value));
-    if (!is_string($digits) || preg_match('/^[0-9]{11}$/D', $digits) !== 1 || !titularCreateCpfIsValid($digits)) {
-        throw new DomainException('TITULAR_CREATE_INVALID');
-    }
-
-    return $digits;
-}
-
-function titularCreateCpfIsValid(string $cpf): bool
-{
-    if (preg_match('/^([0-9])\1{10}$/D', $cpf) === 1) {
-        return false;
-    }
-    for ($position = 9; $position <= 10; ++$position) {
-        $sum = 0;
-        for ($index = 0; $index < $position; ++$index) {
-            $sum += ((int) $cpf[$index]) * ($position + 1 - $index);
-        }
-        $remainder = $sum % 11;
-        $digit = $remainder < 2 ? 0 : 11 - $remainder;
-        if ((int) $cpf[$position] !== $digit) {
-            return false;
-        }
-    }
-
-    return true;
 }
 
 function titularCreateCount(PDO $pdo, int $tenantId, ?int $subclienteId = null): int

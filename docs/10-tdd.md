@@ -16,13 +16,7 @@ Nenhum módulo de negócio será considerado pronto sem passar pela suíte autom
 <br>3. Simula `HTTP_HOST = polo1.escolaX.com.br` $\rightarrow$ resolve `subcliente` (`id=25`, `parent_id=10`).<br>
 
 <br>4. Revalida usuário/papel/escopo persistidos, intersecta perfil e overrides com as flags do plano e a delegação da Sede; negativa prevalece e adulteração de sessão/IDs não amplia acesso. |
-| **TDD-03** | `tests/Integration/BatchImportParserTest.php` | 1. Importa um arquivo `.csv` (separado por `;` e encoding ISO-8859-1), um `.xlsx` e um `.json` contendo 50 titulares cada.<br>
-
-<br>2. Verifica que todos os 3 formatos produzem exatamente o mesmo array normalizado de colunas e linhas.<br>
-
-<br>3. Valida CPF via `motorPagtoValidarCpf` e normalização de telefone via `normalizarTelefoneBR`.
-
- |
+| **TDD-03** | `tests/Integration/BatchImportParserTest.php` | Lê 500 registros CSV (`;`, UTF-8/ISO-8859-1), XLSX e JSON; compara a saída normalizada; valida CPF/telefone BR, prévia de 10 linhas, erros sem PII e rejeição acima do limite. Contrato e formatos aceitos: [issue #28](https://github.com/agthinkindigital/IEPRCard/issues/28). |
 | **TDD-04** | `tests/Visual/CardMappingAndRenderTest.php` | 1. Testa o Mapeamento Fixo e o Mapeamento Dinâmico De$\rightarrow$Para (Req 17.1).<br>
 
 <br>2. Renderiza uma carteirinha Frente/Verso em **WebP** e verifica: arquivo existe, mime-type é `image/webp`, dimensões exatas `1011x638` px.<br>
