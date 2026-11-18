@@ -149,7 +149,7 @@
 
 * **ISSUE-017: Implementação do Servidor MCP (Streamable HTTP stateless) + Safety Guard**
 * **Arquivos:** `mcp/server.php`, `mcp/tools_registry.php`, `mcp/safety_guard.php`, `admin/mcp-config.php`
-* **Descrição:** Construir o servidor Model Context Protocol nativo em PHP e disponibilizá-lo desde o primeiro lançamento por HTTP stateless, sem processo residente. O protocolo, OAuth, escopos e limites de produção são definidos em [ADR-0009](adr/0009-mcp-escopos-e-patch-seguro.md). O fatiamento está nas [Issues #19](https://github.com/agthinkindigital/IEPRCard/issues/19) (cadastro OAuth, concluída) e [#20](https://github.com/agthinkindigital/IEPRCard/issues/20) (token e descoberta, em andamento); tools avançadas e Gate 5 completam esta Issue. STDIO é opcional no ambiente local.
+* **Descrição:** Construir o servidor Model Context Protocol nativo em PHP e disponibilizá-lo desde o primeiro lançamento por HTTP stateless, sem processo residente. O protocolo, OAuth, escopos e limites de produção são definidos em [ADR-0009](adr/0009-mcp-escopos-e-patch-seguro.md). O fatiamento está nas [Issues #19](https://github.com/agthinkindigital/IEPRCard/issues/19) (cadastro OAuth, concluída), [#20](https://github.com/agthinkindigital/IEPRCard/issues/20) (token e descoberta, concluída) e [#21](https://github.com/agthinkindigital/IEPRCard/issues/21) (transporte stateless, em andamento); tools avançadas e Gate 5 completam esta Issue. STDIO é opcional no ambiente local.
 * **Critério de Aceite:** Passar no `TDD-07`; em produção, `tools/list` não anuncia `code.patch`, tools respeitam escopo/tenant e 100% das chamadas ficam auditadas sem PII ou segredos.
 
 
