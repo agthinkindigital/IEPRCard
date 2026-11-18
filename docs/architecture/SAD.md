@@ -635,7 +635,7 @@ Estados propagados para todos os Subclientes filhos; `carteirinha.status_carteir
 | SQLi | 100% prepared statements; nenhuma concatenação de valor do usuário em SQL |
 | XSS | escape na saída HTML, CSP restritiva, sanitização de HTML vindo de planilha/IA |
 | CSRF | token por sessão em todo POST autenticado; `SameSite=Lax` |
-| Auth | senha com `password_hash`, token de carteira com 32+ bytes aleatórios, compare com `hash_equals` |
+| Auth | senha com `password_hash`, identidade e escopo revalidados no banco; sessões tenant e `superadmin` isoladas; token de carteira com 32+ bytes aleatórios, compare com `hash_equals` |
 | Credenciais | Segredos de integrações ativas fora do Git; credenciais financeiras em `configuracoes_gateway` cifradas quando pagamentos forem priorizados |
 | Escalonamento | `efetivas = (papel ∪ overrides) ∩ teto_plano ∩ teto_cliente`; negação por padrão; teste TDD-02B |
 | Upload | whitelist de MIME extensão real, limite de tamanho, `realpath()`, storage fora da raiz pública |
