@@ -164,7 +164,8 @@ function motorPermissoesAvaliar(PDO $pdo, TenantContext $context, array $identit
     }
 
     $delegated = $targetSubclienteId === null
-        || in_array($permission, motorPermissoesDecodeList($root['permissoes_unidade_json']), true);
+        || (motorPermissoesCanDelegateToUnit($permission)
+            && in_array($permission, motorPermissoesDecodeList($root['permissoes_unidade_json']), true));
     $roleAllows = match ($role) {
         'titular_cliente' => true,
         'responsavel_sub' => $delegated,
@@ -183,6 +184,14 @@ function motorPermissoesAvaliar(PDO $pdo, TenantContext $context, array $identit
     }
 
     return $roleAllows && $delegated;
+}
+
+function motorPermissoesCanDelegateToUnit(string $permission): bool
+{
+    return str_starts_with($permission, 'titular.')
+        || str_starts_with($permission, 'carteirinha.')
+        || str_starts_with($permission, 'design.')
+        || $permission === 'telemetria.unidade';
 }
 
 function motorPermissoesNullableId(mixed $value): ?int
