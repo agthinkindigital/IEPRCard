@@ -350,6 +350,8 @@ sequenceDiagram
 
 O diagrama mostra o modelo completo previsto. No MVP, não criar `pagamentos_saas`, `pagamentos_titular`, `contas_recebedoras`, `repasses_titular` nem `configuracoes_gateway`; cobrança, checkout e webhooks Asaas/Mercado Pago ficam para fase futura. O contrato inicial de banco é o conjunto reduzido de 27 tabelas descrito no ADR-0005.
 
+Este DER expressa as relações conceituais. A definição executável de colunas, tipos, índices e chaves estrangeiras está no [catálogo de schema](../../database/schema/), que é a referência para criação e inspeção em SQLite e MySQL/MariaDB.
+
 ```mermaid
 erDiagram
     PLANOS ||--o{ TENANTS : define_teto

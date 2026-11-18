@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Aceita como baseline do MVP; implementação e TDD-01 pendentes |
+| Status | Aceita; catálogo executável implementado em E01.2; validação MySQL/MariaDB pendente |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + `/developer` + `/qa-analyst` |
 | Relacionados | [SAD §1.4 C1–C4, §4.6, §5.5](../architecture/SAD.md), ADR-0002, ADR-0010 |
@@ -30,6 +30,8 @@ Schema-alvo do produto (32 tabelas): `planos`, `plano_feature_flags`, `tenants`,
 O schema mínimo do MVP tem 27 tabelas: exclui `pagamentos_saas`, `pagamentos_titular`, `contas_recebedoras`, `repasses_titular` e `configuracoes_gateway`. Cobranças, checkout, split, repasse e webhooks de Asaas/Mercado Pago estão fora do MVP. Os cinco objetos ficam reservados para integração futura; referências de domínio estão em `docs/07` e ADR-0008. As três últimas tabelas apoiam métricas e versões de operação (ADR-0011) e pedidos de anonimização (política em `docs/01`, execução e backup em ADR-0012). A referência de titular na fila fica cifrada e é removida após a conclusão.
 
 **Atualização obrigatória:** reescrever `TDD-01` para validar as 27 tabelas do MVP e a paridade SQLite/MySQL. As cinco tabelas de pagamentos só entram no contrato de schema quando essa fase futura for priorizada. A asserção "15 tabelas" deixa de existir.
+
+O catálogo executável das 27 tabelas, colunas, tipos, índices e FKs vive em `database/schema/0001/`; o SAD §4.6 mantém o DER conceitual e aponta para esse catálogo, sem duplicar o dicionário físico. Diretórios de versão são imutáveis; evoluções acrescentam uma versão e uma migração numerada. A migração `0001` aplica apenas a versão inicial, de forma repetível.
 
 **Migração:** em bancos já criados com o adendo, usar `ALTER TABLE ... ADD COLUMN` + view de compatibilidade, sem `DROP` na mesma release (Expand & Contract, ADR-0010). Nomes antigos sobrevivem como views somente leitura por uma release.
 

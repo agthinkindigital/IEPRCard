@@ -68,4 +68,31 @@ if ($insertedRows !== 1 || $insertId !== '1' || $item === null || $item['value']
 
 fwrite(STDOUT, "PASS: MySQL PDO connection and query helpers.\n");
 
+require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
+require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
+$schemaDrift = schemaGarantirEstrutura($connection, 'test');
+schemaGarantirEstrutura($connection, 'test');
+if (array_filter($schemaDrift) !== [] || array_filter(schemaInspecionar($connection)) !== []) {
+    throw new RuntimeException('MySQL/MariaDB self-healing must create the canonical schema without drift.');
+}
+$expectedSchemaTables = array_keys(\IEPRCard\Database\Schema\catalogoCanonico());
+$actualSchemaTables = $connection->query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = \'BASE TABLE\'')->fetchAll(PDO::FETCH_COLUMN);
+sort($expectedSchemaTables, SORT_STRING);
+sort($actualSchemaTables, SORT_STRING);
+if ($actualSchemaTables !== $expectedSchemaTables) {
+    throw new RuntimeException('MySQL/MariaDB must contain exactly the 27 canonical MVP tables.');
+}
+
+$migrations = schemaAplicarMigracoes($connection, 'test');
+if ($migrations !== ['0001_mvp_schema'] || array_filter(schemaInspecionar($connection)) !== []) {
+    throw new RuntimeException('MySQL/MariaDB versioned migrations must be repeatable and leave no schema drift.');
+}
+
+$financialTables = $connection->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('pagamentos_saas', 'pagamentos_titular', 'contas_recebedoras', 'repasses_titular', 'configuracoes_gateway')")->fetchAll(PDO::FETCH_COLUMN);
+if ($financialTables !== []) {
+    throw new RuntimeException('Reserved finance tables must not be created in the MVP schema.');
+}
+
+fwrite(STDOUT, "PASS: MySQL/MariaDB schema creation, drift inspection, and explicit migrations.\n");
+
 return 'pass';

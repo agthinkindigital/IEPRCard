@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Aceita como baseline do MVP; implementação e validação pendentes |
+| Status | Aceita; implementação em E01.2; validação MySQL/MariaDB pendente |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + `/developer` + `/qa-analyst` |
 | Relacionados | [SAD §1.4 C7, §7.2, §9 R1](../architecture/SAD.md), ADR-0002, ADR-0005 |
@@ -16,6 +16,8 @@
 - `APP_ENV=dev|test`: self-healing habilitado, exatamente como no TDD-01.
 - `APP_ENV=production`: self-healing roda apenas em **modo verificação** (`dry run`), reportando drift; nenhuma DDL é executada.
 - Toda mudança de schema em produção passa por migração versionada, numerada, idempotente e aplicada no deploy antes do switch de release (ADR-0012).
+- `schemaGarantirEstrutura()` cria tabelas, acrescenta colunas seguras e índices ausentes em dev/test. Colunas obrigatórias sem valor padrão exigem backfill explícito; FKs ausentes em tabelas preexistentes são reportadas para migração, pois SQLite não permite acrescentá-las com `ALTER TABLE` simples.
+- `schemaAplicarMigracoes()` executa explicitamente arquivos numerados e exige o ambiente na chamada. Cada migração usa seu catálogo versionado e imutável; as versões ficam no repositório para manter o contrato de 27 tabelas sem uma tabela de controle extra.
 - Migrações seguem **Expand & Contract**:
   1. release A adiciona coluna/tabela nova (nullable) e mantém a antiga;
   2. release B migra leituras e escritas;

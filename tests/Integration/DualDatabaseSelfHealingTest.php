@@ -90,4 +90,91 @@ foreach ($invalidConfigurations as $configuration) {
 
 fwrite(STDOUT, "PASS: unsupported drivers and unsafe database settings are rejected.\n");
 
+require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
+$expectedMvpTables = [
+    'planos', 'plano_feature_flags', 'tenants', 'dominios_tenant', 'perfis_acesso',
+    'permissoes', 'usuario_permissoes', 'usuarios', 'categorias_titular',
+    'designs_carteirinha', 'lotes_importacao', 'titulares', 'carteirinhas_emitidas',
+    'telemetria_eventos', 'telemetria_diaria', 'auditoria_processos', 'acessos_suporte',
+    'mensagens_whatsapp', 'ia_config', 'webhooks_recebidos', 'outbox_eventos',
+    'reservas_cota', 'mcp_api_keys', 'mcp_audit_logs', 'configuracoes_operacionais',
+    'metricas_lotes_diarias', 'solicitacoes_anonimizacao',
+];
+$schemaPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
+schemaGarantirEstrutura($schemaPdo, 'test');
+schemaGarantirEstrutura($schemaPdo, 'test');
+$createdTables = $schemaPdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+sort($expectedMvpTables, SORT_STRING);
+
+if ($createdTables !== $expectedMvpTables) {
+    throw new RuntimeException('Development self-healing must create exactly the canonical 27 MVP tables.');
+}
+$schemaDrift = schemaInspecionar($schemaPdo);
+foreach (['missing_tables', 'missing_columns', 'missing_indexes', 'missing_foreign_keys'] as $driftType) {
+    if (($schemaDrift[$driftType] ?? []) !== []) {
+        throw new RuntimeException('A fresh SQLite schema must match the complete canonical catalog: ' . $driftType);
+    }
+}
+
+fwrite(STDOUT, "PASS: dev/test self-healing creates the canonical 27 tables idempotently.\n");
+
+$existingPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
+$existingPdo->exec('CREATE TABLE webhooks_recebidos (id INTEGER PRIMARY KEY AUTOINCREMENT, evento_id VARCHAR(180) NOT NULL, origem VARCHAR(60) NOT NULL, payload_hash TEXT NOT NULL)');
+$existingPdo->exec("INSERT INTO webhooks_recebidos (evento_id, origem, payload_hash) VALUES ('evt-keep', 'unit', 'abc123')");
+schemaGarantirEstrutura($existingPdo, 'test');
+$preservedWebhook = $existingPdo->query("SELECT evento_id, estado FROM webhooks_recebidos WHERE evento_id = 'evt-keep'")->fetch(PDO::FETCH_ASSOC);
+if ($preservedWebhook === false || $preservedWebhook['evento_id'] !== 'evt-keep' || $preservedWebhook['estado'] !== 'recebido') {
+    throw new RuntimeException('Self-healing must add safe columns and preserve existing rows.');
+}
+$existingDrift = schemaInspecionar($existingPdo);
+if (!in_array('webhooks_recebidos.payload_hash', $existingDrift['mismatched_columns'] ?? [], true)) {
+    throw new RuntimeException('Schema inspection must report existing columns with types that differ from the canonical catalog.');
+}
+
+fwrite(STDOUT, "PASS: self-healing preserves existing records while adding safe columns.\n");
+
+require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
+$migrationFiles = glob(dirname(__DIR__, 2) . '/database/migrations/[0-9][0-9][0-9][0-9]_*.php') ?: [];
+foreach ($migrationFiles as $migrationFile) {
+    $migrationSource = file_get_contents($migrationFile);
+    if ($migrationSource === false || preg_match('/\b(?:DROP\s+(?:TABLE|COLUMN)|RENAME\s+(?:TABLE|COLUMN))\b/i', $migrationSource)) {
+        throw new RuntimeException('Versioned migrations must not drop or rename database structures.');
+    }
+}
+$migrationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
+$firstMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
+$secondMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
+$migrationDrift = schemaInspecionar($migrationPdo);
+if ($firstMigrationRun !== ['0001_mvp_schema'] || $secondMigrationRun !== $firstMigrationRun
+    || array_filter($migrationDrift) !== []) {
+    throw new RuntimeException('Versioned migrations must apply explicitly, be repeatable, and produce the canonical SQLite schema: ' . json_encode([$firstMigrationRun, $secondMigrationRun, $migrationDrift]));
+}
+
+fwrite(STDOUT, "PASS: explicit versioned migrations are repeatable and leave no schema drift.\n");
+
+$productionPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
+$productionDrift = schemaGarantirEstrutura($productionPdo, 'production');
+$productionTables = $productionPdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_COLUMN);
+
+if ($productionTables !== [] || count($productionDrift['missing_tables'] ?? []) !== 27) {
+    throw new RuntimeException('Production drift checks must report missing tables without executing DDL.');
+}
+
+fwrite(STDOUT, "PASS: production drift checks do not execute DDL.\n");
+
+$previousAppEnvironment = getenv('APP_ENV');
+putenv('APP_ENV=production');
+try {
+    $defaultEnvironmentPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
+    schemaGarantirEstrutura($defaultEnvironmentPdo);
+    $defaultEnvironmentTables = $defaultEnvironmentPdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_COLUMN);
+} finally {
+    $previousAppEnvironment === false ? putenv('APP_ENV') : putenv('APP_ENV=' . $previousAppEnvironment);
+}
+if ($defaultEnvironmentTables !== []) {
+    throw new RuntimeException('The default runtime environment must inspect schema without executing DDL.');
+}
+
+fwrite(STDOUT, "PASS: schema inspection defaults safely to production behavior.\n");
+
 return 'pass';
