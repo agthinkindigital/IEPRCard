@@ -34,7 +34,7 @@
 * **Descrição:** Identificar pelo `$_SERVER['HTTP_HOST']` se o acesso pertence ao Admin Principal, a um Cliente (via domínio próprio CNAME ou subdomínio de 1º nível) ou a um Subcliente (via subdomínio de 2º nível ou subdomínio do domínio do Cliente), carregando o branding e escopo de banco correspondente.
 * **Critério de Aceite:** Passar no `TDD-02` (cenários de resolução de host).
 
-* **ISSUE-018: Sessão administrativa, autenticação e CSRF** — slice E02.1 rastreada em [GitHub #12](https://github.com/agthinkindigital/IEPRCard/issues/12). Critérios executáveis e evidências ficam na Issue.
+* **ISSUE-018: Sessão administrativa, autenticação e CSRF** — E02.1 concluída em [GitHub #12](https://github.com/agthinkindigital/IEPRCard/issues/12); autenticação tenant E02.5 concluída em [GitHub #16](https://github.com/agthinkindigital/IEPRCard/issues/16). Critérios executáveis e evidências ficam nas Issues.
 
 
 * **ISSUE-005: Motor de Permissões em Cascata (Admin $\rightarrow$ Cliente $\rightarrow$ Subcliente)** — núcleo `pode()` e teto de plano concluídos na [GitHub #15](https://github.com/agthinkindigital/IEPRCard/issues/15), CI MySQL 8.4/MariaDB 10.11 aprovada; cotas permanecem na fatia E02 separada.
