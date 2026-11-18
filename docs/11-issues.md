@@ -6,7 +6,7 @@
 
 * **ISSUE-001: Camada de Conexão PDO Dual (SQLite + MySQL/MariaDB)**
 * **Arquivos:** `config/conn.php`, `.env.example`
-* **Descrição:** Criar a conexão PDO com suporte a `DB_DRIVER=sqlite` e `DB_DRIVER=mysql`, incluindo funções wrapper leves (`dbQuery`, `dbFetchOne`, `dbFetchAll`, `dbExecute`, `dbInsertId`, `dbEscape`) para manter a ergonomia simples do código legado.
+* **Descrição:** Criar a conexão PDO com suporte a `DB_DRIVER=sqlite` e `DB_DRIVER=mysql`, incluindo funções wrapper leves (`dbQuery`, `dbFetchOne`, `dbFetchAll`, `dbExecute`, `dbInsertId`, `dbAgora`) para manter a ergonomia do código consumidor. Valores externos devem usar prepared statements; não criar helper de escape para montar SQL.
 
 
 * **Critério de Aceite:** Alternar a variável `DB_DRIVER` conecta nos dois bancos sem alterar uma única linha nos arquivos consumidores.

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Proposta (bloqueante antes da ISSUE-001) |
+| Status | Aceita como baseline do MVP; implementação e TDD-01 pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + `/developer` + `/qa-analyst` |
 | Relacionados | [SAD §1.4 C1–C4, §4.6, §5.5](../architecture/SAD.md), ADR-0002, ADR-0010 |

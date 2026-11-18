@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Proposta (altera `docs/11` ISSUE-002 e `docs/02`) |
+| Status | Aceita como baseline do MVP; implementação e validação pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + `/developer` + `/qa-analyst` |
 | Relacionados | [SAD §1.4 C7, §7.2, §9 R1](../architecture/SAD.md), ADR-0002, ADR-0005 |
