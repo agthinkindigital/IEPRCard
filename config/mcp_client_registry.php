@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/motor_permissoes.php';
 require_once __DIR__ . '/mcp_client_registry_support.php';
+require_once __DIR__ . '/mcp_oauth_support.php';
 
 /** @return array{id:int,tenant_id:int,client_id:string,client_secret:string,expira_em:?string} */
 function mcpClientCreate(PDO $pdo, TenantContext $context, array $identity, int $tenantId, array $input): array
@@ -20,7 +21,7 @@ function mcpClientCreate(PDO $pdo, TenantContext $context, array $identity, int 
     $scopes = $input['escopos'] ?? null;
     $rateLimit = filter_var($input['limite_requisicoes_minuto'] ?? 60, FILTER_VALIDATE_INT);
     $expiresAt = mcpClientNormalizeExpiry($input['expira_em'] ?? null);
-    $allowedScopes = ['batch.dry_run', 'db.inspect', 'design.read', 'system.read', 'telemetry.read'];
+    $allowedScopes = mcpOauthSupportedScopes();
     if ($tenantId < 1 || $name === null || !is_array($scopes) || $scopes === []
         || $rateLimit === false || $rateLimit < 1 || $rateLimit > 600
         || ($input['expira_em'] ?? null) !== null && $expiresAt === null) {
