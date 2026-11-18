@@ -51,7 +51,7 @@ $connection = dbConnection();
 if ($connection->getAttribute(PDO::ATTR_DRIVER_NAME) !== 'mysql') {
     throw new RuntimeException('DB_DRIVER=mysql must select the MySQL PDO driver.');
 }
-if ($connection->getAttribute(PDO::ATTR_EMULATE_PREPARES) !== false) {
+if ((bool) $connection->getAttribute(PDO::ATTR_EMULATE_PREPARES)) {
     throw new RuntimeException('MySQL must use native PDO prepared statements.');
 }
 
