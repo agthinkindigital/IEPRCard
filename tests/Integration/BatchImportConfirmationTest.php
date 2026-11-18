@@ -195,6 +195,35 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $largePath,
             'large.csv'
         )['lote_id'];
+        $pdo->prepare('UPDATE tenants SET limite_titulares = 100 WHERE id = :tenant')
+            ->execute(['tenant' => $fixture['tenant_id']]);
+        $quotaRejected = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $largeLotId,
+                ['nome_completo' => 'nome_completo']
+            );
+        } catch (DomainException $exception) {
+            $quotaRejected = $exception->getMessage() === 'TITULAR_CREATE_QUOTA_EXCEEDED';
+        }
+        $holderCount->execute(['tenant' => $fixture['tenant_id']]);
+        $largeLotState = $pdo->prepare(
+            'SELECT status_lote, arquivo_original_url FROM lotes_importacao WHERE id = :id'
+        );
+        $largeLotState->execute(['id' => $largeLotId]);
+        $pendingLargeLot = $largeLotState->fetch(PDO::FETCH_ASSOC);
+        if (!$quotaRejected || (int) $holderCount->fetchColumn() !== 3 || !is_array($pendingLargeLot)
+            || $pendingLargeLot['status_lote'] !== 'aguardando_mapa'
+            || !is_string($pendingLargeLot['arquivo_original_url'])) {
+            throw new RuntimeException($driver . ': quota rejection must leave the entire staged import retryable.');
+        }
+        $pdo->prepare('UPDATE tenants SET limite_titulares = 600 WHERE id = :tenant')
+            ->execute(['tenant' => $fixture['tenant_id']]);
         $largeResult = batchImportConfirm(
             $pdo,
             $context,

@@ -565,11 +565,12 @@ erDiagram
 2. `TenantScope` constrói a cláusula obrigatória: para Cliente, `WHERE tenant_id = :tid`; para Subcliente, `WHERE tenant_id = :tid AND subcliente_id = :sid`; para Admin, escopo explícito por filtro de tela (nunca "sem WHERE" por padrão).
 3. Nenhum endpoint aceita `tenant_id`/`subcliente_id` do corpo/query para fins de autorização. IDs recebidos são apenas filtros dentro do escopo resolvido.
 4. **RLS nativo não é usado:** SQLite não tem RLS e MySQL 8 não oferece RLS equivalente ao PostgreSQL; a imposição é na camada de acesso a dados, com testes negativos (GATE 2). Trade-off: uma query escrita fora do TenantScope pode vazar — por isso o helper é obrigatório e revisado via lint/QA.
-5. Arquivos de importação ficam em storage privado fora de `public/`, sob chave opaca por tenant; validar `realpath()` e não seguir symlinks. O `IEPR_PRIVATE_STORAGE_PATH` aceita diretório absoluto do host e o padrão local é `var/private/`. Lotes não confirmados expiram após 24 h.
+5. Arquivos de importação ficam em storage privado fora de `public/`, sob chave opaca por tenant; validar `realpath()` e não seguir symlinks. O `IEPR_PRIVATE_STORAGE_PATH` aceita diretório absoluto do host e o padrão local é `var/private/`. Lotes não confirmados expiram após 24 h; arquivos de lotes terminais com remoção pendente são recolhidos pelo mesmo cleanup.
 
 ### 5.3. Consistência, concorrência e cotas
 
 - **Operação de débito linearizável:** `UPDATE tenants SET consumo_carteirinhas = consumo_carteirinhas + :n WHERE id = :tid AND consumo_carteirinhas + :n <= limite_carteirinhas`. `rowCount() === 1` confirma a reserva; caso contrário, `COTA_EXCEDIDA` antes de qualquer gravação. Funciona em SQLite e MySQL sem `FOR UPDATE`.
+- **Confirmação de importação:** o lote privado é reanalisado e até 500 titulares são validados e gravados com auditoria em uma transação sob o lock/cota da Sede. O mapeamento, contagem e estado `concluido` confirmam na mesma transação; o limite de 25 da API de cadastro em chunks permanece separado. A fonte privada é removida após o commit e o cleanup pode repetir a remoção.
 - **Pool compartilhado vs cota cravada:** `subcliente.limite_carteirinhas = NULL` consome do saldo da Sede; quando preenchido, a soma das cotas filhas é validada no backend (`Σ cota_filha ≤ teto_sede`).
 - **Idempotência de emissão:** índice único em `(titular_id, design_id, lote_id)` e em `codigo_validacao_qr`; reprocessamento do worker não duplica carteirinha nem QR.
 - **Transação):** reserva de cota + inserção do lote no mesmo `BEGIN/COMMIT`; confirmação final do consumo após o worker concluir. Falha do worker libera a reserva via TTL de reserva (tabela `reservas_cota` **[PROPOSTO]**).
