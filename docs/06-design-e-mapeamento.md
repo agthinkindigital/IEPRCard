@@ -45,6 +45,21 @@ Cada design armazenado em `designs_carteirinha` possui uma estrutura padronizada
 
 ```
 
+#### Validação do schema 1.0
+
+O objeto contém somente `versao_schema`, `dimensoes` e `elementos`. O JSON serializado pode ter até 256 KiB e até 100 elementos. `versao_schema` deve ser `1.0`; `dimensoes` é CR80 (`largura_px: 1011`, `altura_px: 638`, `dpi: 300`, `padrao: CR80`). O canvas usa origem no canto superior esquerdo. `elementos` pode estar vazio durante a criação de um rascunho. Quando há elementos, seus IDs são únicos e seguem `[A-Za-z][A-Za-z0-9_-]{0,63}`; `lado` é `frente` ou `verso`, e coordenadas e medidas são números finitos. `x` e `y` não podem ser negativos; largura e altura, quando aplicáveis, devem ser positivas e o elemento deve caber no canvas.
+
+| `tipo` | Campos obrigatórios além de `id`, `lado` e `tipo` | Regras específicas |
+| --- | --- | --- |
+| `texto_dinamico` | `chave_variavel`, `x`, `y`, `largura_max`, `fonte_arquivo`, `tamanho_pt`, `cor_hex`, `alinhamento` | `largura_max` cabe a partir de `x`; tamanho é positivo; `fonte_arquivo` é um nome-base `.ttf` ou `.otf` (o renderizador o resolve na coleção interna); cor é `#RRGGBB`; alinhamento é `left`, `center` ou `right`. Opcionais: `rotulo_amigavel` (texto não vazio), `obrigatorio` (booleano), `transformacao` (`uppercase`, `lowercase`, `capitalize` ou `none`) e `auto_reduzir_fonte_se_longo` (booleano). |
+| `foto_titular` | `chave_variavel`, `x`, `y`, `largura`, `altura` | A chave é `foto`; retângulo cabe no canvas. Opcionais: `borda_raio` e `borda_espessura` (números finitos não negativos), `borda_cor` (`#RRGGBB`) e `placeholder_padrao` (`assets/img/` seguido por nome-base `.png`, `.jpg`, `.jpeg` ou `.webp`). |
+| `qrcode_validacao` | `chave_variavel`, `x`, `y`, `tamanho` | A chave é `_sistema_url_validacao`; o quadrado cabe no canvas. `margem_quiet_zone` é opcional e não pode ser negativa. |
+| `codigo_barras` | `chave_variavel`, `formato`, `x`, `y`, `largura`, `altura` | Formato é `CODE128` ou `EAN13`; retângulo cabe no canvas. |
+
+`chave_variavel` não inclui as chaves `{{ }}`. Aceita identificadores iniciados por letra ou `_`, seguidos por letras, números, `_`, `.` ou `-`, para preservar campos hierárquicos e colunas de origem do mapeamento. Variáveis reservadas do sistema são definidas neste documento. Tipos de elemento ou versões não listados são rejeitados; extensões exigem nova versão do schema.
+
+Propriedades não listadas na tabela ou nos campos obrigatórios de cada tipo são rejeitadas. Isso evita que dados ignorados aparentem ter sido aplicados e mantém mudanças do formato sob controle de versão.
+
 ### 5.2. Resolução do Mapeamento Duplo (Requisito 17.1)
 
 O módulo `includes/motor_mapeamento.php` opera em dois modos selecionáveis:
