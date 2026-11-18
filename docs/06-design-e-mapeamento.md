@@ -62,10 +62,29 @@ Propriedades não listadas na tabela ou nos campos obrigatórios de cada tipo s�
 
 ### 5.2. Resolução do Mapeamento Duplo (Requisito 17.1)
 
-O módulo `includes/motor_mapeamento.php` opera em dois modos selecionáveis:
+O núcleo puro `config/design_mapping.php` resolve os valores de um registro contra as variáveis presentes no design; ele não consulta banco, filesystem, tenant ou interpreta código. Os dois modos abaixo usam a mesma configuração versionada (`versao_schema: "1.0"`, objeto `mapeamentos` indexado por `chave_variavel`):
 
-* **Modo A — Mapeamento Fixo por Layout (`mapeamento_fixo_json`):** O Cliente salva no próprio layout a correspondência padrão (ex: `{"nome_completo": "nome", "documento_cpf": "cpf", "cargo": "dados_extras.cargo"}`). Ao selecionar 1 ou $N$ titulares já presentes no banco e clicar em **"Gerar Rápido"**, o sistema pula a tela de configuração e emite imediatamente.
-* **Modo B — Mapeamento como Etapa da Geração (`mapa_de_para_usado_json`):** Ao importar um arquivo externo (CSV/XLSX/JSON) ou selecionar um lote de titulares para um layout específico, o passo 2 do *wizard* exibe os campos `chave_variavel` do design e permite vincular qualquer coluna do arquivo/banco, combinar colunas via template (ex: `{{Curso}} - {{Semestre}}º Sem`) ou definir um valor fixo para todo o lote (ex: `Validade: 12/2027`).
+* **Modo A — Mapeamento Fixo por Layout (`mapeamento_fixo_json`):** o cliente salva no layout os campos padrão. Usa o tipo `campo` para ligar a variável a um campo do titular, como `nome_completo → nome` ou `cargo → dados_extras.cargo`. Ao selecionar titulares já presentes no banco, a emissão poderá reutilizar esse mapeamento sem uma etapa interativa.
+* **Modo B — Mapeamento como Etapa da Geração (`mapa_de_para_usado_json`):** para um lote ou importação, o operador escolhe o campo de origem, combina campos em um template ou informa um valor fixo para todo o lote.
+
+O formato executável é:
+
+```json
+{
+  "versao_schema": "1.0",
+  "mapeamentos": {
+    "nome_completo": {"tipo": "campo", "origem": "titular.nome"},
+    "curso_semestre": {"tipo": "template", "partes": [{"campo": "Curso"}, " - ", {"campo": "Semestre"}, "º Sem"]},
+    "validade": {"tipo": "valor", "valor": "Validade: 12/2027"}
+  }
+}
+```
+
+`campo` aceita caminhos de objeto separados por ponto (até 16 segmentos); segmentos são identificadores, não índices, expressões ou código. `template` aceita uma lista ordenada de strings literais e objetos `{"campo": "caminho"}`; `valor` é texto literal. O Modo A usa `campo`; o Modo B pode usar os três tipos. Os limites são 256 KiB por configuração, 100 partes por template e 8 KiB por valor resolvido. Apenas strings, números finitos e booleanos vindos do registro são convertidos em texto; arrays, objetos e `null` não são valores imprimíveis.
+
+O motor considera somente variáveis declaradas em `elementos`. Uma variável de texto com `obrigatorio: true` precisa de mapeamento e valor não vazio; ausências geram erro estruturado com código e caminho, sem incluir dados de titulares. Variáveis opcionais sem mapeamento ou valor resolvem para string vazia. `_sistema_url_validacao` nunca aceita origem configurada pelo cliente ou lote: seu valor entra separadamente pelo contexto de sistema. Em qualquer erro, nenhum mapa parcial de valores é retornado.
+
+Esta etapa entrega apenas resolução pura; persistência da configuração, wizard, consulta de titulares e renderização pertencem às fatias seguintes.
 
 
 ## Telas do MVP
