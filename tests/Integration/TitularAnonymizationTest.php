@@ -97,6 +97,78 @@ try {
             throw new RuntimeException($driver . ': completed deletion requests must remain idempotent after their encrypted reference is erased.');
         }
 
+        if ($driver === 'MySQL/MariaDB') {
+            $concurrentInsert = $pdo->prepare(
+                'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) '
+                . 'VALUES (:tenant, :name, :cpf, 1, :created)'
+            );
+            $concurrentInsert->execute([
+                'tenant' => $fixture['tenant_id'],
+                'name' => 'Concurrent Holder ' . $suffix,
+                'cpf' => '11144477735',
+                'created' => gmdate('Y-m-d H:i:s'),
+            ]);
+            $concurrentTitularId = (int) $pdo->lastInsertId();
+            $concurrentRequestId = bin2hex(random_bytes(20));
+            titularAnonymizationRequest($pdo, $fixture['tenant_id'], $concurrentTitularId, $concurrentRequestId, $now);
+            $concurrentQueue = $pdo->prepare('SELECT id FROM solicitacoes_anonimizacao WHERE solicitacao_id = :id');
+            $concurrentQueue->execute(['id' => $concurrentRequestId]);
+            $concurrentQueueId = (int) $concurrentQueue->fetchColumn();
+            $startFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-anonymization-race-' . $suffix;
+            $processes = [];
+            try {
+                foreach ([1, 2] as $_) {
+                    $pipes = [];
+                    $process = proc_open(
+                        [PHP_BINARY, __DIR__ . '/TitularAnonymizationRaceWorker.php', $startFile, (string) $concurrentQueueId, (string) $now],
+                        [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']],
+                        $pipes
+                    );
+                    if (!is_resource($process)) {
+                        throw new RuntimeException('Anonymization race worker could not start.');
+                    }
+                    fclose($pipes[0]);
+                    $processes[] = ['process' => $process, 'stdout' => $pipes[1], 'stderr' => $pipes[2]];
+                }
+                file_put_contents($startFile, 'start');
+                $results = [];
+                foreach ($processes as $entry) {
+                    $stdout = trim(stream_get_contents($entry['stdout']));
+                    $stderr = trim(stream_get_contents($entry['stderr']));
+                    fclose($entry['stdout']);
+                    fclose($entry['stderr']);
+                    $exit = proc_close($entry['process']);
+                    if ($exit !== 0 || $stderr !== '') {
+                        throw new RuntimeException('Anonymization race worker failed.');
+                    }
+                    $results[] = $stdout;
+                }
+                $concurrentState = $pdo->prepare(
+                    'SELECT estado, tentativas, referencia_titular_cifrada FROM solicitacoes_anonimizacao WHERE id = :id'
+                );
+                $concurrentState->execute(['id' => $concurrentQueueId]);
+                $raceRow = $concurrentState->fetch(PDO::FETCH_ASSOC);
+                if ($results !== ['OK', 'OK'] || !is_array($raceRow) || $raceRow['estado'] !== 'concluida'
+                    || (int) $raceRow['tentativas'] !== 1 || $raceRow['referencia_titular_cifrada'] !== '') {
+                    throw new RuntimeException('Concurrent anonymization must apply exactly once and clear its reference.');
+                }
+            } finally {
+                foreach ($processes as $entry) {
+                    if (is_resource($entry['process'])) {
+                        proc_terminate($entry['process']);
+                        fclose($entry['stdout']);
+                        fclose($entry['stderr']);
+                        proc_close($entry['process']);
+                    }
+                }
+                if (is_file($startFile)) {
+                    unlink($startFile);
+                }
+                $pdo->prepare('DELETE FROM solicitacoes_anonimizacao WHERE id = :id')->execute(['id' => $concurrentQueueId]);
+                $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $concurrentTitularId]);
+            }
+        }
+
         $retentionInsert = $pdo->prepare(
             'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) '
             . 'VALUES (:tenant, :name, :cpf, 1, :created)'
