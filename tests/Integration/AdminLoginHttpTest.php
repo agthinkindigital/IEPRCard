@@ -24,14 +24,6 @@ putenv('IEPRCARD_ADMIN_RATE_LIMIT_PATH=' . $rateLimitPath);
 
 $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
 schemaGarantirEstrutura($pdo, 'test');
-$insert = $pdo->prepare('INSERT INTO usuarios (papel_sistema, nome, email, senha_hash, ativo) VALUES (:role, :name, :email, :password_hash, 1)');
-$insert->execute([
-    'role' => 'superadmin',
-    'name' => 'Administrador HTTP',
-    'email' => 'http-admin@example.test',
-    'password_hash' => password_hash('http-test-password', PASSWORD_DEFAULT),
-]);
-unset($insert);
 unset($pdo);
 
 $portProbe = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
@@ -75,19 +67,106 @@ try {
         }
         usleep(100_000);
     }
-    if ($status !== 200 || !is_string($page)) {
-        throw new RuntimeException('Admin login page must respond with HTTP 200.');
+    $location = adminHttpHeaderValue($headers, 'Location');
+    if ($status !== 303 || !is_string($location)
+        || preg_match('~^/admin/login\.php\?token=([a-f0-9]{64})$~D', $location, $setupTokenMatch) !== 1) {
+        throw new RuntimeException('An empty installation must redirect to a session-bound setup URL with a random token.');
+    }
+    if (adminHttpHeaderValue($headers, 'Cache-Control') === null
+        || adminHttpHeaderValue($headers, 'Referrer-Policy') !== 'no-referrer'
+        || adminHttpHeaderValue($headers, 'X-Robots-Tag') !== 'noindex, nofollow') {
+        throw new RuntimeException('Initial setup responses must disable caching, referrers, and indexing.');
+    }
+    $cookie = adminHttpCookie($headers);
+    if ($cookie === null || !str_contains(implode("\n", $headers), 'HttpOnly') || !str_contains(implode("\n", $headers), 'SameSite=Lax')) {
+        throw new RuntimeException('Initial setup must use a protected session cookie.');
+    }
+    $setupUrl = $baseUrl . $location;
+    [$foreignSessionStatus, , $foreignSessionHeaders] = adminHttpRequest($setupUrl);
+    $foreignLocation = adminHttpHeaderValue($foreignSessionHeaders, 'Location');
+    if ($foreignSessionStatus !== 303 || !is_string($foreignLocation)
+        || $foreignLocation === $location
+        || !preg_match('~^/admin/login\.php\?token=[a-f0-9]{64}$~D', $foreignLocation)) {
+        throw new RuntimeException('A setup token from another session must be rejected and replaced with that session’s token.');
+    }
+    [$status, $page, $setupHeaders] = adminHttpRequest($setupUrl, 'GET', null, $cookie);
+    if ($status !== 200 || !is_string($page) || !str_contains($page, 'Configurar administrador')
+        || !preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', $page, $tokenMatch)) {
+        throw new RuntimeException('A valid setup token in its session must show the initial administrator form.');
     }
     [$tenantHostStatus, $tenantHostBody] = adminHttpRequest($baseUrl . '/admin/login.php', 'GET', null, null, 'customer.example.test');
     if ($tenantHostStatus !== 404 || str_contains((string) $tenantHostBody, 'Entrar na administração')) {
         throw new RuntimeException('Administrative login must not be exposed through a tenant or unknown Host.');
     }
+
+    $setupForm = http_build_query([
+        'setup_token' => $setupTokenMatch[1],
+        'csrf_token' => substr($tokenMatch[1], 1),
+        'name' => 'Administrador HTTP',
+        'email' => 'http-admin@example.test',
+        'password' => 'http-test-password-123',
+        'password_confirm' => 'http-test-password-123',
+    ]);
+    [$status] = adminHttpRequest($setupUrl, 'POST', $setupForm, $cookie);
+    if ($status !== 403) {
+        throw new RuntimeException('Initial setup must reject a request without the session-bound CSRF token.');
+    }
+
+    $setupForm = http_build_query([
+        'setup_token' => $setupTokenMatch[1],
+        'csrf_token' => $tokenMatch[1],
+        'name' => 'Administrador HTTP',
+        'email' => 'http-admin@example.test',
+        'password' => 'éééééé',
+        'password_confirm' => 'éééééé',
+    ]);
+    [$status] = adminHttpRequest($setupUrl, 'POST', $setupForm, $cookie);
+    if ($status !== 422) {
+        throw new RuntimeException('A password shorter than 12 Unicode characters must be rejected even if it has 12 bytes.');
+    }
+
+    $setupForm = http_build_query([
+        'setup_token' => $setupTokenMatch[1],
+        'csrf_token' => $tokenMatch[1],
+        'name' => 'Administrador HTTP',
+        'email' => 'http-admin@example.test',
+        'password' => 'http-test-password-123',
+        'password_confirm' => 'different-password-123',
+    ]);
+    [$status] = adminHttpRequest($setupUrl, 'POST', $setupForm, $cookie);
+    if ($status !== 422) {
+        throw new RuntimeException('Mismatched initial passwords must be rejected without creating an account.');
+    }
+    $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
+    if ((int) $pdo->query('SELECT COUNT(*) FROM usuarios')->fetchColumn() !== 0) {
+        throw new RuntimeException('Rejected initial setup submissions must not create an account.');
+    }
+    unset($pdo);
+
+    $setupForm = http_build_query([
+        'setup_token' => $setupTokenMatch[1],
+        'csrf_token' => $tokenMatch[1],
+        'name' => 'Administrador HTTP',
+        'email' => 'http-admin@example.test',
+        'password' => 'http-test-password-123',
+        'password_confirm' => 'http-test-password-123',
+    ]);
+    [$status, , $setupSuccessHeaders] = adminHttpRequest($setupUrl, 'POST', $setupForm, $cookie);
+    $cookie = adminHttpCookie($setupSuccessHeaders) ?? $cookie;
+    if ($status !== 303 || adminHttpHeaderValue($setupSuccessHeaders, 'Location') !== '/admin/login.php') {
+        throw new RuntimeException('Successful initial setup must consume the token and redirect to the clean login URL.');
+    }
+    [$status] = adminHttpRequest($setupUrl, 'GET', null, $cookie);
+    if ($status !== 303) {
+        throw new RuntimeException('A consumed setup URL must no longer display the initial setup form.');
+    }
+    [$status, $page, $headers] = adminHttpRequest($baseUrl . '/admin/login.php', 'GET', null, $cookie);
+    if ($status !== 200 || !is_string($page) || str_contains($page, 'Configurar administrador')
+        || !str_contains($page, 'Entrar na administração')) {
+        throw new RuntimeException('A populated installation must show only the regular administrator login.');
+    }
     if (!preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', $page, $tokenMatch)) {
         throw new RuntimeException('Admin login page must include a session-bound CSRF token.');
-    }
-    $cookie = adminHttpCookie($headers);
-    if ($cookie === null || !str_contains(implode("\n", $headers), 'HttpOnly') || !str_contains(implode("\n", $headers), 'SameSite=Lax')) {
-        throw new RuntimeException('Admin login session cookie must be HttpOnly and SameSite=Lax.');
     }
 
     $form = http_build_query(['email' => 'http-admin@example.test', 'password' => 'wrong-password', 'csrf_token' => substr($tokenMatch[1], 1)]);
@@ -103,7 +182,7 @@ try {
         throw new RuntimeException('Invalid login must return a generic denial without echoing the submitted email.');
     }
 
-    $form = http_build_query(['email' => 'http-admin@example.test', 'password' => 'http-test-password', 'csrf_token' => $tokenMatch[1]]);
+    $form = http_build_query(['email' => 'http-admin@example.test', 'password' => 'http-test-password-123', 'csrf_token' => $tokenMatch[1]]);
     [$status, , $successHeaders] = adminHttpRequest($baseUrl . '/admin/login.php', 'POST', $form, $cookie);
     $newCookie = adminHttpCookie($successHeaders);
     if ($status !== 303 || $newCookie === null || $newCookie === $cookie
@@ -209,5 +288,17 @@ function adminHttpCookie(array $headers): ?string
             return $match[1];
         }
     }
+    return null;
+}
+
+/** @param list<string> $headers */
+function adminHttpHeaderValue(array $headers, string $name): ?string
+{
+    foreach ($headers as $header) {
+        if (stripos($header, $name . ':') === 0) {
+            return trim(substr($header, strlen($name) + 1));
+        }
+    }
+
     return null;
 }

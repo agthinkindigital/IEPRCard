@@ -17,8 +17,9 @@ function adminAuthProvisionInitialSuperadmin(
     if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) {
         throw new InvalidArgumentException('E-mail inválido.');
     }
-    if (strlen($password) < 12 || strlen($password) > 1024) {
-        throw new InvalidArgumentException('A senha deve ter entre 12 e 1024 bytes.');
+    $passwordLength = preg_match_all('/./us', $password);
+    if ($passwordLength === false || $passwordLength < 12 || strlen($password) > 1024) {
+        throw new InvalidArgumentException('A senha deve ter pelo menos 12 caracteres e no máximo 1024 bytes.');
     }
 
     $lockPath ??= dirname(__DIR__) . '/var/admin-bootstrap.lock';
@@ -37,17 +38,8 @@ function adminAuthProvisionInitialSuperadmin(
             throw new RuntimeException('Não foi possível bloquear o provisionamento.');
         }
         $pdo->beginTransaction();
-        $existingAdmin = $pdo->query(
-            "SELECT id FROM usuarios WHERE tenant_id IS NULL AND papel_sistema = 'superadmin' LIMIT 1"
-        )->fetchColumn();
-        if ($existingAdmin !== false) {
-            throw new RuntimeException('Já existe um Administrador SaaS global.');
-        }
-
-        $emailCheck = $pdo->prepare('SELECT id FROM usuarios WHERE tenant_id IS NULL AND email = :email LIMIT 1');
-        $emailCheck->execute(['email' => $email]);
-        if ($emailCheck->fetchColumn() !== false) {
-            throw new RuntimeException('O e-mail já está associado a uma conta global.');
+        if (adminBootstrapHasUsers($pdo)) {
+            throw new RuntimeException('A configuração inicial só é permitida quando ainda não há usuários.');
         }
 
         $insert = $pdo->prepare(
@@ -74,4 +66,9 @@ function adminAuthProvisionInitialSuperadmin(
         flock($lock, LOCK_UN);
         fclose($lock);
     }
+}
+
+function adminBootstrapHasUsers(PDO $pdo): bool
+{
+    return $pdo->query('SELECT 1 FROM usuarios LIMIT 1')->fetchColumn() !== false;
 }
