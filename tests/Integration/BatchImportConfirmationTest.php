@@ -24,6 +24,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $fixture = null;
     $planId = null;
     $ownerId = null;
+    $adminId = null;
     $lotId = null;
     $rollbackLotId = null;
     $largeLotId = null;
@@ -37,6 +38,23 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $ownerId = $testTenant['owner_id'];
         $context = $testTenant['context'];
         $identity = $testTenant['identity'];
+        $pdo->prepare(
+            'INSERT INTO usuarios (tenant_id, subcliente_id, papel_sistema, nome, email, senha_hash, ativo) '
+            . 'VALUES (NULL, NULL, :role, :name, :email, :password, 1)'
+        )->execute([
+            'role' => 'superadmin',
+            'name' => 'Import test admin',
+            'email' => 'import-admin-' . $suffix . '@example.test',
+            'password' => password_hash('unused', PASSWORD_DEFAULT),
+        ]);
+        $adminId = (int) $pdo->lastInsertId();
+        $adminContext = new TenantContext('admin', null, null, []);
+        $adminIdentity = [
+            'id' => $adminId,
+            'tenant_id' => null,
+            'subcliente_id' => null,
+            'papel_sistema' => 'superadmin',
+        ];
         $sourcePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'source.csv';
         file_put_contents($sourcePath, "nome;celular\nAda Lovelace;+5511999999999\n");
         $staged = batchImportStageFile(
@@ -126,6 +144,19 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         } catch (DomainException $exception) {
             $foreignLotRejected = $exception->getMessage() === 'IMPORT_LOT_NOT_FOUND';
         }
+        $unitMismatchRejected = false;
+        try {
+            batchImportLotTitularIds(
+                $pdo,
+                $adminContext,
+                $adminIdentity,
+                $fixture['tenant_id'],
+                $fixture['subcliente_id'],
+                $lotId
+            );
+        } catch (DomainException $exception) {
+            $unitMismatchRejected = $exception->getMessage() === 'IMPORT_LOT_NOT_FOUND';
+        }
         $lot = $pdo->prepare(
             'SELECT mapa_de_para_usado_json, total_registros, processados_sucesso, status_lote, arquivo_original_url '
             . 'FROM lotes_importacao WHERE id = :id'
@@ -137,7 +168,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             || !is_array($record) || $record['nome_completo'] !== 'Ada Lovelace'
             || $record['whatsapp'] !== '+5511999999999'
             || (int) $record['lote_origem_id'] !== $lotId
-            || $memberIds !== [(int) $record['id']] || !$foreignLotRejected
+            || $memberIds !== [(int) $record['id']] || !$foreignLotRejected || !$unitMismatchRejected
             || !is_array($lotRecord) || json_decode((string) $lotRecord['mapa_de_para_usado_json'], true)
                 !== ['nome_completo' => 'nome_completo', 'whatsapp' => 'whatsapp']
             || (int) $lotRecord['total_registros'] !== 1 || (int) $lotRecord['processados_sucesso'] !== 1
@@ -317,6 +348,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo->prepare('DELETE FROM auditoria_processos WHERE tenant_id = :tenant')->execute(['tenant' => $fixture['tenant_id']]);
             if ($ownerId !== null) {
                 $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $ownerId]);
+            }
+            if ($adminId !== null) {
+                $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $adminId]);
             }
             tenantTestCleanup($pdo, $fixture);
         }
