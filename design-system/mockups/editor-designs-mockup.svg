@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1060" viewBox="0 0 1680 1060" role="img" aria-labelledby="title description">
+  <title id="title">Editor de designs de carteirinha do IEPRCard</title>
+  <desc id="description">Mockup responsivo do editor de layouts, com lista de campos, tela de arte em frente e verso, propriedades acessíveis por teclado e barra de salvamento fixa no celular.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0F172A" flood-opacity="0.08"/>
+    </filter>
+    <linearGradient id="cardBackground" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EAF2FF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+    <linearGradient id="mobileCard" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EAF2FF"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1680" height="1060" fill="#E9EEF5"/>
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <text x="40" y="42" font-size="14" font-weight="700" fill="#475569">DESKTOP · 1440 PX</text>
+    <text x="1230" y="42" font-size="14" font-weight="700" fill="#475569">CELULAR · 390 PX</text>
+
+    <!-- Desktop application frame -->
+    <g filter="url(#shadow)">
+      <rect x="30" y="64" width="1170" height="960" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/>
+    </g>
+    <rect x="30" y="64" width="1170" height="68" rx="14" fill="#FFFFFF"/>
+    <path d="M30 132h1170" stroke="#DCE3EC"/>
+    <rect x="54" y="82" width="34" height="34" rx="8" fill="#1D4ED8"/>
+    <path d="M63 91h16v16H63zM67 87h8v4h-8z" fill="#FFFFFF"/>
+    <text x="98" y="105" font-size="18" font-weight="700" fill="#0F172A">IEPRCard</text>
+    <text x="240" y="91" font-size="12" fill="#64748B">Designs</text>
+    <text x="285" y="91" font-size="12" fill="#64748B">/</text>
+    <text x="300" y="91" font-size="12" fill="#0F172A">Carteirinha de membro</text>
+    <text x="240" y="114" font-size="16" font-weight="700" fill="#0F172A">Editor de design</text>
+    <circle cx="820" cy="98" r="5" fill="#166534"/>
+    <text x="834" y="103" font-size="12" fill="#475569">Rascunho salvo às 14:32</text>
+    <rect x="965" y="78" width="94" height="38" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1012" y="102" text-anchor="middle" font-size="12" font-weight="600" fill="#0F172A">Pré-visualizar</text>
+    <rect x="1068" y="78" width="108" height="38" rx="7" fill="#1D4ED8"/>
+    <text x="1122" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">Salvar design</text>
+
+    <!-- Desktop navigation -->
+    <rect x="30" y="132" width="180" height="892" fill="#FFFFFF"/>
+    <path d="M210 132v892" stroke="#DCE3EC"/>
+    <text x="54" y="170" font-size="11" font-weight="700" letter-spacing="1" fill="#64748B">ÁREA DA SEDE</text>
+    <rect x="44" y="190" width="152" height="40" rx="7" fill="#EFF6FF"/>
+    <rect x="54" y="201" width="17" height="17" rx="3" fill="none" stroke="#1D4ED8" stroke-width="2"/>
+    <text x="81" y="216" font-size="13" font-weight="600" fill="#1D4ED8">Designs</text>
+    <text x="81" y="260" font-size="13" fill="#475569">Titulares</text>
+    <text x="81" y="302" font-size="13" fill="#475569">Lotes</text>
+    <text x="81" y="344" font-size="13" fill="#475569">Carteirinhas</text>
+    <path d="M54 376h132" stroke="#DCE3EC"/>
+    <text x="54" y="408" font-size="11" font-weight="700" letter-spacing="1" fill="#64748B">CONTA</text>
+    <text x="81" y="446" font-size="13" fill="#475569">Configurações</text>
+    <circle cx="67" cy="986" r="16" fill="#DBEAFE"/>
+    <text x="67" y="990" text-anchor="middle" font-size="10" font-weight="700" fill="#1D4ED8">SE</text>
+    <text x="92" y="984" font-size="11" font-weight="600" fill="#0F172A">Sede Exemplo</text>
+    <text x="92" y="1000" font-size="10" fill="#64748B">Operador de designs</text>
+
+    <!-- Field list -->
+    <rect x="210" y="132" width="220" height="892" fill="#FFFFFF"/>
+    <path d="M430 132v892" stroke="#DCE3EC"/>
+    <text x="230" y="169" font-size="14" font-weight="700" fill="#0F172A">Elementos</text>
+    <rect x="230" y="184" width="180" height="36" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="320" y="207" text-anchor="middle" font-size="12" font-weight="600" fill="#1D4ED8">+ Adicionar elemento</text>
+    <text x="230" y="246" font-size="11" font-weight="700" letter-spacing=".7" fill="#64748B">FRENTE · 4 ELEMENTOS</text>
+    <rect x="224" y="259" width="192" height="50" rx="7" fill="#EFF6FF" stroke="#93C5FD"/>
+    <rect x="238" y="275" width="18" height="18" rx="4" fill="#DBEAFE"/>
+    <text x="267" y="280" font-size="12" font-weight="600" fill="#0F172A">Nome do titular</text>
+    <text x="267" y="296" font-size="10" fill="#475569">{{titular.nome_completo}}</text>
+    <rect x="238" y="321" width="18" height="18" rx="4" fill="#F1F5F9"/>
+    <text x="267" y="329" font-size="12" fill="#334155">Foto do titular</text>
+    <text x="267" y="345" font-size="10" fill="#64748B">{{titular.foto}}</text>
+    <rect x="238" y="365" width="18" height="18" rx="4" fill="#F1F5F9"/>
+    <text x="267" y="373" font-size="12" fill="#334155">Categoria</text>
+    <text x="267" y="389" font-size="10" fill="#64748B">{{titular.categoria}}</text>
+    <rect x="238" y="409" width="18" height="18" rx="4" fill="#F1F5F9"/>
+    <text x="267" y="417" font-size="12" fill="#334155">Nome da unidade</text>
+    <text x="267" y="433" font-size="10" fill="#64748B">{{unidade.nome}}</text>
+    <path d="M230 456h180" stroke="#DCE3EC"/>
+    <text x="230" y="483" font-size="11" font-weight="700" letter-spacing=".7" fill="#64748B">VERSO · 1 ELEMENTO</text>
+    <rect x="238" y="500" width="18" height="18" rx="4" fill="#F1F5F9"/>
+    <text x="267" y="508" font-size="12" fill="#334155">QR de validação</text>
+    <text x="267" y="524" font-size="10" fill="#64748B">{{_sistema_url_validacao}}</text>
+    <rect x="230" y="564" width="180" height="100" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <text x="246" y="587" font-size="11" font-weight="700" fill="#0F172A">Dica de edição</text>
+    <text x="246" y="608" font-size="10" fill="#475569">Selecione um elemento</text>
+    <text x="246" y="623" font-size="10" fill="#475569">para ajustar posição e estilo.</text>
+    <text x="246" y="646" font-size="10" fill="#1D4ED8">Os dados de exemplo são fictícios.</text>
+
+    <!-- Canvas area -->
+    <rect x="430" y="132" width="470" height="892" fill="#F6F8FB"/>
+    <text x="452" y="169" font-size="14" font-weight="700" fill="#0F172A">Prévia do cartão</text>
+    <rect x="755" y="149" width="122" height="32" rx="6" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="816" y="170" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">Zoom 75%　⌄</text>
+    <rect x="452" y="191" width="424" height="40" rx="7" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <rect x="457" y="196" width="82" height="30" rx="5" fill="#1D4ED8"/>
+    <text x="498" y="216" text-anchor="middle" font-size="11" font-weight="700" fill="#FFFFFF">Frente</text>
+    <text x="582" y="216" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">Verso</text>
+    <path d="M548 198v26" stroke="#DCE3EC"/>
+    <text x="850" y="216" text-anchor="end" font-size="10" fill="#64748B">CR80 · 1011 × 638 px</text>
+    <g filter="url(#shadow)">
+      <rect x="452" y="292" width="424" height="267" rx="15" fill="url(#cardBackground)" stroke="#CBD5E1"/>
+    </g>
+    <circle cx="490" cy="333" r="20" fill="#1D4ED8"/>
+    <text x="490" y="337" text-anchor="middle" font-size="8" font-weight="700" fill="#FFFFFF">IEPR</text>
+    <text x="520" y="329" font-size="11" font-weight="700" fill="#1E3A8A">INSTITUTO EXEMPLO</text>
+    <text x="520" y="344" font-size="9" fill="#475569">CREDENCIAL DE MEMBRO</text>
+    <rect x="475" y="373" width="82" height="112" rx="7" fill="#DBEAFE" stroke="#94A3B8"/>
+    <circle cx="516" cy="412" r="18" fill="#BFDBFE"/>
+    <path d="M488 474c3-23 15-34 28-34s25 11 28 34" fill="#BFDBFE"/>
+    <rect x="570" y="375" width="278" height="42" rx="5" fill="#FFFFFF" fill-opacity=".82" stroke="#2563EB" stroke-width="2" stroke-dasharray="6 4"/>
+    <circle cx="570" cy="396" r="5" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+    <circle cx="848" cy="396" r="5" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+    <text x="583" y="391" font-size="9" fill="#64748B">TITULAR</text>
+    <text x="583" y="407" font-size="15" font-weight="700" fill="#0F172A">MARIA EXEMPLO</text>
+    <text x="570" y="444" font-size="9" fill="#64748B">CATEGORIA</text>
+    <text x="570" y="461" font-size="12" font-weight="600" fill="#334155">Membro</text>
+    <text x="570" y="493" font-size="9" fill="#64748B">UNIDADE</text>
+    <text x="570" y="510" font-size="12" font-weight="600" fill="#334155">Unidade Central</text>
+    <text x="475" y="536" font-size="8" fill="#64748B">Prévia ilustrativa com dados fictícios</text>
+    <text x="452" y="591" font-size="11" fill="#475569">Arraste para mover ou selecione e ajuste pelos campos ao lado.</text>
+    <text x="452" y="613" font-size="10" fill="#64748B">Tab e setas do teclado também podem mover o elemento selecionado.</text>
+    <rect x="452" y="656" width="424" height="102" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="470" y="682" font-size="11" font-weight="700" fill="#0F172A">Fundo da frente</text>
+    <rect x="470" y="696" width="286" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="484" y="722" font-size="11" fill="#475569">Selecionar imagem de fundo</text>
+    <rect x="766" y="696" width="92" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="812" y="722" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">Remover</text>
+    <text x="470" y="780" font-size="10" fill="#64748B">Use imagens próprias; o preview não carrega dados reais de titulares.</text>
+
+    <!-- Property panel -->
+    <rect x="900" y="132" width="300" height="892" fill="#FFFFFF"/>
+    <path d="M900 132v892" stroke="#DCE3EC"/>
+    <text x="922" y="169" font-size="14" font-weight="700" fill="#0F172A">Propriedades</text>
+    <text x="922" y="198" font-size="11" font-weight="600" fill="#475569">Nome do elemento</text>
+    <rect x="922" y="207" width="256" height="36" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="934" y="230" font-size="11" fill="#0F172A">Nome do titular</text>
+    <text x="922" y="270" font-size="11" font-weight="600" fill="#475569">Campo ou variável</text>
+    <rect x="922" y="279" width="256" height="38" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="934" y="303" font-size="10" fill="#0F172A">{{titular.nome_completo}}</text>
+    <text x="922" y="342" font-size="11" font-weight="600" fill="#475569">Posição no cartão (px)</text>
+    <text x="922" y="363" font-size="10" fill="#64748B">X</text>
+    <rect x="922" y="371" width="116" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="934" y="393" font-size="11" fill="#0F172A">340</text>
+    <text x="1056" y="363" font-size="10" fill="#64748B">Y</text>
+    <rect x="1056" y="371" width="122" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1068" y="393" font-size="11" fill="#0F172A">180</text>
+    <text x="922" y="431" font-size="11" font-weight="600" fill="#475569">Largura máxima (px)</text>
+    <rect x="922" y="440" width="256" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="934" y="462" font-size="11" fill="#0F172A">620</text>
+    <text x="922" y="500" font-size="11" font-weight="600" fill="#475569">Aparência</text>
+    <text x="922" y="525" font-size="10" fill="#64748B">Fonte</text>
+    <rect x="922" y="533" width="154" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="934" y="555" font-size="11" fill="#0F172A">Inter Bold</text>
+    <text x="1088" y="525" font-size="10" fill="#64748B">Tamanho</text>
+    <rect x="1088" y="533" width="90" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1100" y="555" font-size="11" fill="#0F172A">24 pt</text>
+    <text x="922" y="593" font-size="10" fill="#64748B">Cor do texto</text>
+    <rect x="922" y="601" width="256" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <rect x="934" y="609" width="18" height="18" rx="4" fill="#0F172A"/>
+    <text x="962" y="623" font-size="11" fill="#0F172A">#0F172A</text>
+    <text x="922" y="661" font-size="11" font-weight="600" fill="#475569">Alinhamento</text>
+    <rect x="922" y="670" width="256" height="34" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1050" y="692" text-anchor="middle" font-size="11" fill="#334155">Esquerda　　Centro　　Direita</text>
+    <rect x="922" y="722" width="15" height="15" rx="3" fill="#FFFFFF" stroke="#64748B"/>
+    <path d="M925 729l3 3 6-7" fill="none" stroke="#1D4ED8" stroke-width="2"/>
+    <text x="946" y="734" font-size="10" fill="#334155">Reduzir fonte se o texto for longo</text>
+    <rect x="922" y="767" width="256" height="76" rx="7" fill="#FFFBEB" stroke="#FDE68A"/>
+    <text x="936" y="790" font-size="10" font-weight="700" fill="#92400E">Área segura</text>
+    <text x="936" y="808" font-size="10" fill="#78350F">Mantenha texto e QR afastados</text>
+    <text x="936" y="823" font-size="10" fill="#78350F">das bordas de corte.</text>
+    <rect x="922" y="864" width="256" height="52" rx="7" fill="#EFF6FF"/>
+    <text x="936" y="886" font-size="10" font-weight="600" fill="#1E40AF">Dica de acessibilidade</text>
+    <text x="936" y="902" font-size="10" fill="#1E40AF">A posição também pode ser digitada.</text>
+    <text x="922" y="955" font-size="10" fill="#64748B">Alterações ficam em rascunho até salvar.</text>
+    <text x="922" y="976" font-size="10" fill="#64748B">O preview usa amostra fictícia.</text>
+
+    <!-- Mobile application frame -->
+    <g filter="url(#shadow)">
+      <rect x="1230" y="64" width="390" height="844" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+    </g>
+    <rect x="1232" y="66" width="386" height="840" rx="24" fill="#FFFFFF"/>
+    <rect x="1232" y="66" width="386" height="62" rx="24" fill="#FFFFFF"/>
+    <path d="M1232 128h386" stroke="#DCE3EC"/>
+    <path d="M1251 91h20M1251 98h20M1251 105h20" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+    <text x="1282" y="94" font-size="12" fill="#64748B">Designs</text>
+    <text x="1282" y="112" font-size="14" font-weight="700" fill="#0F172A">Editor de design</text>
+    <rect x="1566" y="82" width="36" height="32" rx="6" fill="#EFF6FF"/>
+    <text x="1584" y="103" text-anchor="middle" font-size="10" font-weight="700" fill="#1D4ED8">Salvar</text>
+    <text x="1250" y="157" font-size="12" font-weight="700" fill="#0F172A">Carteirinha de membro</text>
+    <circle cx="1260" cy="178" r="4" fill="#166534"/>
+    <text x="1272" y="182" font-size="10" fill="#475569">Rascunho salvo às 14:32</text>
+    <rect x="1250" y="201" width="350" height="38" rx="7" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <rect x="1255" y="206" width="76" height="28" rx="5" fill="#1D4ED8"/>
+    <text x="1293" y="224" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">Frente</text>
+    <text x="1373" y="224" text-anchor="middle" font-size="10" font-weight="600" fill="#475569">Verso</text>
+    <text x="1587" y="224" text-anchor="end" font-size="9" fill="#64748B">CR80 · 75%</text>
+    <rect x="1250" y="258" width="350" height="221" rx="13" fill="url(#mobileCard)" stroke="#CBD5E1"/>
+    <circle cx="1284" cy="290" r="17" fill="#1D4ED8"/>
+    <text x="1284" y="293" text-anchor="middle" font-size="7" font-weight="700" fill="#FFFFFF">IEPR</text>
+    <text x="1309" y="287" font-size="9" font-weight="700" fill="#1E3A8A">INSTITUTO EXEMPLO</text>
+    <text x="1309" y="300" font-size="7" fill="#475569">CREDENCIAL DE MEMBRO</text>
+    <rect x="1269" y="321" width="66" height="92" rx="6" fill="#DBEAFE" stroke="#94A3B8"/>
+    <circle cx="1302" cy="352" r="15" fill="#BFDBFE"/>
+    <path d="M1278 405c3-20 12-30 24-30s21 10 24 30" fill="#BFDBFE"/>
+    <rect x="1347" y="322" width="235" height="40" rx="5" fill="#FFFFFF" fill-opacity=".82" stroke="#2563EB" stroke-width="2" stroke-dasharray="5 3"/>
+    <text x="1358" y="338" font-size="7" fill="#64748B">TITULAR</text>
+    <text x="1358" y="352" font-size="11" font-weight="700" fill="#0F172A">MARIA EXEMPLO</text>
+    <text x="1347" y="388" font-size="7" fill="#64748B">CATEGORIA</text>
+    <text x="1347" y="403" font-size="10" font-weight="600" fill="#334155">Membro</text>
+    <text x="1347" y="431" font-size="7" fill="#64748B">UNIDADE</text>
+    <text x="1347" y="446" font-size="10" font-weight="600" fill="#334155">Unidade Central</text>
+    <text x="1250" y="500" font-size="9" fill="#64748B">Prévia ilustrativa com dados fictícios</text>
+    <rect x="1250" y="523" width="350" height="46" rx="7" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="1264" y="542" font-size="10" font-weight="600" fill="#0F172A">Elemento selecionado</text>
+    <text x="1264" y="558" font-size="9" fill="#475569">Nome do titular · alterar posição e estilo</text>
+    <rect x="1250" y="583" width="350" height="54" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <text x="1264" y="605" font-size="10" font-weight="600" fill="#0F172A">Campos　　Fundo　　Ajustes</text>
+    <text x="1264" y="623" font-size="9" fill="#475569">Toque em um item para editar suas propriedades.</text>
+    <rect x="1250" y="654" width="350" height="54" rx="8" fill="#EFF6FF"/>
+    <text x="1264" y="676" font-size="10" font-weight="700" fill="#1E40AF">Ajuste preciso</text>
+    <text x="1264" y="694" font-size="9" fill="#1E40AF">Use os controles X/Y em vez de arrastar.</text>
+    <rect x="1232" y="815" width="386" height="91" rx="0" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="1250" y="839" font-size="9" fill="#64748B">Alterações ficam em rascunho até salvar.</text>
+    <rect x="1250" y="851" width="350" height="40" rx="7" fill="#1D4ED8"/>
+    <text x="1425" y="876" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">Salvar design</text>
+  </g>
+</svg>
