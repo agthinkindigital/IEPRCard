@@ -92,44 +92,52 @@ function telemetryBusinessRecord(
     $normalizedSubclientId = $subclientId ?? 0;
     $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     if ($driver === 'sqlite') {
-        $pdo->exec('PRAGMA busy_timeout = 5000');
+        $pdo->exec('PRAGMA busy_timeout = 10000');
     }
 
-    try {
-        $pdo->beginTransaction();
-        $event = $pdo->prepare(
-            'INSERT INTO telemetria_eventos (tenant_id, subcliente_id, categoria, evento_chave, quantidade, criado_em) '
-            . 'VALUES (:tenant, :subclient, :category, :event_key, :quantity, :created)'
-        );
-        $event->execute([
-            'tenant' => $tenantId, 'subclient' => $subclientId, 'category' => $category,
-            'event_key' => $eventKey, 'quantity' => $quantity, 'created' => $createdAt,
-        ]);
-
-        if ($driver === 'sqlite') {
-            $upsert = 'INSERT INTO telemetria_diaria (tenant_id, subcliente_id, subcliente_scope_id, dia, categoria, evento_chave, quantidade, atualizado_em) '
-                . 'VALUES (:tenant, :subclient, :normalized, :day, :category, :event_key, :quantity, :updated) '
-                . 'ON CONFLICT (tenant_id, subcliente_scope_id, dia, categoria, evento_chave) DO UPDATE SET '
-                . 'quantidade = telemetria_diaria.quantidade + excluded.quantidade, atualizado_em = excluded.atualizado_em';
-        } elseif ($driver === 'mysql') {
-            $upsert = 'INSERT INTO telemetria_diaria (tenant_id, subcliente_id, subcliente_scope_id, dia, categoria, evento_chave, quantidade, atualizado_em) '
-                . 'VALUES (:tenant, :subclient, :normalized, :day, :category, :event_key, :quantity, :updated) '
-                . 'ON DUPLICATE KEY UPDATE quantidade = quantidade + VALUES(quantidade), atualizado_em = VALUES(atualizado_em)';
-        } else {
-            throw new RuntimeException('TELEMETRIA_DRIVER_NAO_SUPORTADO');
+    for ($attempt = 0; ; $attempt++) {
+        try {
+            $pdo->beginTransaction();
+            $event = $pdo->prepare(
+                'INSERT INTO telemetria_eventos (tenant_id, subcliente_id, categoria, evento_chave, quantidade, criado_em) '
+                . 'VALUES (:tenant, :subclient, :category, :event_key, :quantity, :created)'
+            );
+            $event->execute([
+                'tenant' => $tenantId, 'subclient' => $subclientId, 'category' => $category,
+                'event_key' => $eventKey, 'quantity' => $quantity, 'created' => $createdAt,
+            ]);
+            if ($driver === 'sqlite') {
+                $upsert = 'INSERT INTO telemetria_diaria (tenant_id, subcliente_id, subcliente_scope_id, dia, categoria, evento_chave, quantidade, atualizado_em) '
+                    . 'VALUES (:tenant, :subclient, :normalized, :day, :category, :event_key, :quantity, :updated) '
+                    . 'ON CONFLICT (tenant_id, subcliente_scope_id, dia, categoria, evento_chave) DO UPDATE SET '
+                    . 'quantidade = telemetria_diaria.quantidade + excluded.quantidade, atualizado_em = excluded.atualizado_em';
+            } elseif ($driver === 'mysql') {
+                $upsert = 'INSERT INTO telemetria_diaria (tenant_id, subcliente_id, subcliente_scope_id, dia, categoria, evento_chave, quantidade, atualizado_em) '
+                    . 'VALUES (:tenant, :subclient, :normalized, :day, :category, :event_key, :quantity, :updated) '
+                    . 'ON DUPLICATE KEY UPDATE quantidade = quantidade + VALUES(quantidade), atualizado_em = VALUES(atualizado_em)';
+            } else {
+                throw new RuntimeException('TELEMETRIA_DRIVER_NAO_SUPORTADO');
+            }
+            $daily = $pdo->prepare($upsert);
+            $daily->execute([
+                'tenant' => $tenantId, 'subclient' => $subclientId, 'normalized' => $normalizedSubclientId,
+                'day' => $day, 'category' => $category, 'event_key' => $eventKey,
+                'quantity' => $quantity, 'updated' => $createdAt,
+            ]);
+            $pdo->commit();
+            return;
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $sqliteBusy = $driver === 'sqlite' && $exception instanceof PDOException
+                && (((int) ($exception->errorInfo[1] ?? 0) === 5)
+                    || str_contains(strtolower($exception->getMessage()), 'database is locked'));
+            if (!$sqliteBusy || $attempt >= 7) {
+                throw $exception;
+            }
+            usleep(min(500000, (25000 * (2 ** $attempt)) + random_int(0, 15000)));
         }
-        $daily = $pdo->prepare($upsert);
-        $daily->execute([
-            'tenant' => $tenantId, 'subclient' => $subclientId, 'normalized' => $normalizedSubclientId,
-            'day' => $day, 'category' => $category, 'event_key' => $eventKey,
-            'quantity' => $quantity, 'updated' => $createdAt,
-        ]);
-        $pdo->commit();
-    } catch (Throwable $exception) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $exception;
     }
 }
 
