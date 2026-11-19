@@ -62,6 +62,60 @@ try {
             throw new RuntimeException($driver . ': malformed operational metric values must be rejected.');
         }
 
+        $forecastNow = strtotime('2001-02-11 12:00:00 UTC');
+        $forecastStart = '2001-01-11';
+        $forecastEnd = '2001-02-11';
+        $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia >= :start AND dia <= :end AND ambiente IN (\'test\', \'staging\')')
+            ->execute(['start' => $forecastStart, 'end' => $forecastEnd]);
+        $forecastInsert = $pdo->prepare(
+            'INSERT INTO metricas_lotes_diarias (dia, ambiente, pico_demanda_diario) VALUES (:day, :environment, :peak)'
+        );
+        for ($offset = 1; $offset <= 20; $offset++) {
+            $day = gmdate('Y-m-d', $forecastNow - ($offset * 86400));
+            $forecastInsert->execute(['day' => $day, 'environment' => 'test', 'peak' => $offset * 10]);
+            $forecastInsert->execute(['day' => $day, 'environment' => 'staging', 'peak' => 5000]);
+        }
+        $forecastInsert->execute(['day' => '2001-02-11', 'environment' => 'test', 'peak' => 9000]);
+        $forecastInsert->execute(['day' => '2001-01-11', 'environment' => 'test', 'peak' => 10000]);
+        $forecast = operationalBatchMetricsForecast($pdo, now: $forecastNow);
+        if (($forecast['status'] ?? null) !== 'ready'
+            || ($forecast['window_days'] ?? null) !== 30
+            || ($forecast['observed_days'] ?? null) !== 20
+            || ($forecast['forecast_peak'] ?? null) !== 190
+            || ($forecast['recommended_lot_size'] ?? null) !== 190) {
+            throw new RuntimeException($driver . ': default forecast must use the nearest-rank P95 of complete UTC days in the active environment.');
+        }
+
+        $sevenDayForecast = operationalBatchMetricsForecast($pdo, 7, $forecastNow);
+        if (($sevenDayForecast['status'] ?? null) !== 'ready'
+            || ($sevenDayForecast['observed_days'] ?? null) !== 7
+            || ($sevenDayForecast['forecast_peak'] ?? null) !== 70) {
+            throw new RuntimeException($driver . ': explicit forecast windows must exclude older and incomplete days.');
+        }
+
+        $sixthMostRecentDay = gmdate('Y-m-d', $forecastNow - (6 * 86400));
+        $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia < :day AND ambiente = :environment')
+            ->execute(['day' => $sixthMostRecentDay, 'environment' => 'test']);
+        $insufficientForecast = operationalBatchMetricsForecast($pdo, 7, $forecastNow);
+        if (($insufficientForecast['status'] ?? null) !== 'insufficient_history'
+            || ($insufficientForecast['observed_days'] ?? null) !== 6
+            || ($insufficientForecast['forecast_peak'] ?? 'missing') !== null
+            || ($insufficientForecast['recommended_lot_size'] ?? 'missing') !== null) {
+            throw new RuntimeException($driver . ': fewer than seven observed days must not produce a numeric recommendation.');
+        }
+
+        $invalidWindowRejected = false;
+        try {
+            operationalBatchMetricsForecast($pdo, 6, $forecastNow);
+        } catch (InvalidArgumentException $exception) {
+            $invalidWindowRejected = $exception->getMessage() === 'OPERATIONAL_BATCH_FORECAST_WINDOW_INVALID';
+        }
+        if (!$invalidWindowRejected) {
+            throw new RuntimeException($driver . ': forecast windows below seven days must be rejected.');
+        }
+        $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia >= :start AND dia <= :end AND ambiente IN (\'test\', \'staging\')')
+            ->execute(['start' => $forecastStart, 'end' => $forecastEnd]);
+
         if ($driver === 'MySQL/MariaDB') {
             $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia = :day AND ambiente = :environment')
                 ->execute(['day' => $day, 'environment' => 'test']);

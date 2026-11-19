@@ -12,10 +12,7 @@ function operationalBatchMetricsRecord(PDO $pdo, array $measurement, ?int $now =
         }
     }
 
-    $environment = strtolower(trim((string) (getenv('APP_ENV') ?: 'production')));
-    if (!in_array($environment, ['production', 'staging', 'dev', 'test'], true)) {
-        throw new InvalidArgumentException('OPERATIONAL_BATCH_METRIC_ENVIRONMENT_INVALID');
-    }
+    $environment = operationalBatchMetricsEnvironment();
     $now ??= time();
     $day = gmdate('Y-m-d', $now);
     $activeConfiguration = $pdo->prepare(
@@ -69,6 +66,61 @@ function operationalBatchMetricsRecord(PDO $pdo, array $measurement, ?int $now =
         'failures' => $measurement['failures'],
         'configuration_id' => $configurationId,
     ]);
+}
+
+/**
+ * @return array{status:'ready'|'insufficient_history',window_days:int,observed_days:int,forecast_peak:?int,recommended_lot_size:?int}
+ */
+function operationalBatchMetricsForecast(PDO $pdo, int $windowDays = 30, ?int $now = null): array
+{
+    if ($windowDays < 7 || $windowDays > 365) {
+        throw new InvalidArgumentException('OPERATIONAL_BATCH_FORECAST_WINDOW_INVALID');
+    }
+
+    $environment = operationalBatchMetricsEnvironment();
+    $today = (new DateTimeImmutable('@' . ($now ?? time())))
+        ->setTimezone(new DateTimeZone('UTC'))
+        ->setTime(0, 0);
+    $end = $today->modify('-1 day')->format('Y-m-d');
+    $start = $today->modify('-' . $windowDays . ' days')->format('Y-m-d');
+    $query = $pdo->prepare(
+        'SELECT pico_demanda_diario FROM metricas_lotes_diarias '
+        . 'WHERE ambiente = :environment AND dia >= :start AND dia <= :end ORDER BY dia ASC'
+    );
+    $query->execute(['environment' => $environment, 'start' => $start, 'end' => $end]);
+    $peaks = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
+    $observedDays = count($peaks);
+    if ($observedDays < 7) {
+        return [
+            'status' => 'insufficient_history',
+            'window_days' => $windowDays,
+            'observed_days' => $observedDays,
+            'forecast_peak' => null,
+            'recommended_lot_size' => null,
+        ];
+    }
+
+    sort($peaks, SORT_NUMERIC);
+    $nearestRank = (int) ceil(0.95 * $observedDays);
+    $forecastPeak = $peaks[$nearestRank - 1];
+
+    return [
+        'status' => 'ready',
+        'window_days' => $windowDays,
+        'observed_days' => $observedDays,
+        'forecast_peak' => $forecastPeak,
+        'recommended_lot_size' => $forecastPeak,
+    ];
+}
+
+function operationalBatchMetricsEnvironment(): string
+{
+    $environment = strtolower(trim((string) (getenv('APP_ENV') ?: 'production')));
+    if (!in_array($environment, ['production', 'staging', 'dev', 'test'], true)) {
+        throw new InvalidArgumentException('OPERATIONAL_BATCH_METRIC_ENVIRONMENT_INVALID');
+    }
+
+    return $environment;
 }
 
 function operationalBatchMetricsQueueDepth(PDO $pdo): int
