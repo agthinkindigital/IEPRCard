@@ -9,11 +9,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
     $first = tenantTestSeed($pdo);
     $second = tenantTestSeed($pdo);
-    $third = tenantTestSeed($pdo);
+    $secondUnit = $pdo->prepare(
+        "INSERT INTO tenants (parent_id, tipo, nome_organizacao, slug_subdominio, status_conta) "
+        . "VALUES (:parent, 'subcliente', :name, :slug, 'ativo')"
+    );
+    $secondUnit->execute([
+        'parent' => $first['tenant_id'], 'name' => 'Second unit', 'slug' => 'unit-extra-' . bin2hex(random_bytes(5)),
+    ]);
     $tenantIds = [$first['tenant_id'], $second['tenant_id']];
-    $subclientIds = [$first['subcliente_id'], $third['subcliente_id'], $second['subcliente_id']];
+    $subclientIds = [$first['subcliente_id'], (int) $pdo->lastInsertId(), $second['subcliente_id']];
+    $testUserIds = [];
 
-    $createIdentity = static function (string $role, ?int $tenantId, ?int $subclientId = null) use ($pdo): array {
+    $createIdentity = static function (string $role, ?int $tenantId, ?int $subclientId = null) use ($pdo, &$testUserIds): array {
         $suffix = bin2hex(random_bytes(6));
         $statement = $pdo->prepare(
             'INSERT INTO usuarios (tenant_id, subcliente_id, papel_sistema, nome, email, senha_hash, ativo) '
@@ -24,6 +31,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'name' => 'Telemetry fixture', 'email' => $suffix . '@example.test',
             'password' => password_hash('fixture-only', PASSWORD_DEFAULT),
         ]);
+        $testUserIds[] = (int) $pdo->lastInsertId();
         return [
             'id' => (int) $pdo->lastInsertId(), 'papel_sistema' => $role,
             'tenant_id' => $tenantId, 'subcliente_id' => $subclientId,
@@ -206,8 +214,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $pdo->prepare('DELETE FROM telemetria_diaria WHERE tenant_id IN (:first, :second)')->execute([
         'first' => $tenantIds[0], 'second' => $tenantIds[1],
     ]);
+    $deleteUsers = $pdo->prepare('DELETE FROM usuarios WHERE id IN (' . implode(', ', array_fill(0, count($testUserIds), '?')) . ')');
+    $deleteUsers->execute($testUserIds);
+    $pdo->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $subclientIds[1]]);
     tenantTestCleanup($pdo, $first);
-    tenantTestCleanup($pdo, $third);
     tenantTestCleanup($pdo, $second);
     fwrite(STDOUT, 'PASS: ' . $driver . " business telemetry privacy and visibility scopes.\n");
 }
