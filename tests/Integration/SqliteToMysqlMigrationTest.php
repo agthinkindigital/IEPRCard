@@ -36,11 +36,19 @@ $rollbackInsert = $rollbackSource->prepare('INSERT INTO tenants (plano_id, tipo,
 $rollbackInsert->execute(['cliente', $oversizedName]);
 
 require_once dirname(__DIR__, 2) . '/database/migration/sqlite_to_mysql.php';
+$rollbackTrigger = 'sqlite_migration_reject_oversized_org';
+$target->exec(
+    "CREATE TRIGGER {$rollbackTrigger} BEFORE INSERT ON tenants FOR EACH ROW "
+    . "BEGIN IF CHAR_LENGTH(NEW.nome_organizacao) > 180 THEN SIGNAL SQLSTATE '45000' "
+    . "SET MESSAGE_TEXT = 'test transfer rejection'; END IF; END"
+);
 $rollbackObserved = false;
 try {
     ieprMigrarSqliteParaMysql($rollbackSource, $target);
 } catch (RuntimeException $exception) {
     $rollbackObserved = $exception->getMessage() === 'A transferência falhou e foi revertida no destino.';
+} finally {
+    $target->exec("DROP TRIGGER {$rollbackTrigger}");
 }
 $targetRowsAfterRollback = 0;
 foreach (array_keys(\IEPRCard\Database\Schema\catalogoCanonico()) as $table) {
