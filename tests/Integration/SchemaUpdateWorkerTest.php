@@ -27,7 +27,18 @@ try {
     if (!is_array($job)) {
         throw new RuntimeException('The test must queue a production schema update before running its worker.');
     }
-    $phpArguments = [PHP_BINARY, '-n', '-d', 'extension_dir=' . ini_get('extension_dir'), '-d', 'extension=pdo_sqlite', dirname(__DIR__, 2) . '/database/process-schema-update.php'];
+    $phpArguments = [PHP_BINARY];
+    if (PHP_OS_FAMILY === 'Windows') {
+        $extensionDirectory = ini_get('extension_dir');
+        if (!str_starts_with($extensionDirectory, DIRECTORY_SEPARATOR)) {
+            $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
+        }
+        $sqliteExtension = rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll';
+        if (is_file($sqliteExtension)) {
+            $phpArguments = array_merge($phpArguments, ['-d', 'extension=pdo_sqlite']);
+        }
+    }
+    $phpArguments[] = dirname(__DIR__, 2) . '/database/process-schema-update.php';
     $workerLock = fopen($statePath . '.worker.lock', 'c');
     if ($workerLock === false || !flock($workerLock, LOCK_EX | LOCK_NB)) {
         throw new RuntimeException('The test must hold the schema worker lock before exercising concurrency.');
