@@ -49,17 +49,20 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
     for ($attempt = 0; $attempt < 3; $attempt++) {
         try {
             operationalConfigBeginTransaction($pdo, $driver);
+            operationalConfigRequireTransaction($pdo, 'save_started');
             $versionQuery = 'SELECT versao FROM configuracoes_operacionais WHERE ambiente = :environment '
                 . 'ORDER BY versao DESC LIMIT 1' . ($driver === 'mysql' ? ' FOR UPDATE' : '');
             $currentVersion = $pdo->prepare($versionQuery);
             $currentVersion->execute(['environment' => $environment]);
             $version = (int) ($currentVersion->fetchColumn() ?: 0) + 1;
+            operationalConfigRequireTransaction($pdo, 'save_version_read');
 
             $supersedePending = $pdo->prepare(
                 "UPDATE configuracoes_operacionais SET estado = 'substituida' "
                 . "WHERE ambiente = :environment AND estado = 'pendente'"
             );
             $supersedePending->execute(['environment' => $environment]);
+            operationalConfigRequireTransaction($pdo, 'save_pending_superseded');
 
             $insert = $pdo->prepare(
                 'INSERT INTO configuracoes_operacionais '
@@ -73,6 +76,7 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
                 'actor' => $actorId,
                 'created' => $createdAt,
             ]);
+            operationalConfigRequireTransaction($pdo, 'save_inserted');
             $id = (int) $pdo->lastInsertId();
             $pdo->commit();
 
@@ -217,6 +221,13 @@ function operationalConfigBeginTransaction(PDO $pdo, string $driver): void
         throw new InvalidArgumentException('OPERATIONAL_CONFIG_DRIVER_INVALID');
     }
     $pdo->beginTransaction();
+}
+
+function operationalConfigRequireTransaction(PDO $pdo, string $stage): void
+{
+    if (!$pdo->inTransaction()) {
+        throw new RuntimeException('OPERATIONAL_CONFIG_TRANSACTION_LOST:' . $stage);
+    }
 }
 
 function operationalConfigIsRetryable(PDOException $exception): bool
