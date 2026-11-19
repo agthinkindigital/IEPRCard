@@ -102,7 +102,21 @@ function batchImportConfirm(
             titularCreateBatchValidateTargets($pdo, $tenantId, $records);
 
             foreach ($records as $record) {
-                titularCreateInsert($pdo, $identity, $tenantId, $subclienteId, $record);
+                $titularId = titularCreateInsert($pdo, $identity, $tenantId, $subclienteId, $record);
+                $origin = $pdo->prepare(
+                    'UPDATE titulares SET lote_origem_id = :lot WHERE id = :id AND tenant_id = :tenant '
+                    . 'AND ((subcliente_id = :subclient_match) OR (subcliente_id IS NULL AND :subclient_null IS NULL))'
+                );
+                $origin->execute([
+                    'lot' => $loteId,
+                    'id' => $titularId,
+                    'tenant' => $tenantId,
+                    'subclient_match' => $subclienteId,
+                    'subclient_null' => $subclienteId,
+                ]);
+                if ($origin->rowCount() !== 1) {
+                    throw new RuntimeException('TITULAR_CREATE_FAILED');
+                }
             }
 
             $mappingJson = json_encode($normalizedMapping, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -155,6 +169,45 @@ function batchImportConfirm(
     }
 
     return ['lote_id' => $loteId, 'imported' => $createdCount];
+}
+
+/** @param array<string, mixed> $identity @return list<int> */
+function batchImportLotTitularIds(
+    PDO $pdo,
+    TenantContext $context,
+    array $identity,
+    int $tenantId,
+    ?int $subclienteId,
+    int $loteId
+): array {
+    if ($tenantId < 1 || $loteId < 1 || ($subclienteId !== null && $subclienteId < 1)
+        || !titularCreateCanManage($pdo, $context, $identity, $tenantId, $subclienteId)) {
+        throw new DomainException('IMPORT_LOT_NOT_FOUND');
+    }
+
+    $lot = $pdo->prepare(
+        'SELECT subcliente_id, status_lote FROM lotes_importacao WHERE id = :id AND tenant_id = :tenant LIMIT 1'
+    );
+    $lot->execute(['id' => $loteId, 'tenant' => $tenantId]);
+    $lotRecord = $lot->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($lotRecord)
+        || ($lotRecord['subcliente_id'] === null ? null : (int) $lotRecord['subcliente_id']) !== $subclienteId
+        || $lotRecord['status_lote'] !== 'concluido') {
+        throw new DomainException('IMPORT_LOT_NOT_FOUND');
+    }
+
+    $members = $pdo->prepare(
+        'SELECT id FROM titulares WHERE lote_origem_id = :lot AND tenant_id = :tenant '
+        . 'AND ((subcliente_id = :subclient_match) OR (subcliente_id IS NULL AND :subclient_null IS NULL)) ORDER BY id'
+    );
+    $members->execute([
+        'lot' => $loteId,
+        'tenant' => $tenantId,
+        'subclient_match' => $subclienteId,
+        'subclient_null' => $subclienteId,
+    ]);
+
+    return array_map('intval', $members->fetchAll(PDO::FETCH_COLUMN));
 }
 
 /** @param array<string, string> $mapping @param list<string> $columns @return array<string, string> */

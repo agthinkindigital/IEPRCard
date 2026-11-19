@@ -274,7 +274,7 @@ sequenceDiagram
     Web-->>Op: 202 Accepted (lote_id, progresso)
     Web->>Out: evento lote.enfileirado
     Note over Render,DB: worker consome em lotes de 25
-    Render->>DB: SELECT titulares por lote (1 query, sem N+1)
+    Render->>DB: SELECT titulares por lote_origem_id + tenant/subcliente (1 query, sem N+1)
     loop cada titular
         Render->>Render: WebP frente/verso + PDF CR80/A4
         Render->>DB: INSERT carteirinha (unique titular+design+lote)
@@ -575,7 +575,8 @@ erDiagram
 - **Idempotência de emissão:** índice único em `(titular_id, design_id, lote_id)` e em `codigo_validacao_qr`; reprocessamento do worker não duplica carteirinha nem QR.
 - **Transação):** reserva de cota + inserção do lote no mesmo `BEGIN/COMMIT`; confirmação final do consumo após o worker concluir. Falha do worker libera a reserva via TTL de reserva (tabela `reservas_cota` **[PROPOSTO]**).
 - **Leituras de QR:** `UPDATE ... total_leituras_qr = total_leituras_qr + 1` (atômico) + linha de auditoria; sem `SELECT` seguido de `UPDATE` solto.
-- **N+1:** carregar titulares do lote em uma query com `IN (...)` em chunks de 500; designs e categorias em mapa único por requisição; nunca `dbFetchOne` dentro de `foreach` de titular.
+- **Origem do lote:** `titulares.lote_origem_id` vincula cada titular importado ao lote que o criou, sem duplicar PII; o serviço de emissão valida tenant/unidade e seleciona por essa FK.
+- **N+1:** carregar titulares do lote por `lote_origem_id` e escopo em uma query; designs e categorias em mapa único por requisição; nunca `dbFetchOne` dentro de `foreach` de titular.
 
 ### 5.4. Máquina de estado da conta (canônica)
 

@@ -58,7 +58,7 @@
 
 ### ÉPICO 3: Importação em Lote, Preenchimento Manual e Gestão de Titulares (Req 06, 07)
 
-* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — parser backend em [#28](https://github.com/agthinkindigital/IEPRCard/issues/28), staging privado/prévia/cancelamento/expiração em [#31](https://github.com/agthinkindigital/IEPRCard/issues/31) e confirmação atômica com mapeamento e importação de até 500 titulares em [#32](https://github.com/agthinkindigital/IEPRCard/issues/32). `.xls` binário, vínculo de fotos ZIP e interface de mapeamento permanecem em fatias próprias.
+* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — parser backend em [#28](https://github.com/agthinkindigital/IEPRCard/issues/28), staging privado/prévia/cancelamento/expiração em [#31](https://github.com/agthinkindigital/IEPRCard/issues/31), confirmação atômica com mapeamento em [#32](https://github.com/agthinkindigital/IEPRCard/issues/32) e preservação da origem dos titulares em [#45](https://github.com/agthinkindigital/IEPRCard/issues/45). `.xls` binário, vínculo de fotos ZIP e interface de mapeamento permanecem em fatias próprias.
 * **Arquivos:** `includes/motor_importacao.php`, `includes/libs/SimpleXLSX.php`, `painel/importar-dados.php`
 * **Descrição:** Upload e leitura de arquivos `.csv`, `.xls`, `.xlsx` e `.json` com detecção automática de cabeçalhos, pré-visualização das primeiras 10 linhas, validação de CPF/Telefone e vínculo automático de fotos enviadas em pacote `.zip` (associadas por CPF ou matrícula).
 

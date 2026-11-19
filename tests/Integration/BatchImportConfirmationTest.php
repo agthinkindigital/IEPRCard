@@ -27,8 +27,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $lotId = null;
     $rollbackLotId = null;
     $largeLotId = null;
-    $auditTrigger = 'import_confirm_audit_fail';
-    $auditTriggerExists = false;
+    $originTrigger = 'import_confirm_origin_fail';
+    $originTriggerExists = false;
 
     try {
         $testTenant = batchImportStagingTestCreateTenant($pdo, $suffix);
@@ -101,10 +101,31 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         );
 
         $holder = $pdo->prepare(
-            'SELECT nome_completo, whatsapp FROM titulares WHERE tenant_id = :tenant ORDER BY id DESC LIMIT 1'
+            'SELECT id, nome_completo, whatsapp, lote_origem_id FROM titulares WHERE tenant_id = :tenant ORDER BY id DESC LIMIT 1'
         );
         $holder->execute(['tenant' => $fixture['tenant_id']]);
         $record = $holder->fetch(PDO::FETCH_ASSOC);
+        $memberIds = batchImportLotTitularIds(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $lotId
+        );
+        $foreignLotRejected = false;
+        try {
+            batchImportLotTitularIds(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'] + 1,
+                null,
+                $lotId
+            );
+        } catch (DomainException $exception) {
+            $foreignLotRejected = $exception->getMessage() === 'IMPORT_LOT_NOT_FOUND';
+        }
         $lot = $pdo->prepare(
             'SELECT mapa_de_para_usado_json, total_registros, processados_sucesso, status_lote, arquivo_original_url '
             . 'FROM lotes_importacao WHERE id = :id'
@@ -115,6 +136,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if (($result['lote_id'] ?? null) !== $lotId || ($result['imported'] ?? null) !== 1
             || !is_array($record) || $record['nome_completo'] !== 'Ada Lovelace'
             || $record['whatsapp'] !== '+5511999999999'
+            || (int) $record['lote_origem_id'] !== $lotId
+            || $memberIds !== [(int) $record['id']] || !$foreignLotRejected
             || !is_array($lotRecord) || json_decode((string) $lotRecord['mapa_de_para_usado_json'], true)
                 !== ['nome_completo' => 'nome_completo', 'whatsapp' => 'whatsapp']
             || (int) $lotRecord['total_registros'] !== 1 || (int) $lotRecord['processados_sucesso'] !== 1
@@ -146,17 +169,17 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         )['lote_id'];
         if (strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite') {
             $pdo->exec(
-                "CREATE TRIGGER {$auditTrigger} BEFORE INSERT ON auditoria_processos "
-                . "WHEN NEW.acao = 'titular.created' BEGIN SELECT RAISE(ABORT, 'test audit failure'); END"
+                "CREATE TRIGGER {$originTrigger} BEFORE UPDATE ON titulares "
+                . "WHEN NEW.lote_origem_id IS NOT NULL BEGIN SELECT RAISE(ABORT, 'test origin failure'); END"
             );
         } else {
             $pdo->exec(
-                "CREATE TRIGGER {$auditTrigger} BEFORE INSERT ON auditoria_processos FOR EACH ROW "
-                . "BEGIN IF NEW.acao = 'titular.created' THEN SIGNAL SQLSTATE '45000' "
-                . "SET MESSAGE_TEXT = 'test audit failure'; END IF; END"
+                "CREATE TRIGGER {$originTrigger} BEFORE UPDATE ON titulares FOR EACH ROW "
+                . "BEGIN IF NEW.lote_origem_id IS NOT NULL THEN SIGNAL SQLSTATE '45000' "
+                . "SET MESSAGE_TEXT = 'test origin failure'; END IF; END"
             );
         }
-        $auditTriggerExists = true;
+        $originTriggerExists = true;
         $rolledBack = false;
         try {
             batchImportConfirm(
@@ -171,8 +194,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         } catch (RuntimeException $exception) {
             $rolledBack = $exception->getMessage() === 'TITULAR_CREATE_FAILED';
         } finally {
-            $pdo->exec("DROP TRIGGER {$auditTrigger}");
-            $auditTriggerExists = false;
+            $pdo->exec("DROP TRIGGER {$originTrigger}");
+            $originTriggerExists = false;
         }
         $holderCount = $pdo->prepare('SELECT COUNT(*) FROM titulares WHERE tenant_id = :tenant');
         $holderCount->execute(['tenant' => $fixture['tenant_id']]);
@@ -195,8 +218,17 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $rollbackLotId,
             ['nome_completo' => 'nome_completo']
         );
+        $retryMemberIds = batchImportLotTitularIds(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $rollbackLotId
+        );
         $holderCount->execute(['tenant' => $fixture['tenant_id']]);
-        if (($retry['imported'] ?? null) !== 2 || (int) $holderCount->fetchColumn() !== 3) {
+        if (($retry['imported'] ?? null) !== 2 || (int) $holderCount->fetchColumn() !== 3
+            || count($retryMemberIds) !== 2 || count(array_unique($retryMemberIds)) !== 2) {
             throw new RuntimeException($driver . ': retry must import each holder once after a full rollback.');
         }
 
@@ -252,8 +284,17 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $largeLotId,
             ['nome_completo' => 'nome_completo']
         );
+        $largeMemberIds = batchImportLotTitularIds(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $largeLotId
+        );
         $holderCount->execute(['tenant' => $fixture['tenant_id']]);
-        if (($largeResult['imported'] ?? null) !== 500 || (int) $holderCount->fetchColumn() !== 503) {
+        if (($largeResult['imported'] ?? null) !== 500 || (int) $holderCount->fetchColumn() !== 503
+            || count($largeMemberIds) !== 500 || count(array_unique($largeMemberIds)) !== 500) {
             throw new RuntimeException($driver . ': a complete 500-row import must fit in one atomic operation.');
         }
 
@@ -262,8 +303,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia = :day AND ambiente = :environment')
             ->execute(['day' => $metricsDay, 'environment' => 'test']);
         putenv('APP_ENV=' . ($previousAppEnvironment === false ? '' : $previousAppEnvironment));
-        if ($auditTriggerExists) {
-            $pdo->exec("DROP TRIGGER {$auditTrigger}");
+        if ($originTriggerExists) {
+            $pdo->exec("DROP TRIGGER {$originTrigger}");
         }
         foreach ([$lotId, $rollbackLotId, $largeLotId] as $cleanupLotId) {
             if ($cleanupLotId !== null) {
