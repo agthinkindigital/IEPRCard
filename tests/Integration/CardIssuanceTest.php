@@ -17,6 +17,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $unitSourceLotId = null;
     $designId = null;
     $testAssetKeys = [];
+    $originalAppBaseUrl = getenv('APP_BASE_URL');
     try {
         $pdo->prepare('INSERT INTO planos (nome, ativo) VALUES (:name, 1)')
             ->execute(['name' => 'Card issuance ' . bin2hex(random_bytes(4))]);
@@ -194,7 +195,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $designMap = [
                 'versao_schema' => '1.0',
                 'dimensoes' => ['largura_px' => 1011, 'altura_px' => 638, 'dpi' => 300, 'padrao' => 'CR80'],
-                'elementos' => [],
+                'elementos' => [[
+                    'id' => 'validation-qr', 'lado' => 'frente', 'tipo' => 'qrcode_validacao',
+                    'chave_variavel' => '_sistema_url_validacao', 'x' => 800, 'y' => 400, 'tamanho' => 160,
+                ]],
             ];
             $fixedMapping = ['versao_schema' => '1.0', 'mapeamentos' => []];
             $pdo->prepare('UPDATE designs_carteirinha SET mapa_campos_json = :map, mapeamento_fixo_json = :mapping WHERE id = :id')
@@ -203,22 +207,35 @@ foreach (tenantTestConnections() as $driver => $pdo) {
                     'mapping' => json_encode($fixedMapping, JSON_THROW_ON_ERROR),
                     'id' => $designId,
                 ]);
+            if ($originalAppBaseUrl === false || trim($originalAppBaseUrl) === '') {
+                putenv('APP_BASE_URL=https://ieprcard.example.test');
+            }
             if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:30:00 UTC'))) {
                 throw new RuntimeException($driver . ': the worker must process a valid WebP job.');
             }
             $completed = $pdo->prepare('SELECT status_lote, processados_sucesso FROM lotes_importacao WHERE id = :id');
             $completed->execute(['id' => $second['job_id']]);
             $completedRow = $completed->fetch(PDO::FETCH_ASSOC);
-            $issued = $pdo->prepare('SELECT snapshot_dados_json, webp_frente_url, webp_verso_url FROM carteirinhas_emitidas WHERE lote_id = :job');
+            $issued = $pdo->prepare('SELECT codigo_validacao_qr, snapshot_dados_json, webp_frente_url, webp_verso_url FROM carteirinhas_emitidas WHERE lote_id = :job');
             $issued->execute(['job' => $second['job_id']]);
             $issuedRow = $issued->fetch(PDO::FETCH_ASSOC);
+            $snapshot = is_array($issuedRow) ? json_decode((string) $issuedRow['snapshot_dados_json'], true) : null;
             if (!is_array($completedRow) || $completedRow['status_lote'] !== 'concluido'
                 || (int) $completedRow['processados_sucesso'] !== 1 || !is_array($issuedRow)
+                || preg_match('/^[a-f0-9]{64}$/D', (string) $issuedRow['codigo_validacao_qr']) !== 1
                 || !str_starts_with((string) $issuedRow['webp_frente_url'], 'private://')
                 || !str_starts_with((string) $issuedRow['webp_verso_url'], 'private://')
-                || !is_array(json_decode((string) $issuedRow['snapshot_dados_json'], true))) {
-                throw new RuntimeException($driver . ': successful worker output must persist a private WebP pair and snapshot.');
+                || !is_array($snapshot)
+                || !str_ends_with((string) ($snapshot['_sistema_url_validacao'] ?? ''), '/validar/' . $issuedRow['codigo_validacao_qr'])) {
+                throw new RuntimeException($driver . ': successful worker output must persist an opaque QR token, matching validation URL, private WebP pair, and snapshot.');
             }
+            $issuanceKey = $pdo->prepare('SELECT chave_idempotencia_hash FROM lotes_importacao WHERE id = :job');
+            $issuanceKey->execute(['job' => $second['job_id']]);
+            $oldDerivedCode = hash_hmac('sha256', $second['job_id'] . ':' . $holderId, (string) $issuanceKey->fetchColumn());
+            if (hash_equals($oldDerivedCode, (string) $issuedRow['codigo_validacao_qr'])) {
+                throw new RuntimeException($driver . ': QR validation tokens must not be derived from the request idempotency key.');
+            }
+            $webpValidationCode = (string) $issuedRow['codigo_validacao_qr'];
             $testAssetKeys[] = $issuedRow['webp_frente_url'];
             $testAssetKeys[] = $issuedRow['webp_verso_url'];
 
@@ -227,10 +244,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:35:00 UTC'))) {
                 throw new RuntimeException($driver . ': the worker must reclaim a valid expired job.');
             }
-            $recoveredCount = $pdo->prepare('SELECT COUNT(*) FROM carteirinhas_emitidas WHERE lote_id = :job');
-            $recoveredCount->execute(['job' => $second['job_id']]);
-            if ((int) $recoveredCount->fetchColumn() !== 1) {
-                throw new RuntimeException($driver . ': recovering a completed card must not duplicate its output row.');
+            $recoveredCards = $pdo->prepare('SELECT codigo_validacao_qr FROM carteirinhas_emitidas WHERE lote_id = :job');
+            $recoveredCards->execute(['job' => $second['job_id']]);
+            $recoveredRows = $recoveredCards->fetchAll(PDO::FETCH_COLUMN);
+            if (count($recoveredRows) !== 1 || !hash_equals($webpValidationCode, (string) $recoveredRows[0])) {
+                throw new RuntimeException($driver . ': recovering a completed card must retain its validation token.');
             }
 
             $pdfJob = cardIssuanceCreateJob(
@@ -244,12 +262,14 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdfResult->execute(['id' => $pdfJob['job_id']]);
             $pdfRow = $pdfResult->fetch(PDO::FETCH_ASSOC);
             $pdfBytes = is_array($pdfRow) ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], (string) $pdfRow['pdf_consolidado_url']) : '';
-            $pdfCards = $pdo->prepare('SELECT COUNT(*) FROM carteirinhas_emitidas WHERE lote_id = :job AND pdf_individual_url IS NULL');
+            $pdfCards = $pdo->prepare('SELECT codigo_validacao_qr FROM carteirinhas_emitidas WHERE lote_id = :job AND pdf_individual_url IS NULL');
             $pdfCards->execute(['job' => $pdfJob['job_id']]);
+            $pdfCardCodes = $pdfCards->fetchAll(PDO::FETCH_COLUMN);
             if (!is_array($pdfRow) || $pdfRow['status_lote'] !== 'concluido'
                 || !str_starts_with((string) $pdfRow['pdf_consolidado_url'], 'private://')
-                || !str_starts_with($pdfBytes, '%PDF-1.4') || (int) $pdfCards->fetchColumn() !== 1) {
-                throw new RuntimeException($driver . ': PDF jobs must save one private consolidated PDF and the card snapshot.');
+                || !str_starts_with($pdfBytes, '%PDF-1.4')
+                || count($pdfCardCodes) !== 1 || hash_equals($webpValidationCode, (string) $pdfCardCodes[0])) {
+                throw new RuntimeException($driver . ': PDF jobs must save a private consolidated PDF and a new QR token for each deliberate issuance.');
             }
             $testAssetKeys[] = $pdfRow['pdf_consolidado_url'];
 
@@ -410,6 +430,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo->prepare('DELETE FROM plano_feature_flags WHERE plano_id = :plan')->execute(['plan' => $planId]);
             $pdo->prepare('DELETE FROM planos WHERE id = :plan')->execute(['plan' => $planId]);
         }
+        putenv($originalAppBaseUrl === false ? 'APP_BASE_URL' : 'APP_BASE_URL=' . $originalAppBaseUrl);
     }
 }
 

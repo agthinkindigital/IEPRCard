@@ -138,7 +138,7 @@ function cardIssuanceWorkerProcess(PDO $pdo, int $jobId, int $now): void
             }
             $extra = json_decode((string) ($member['dados_extras_json'] ?? '{}'), true);
             $record = ['titular' => $member + ['dados_extras' => is_array($extra) ? $extra : []]];
-            $code = hash_hmac('sha256', $jobId . ':' . (int) $member['id'], (string) $job['chave_idempotencia_hash']);
+            $code = bin2hex(random_bytes(32));
             $systemContext = [];
             foreach ($design['elementos'] as $element) {
                 if ($element['tipo'] === 'qrcode_validacao') {
