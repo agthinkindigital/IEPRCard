@@ -1,7 +1,9 @@
 # Telemetria
 
 ## Coleta
-Telemetria de negócio usa `telemetria_eventos` (append-only) e `telemetria_diaria`. O contrato de colunas é mantido no [schema canônico](../database/schema/0001/03-operations.php): escopo de Cliente/Subcliente, categoria, chave de evento, quantidade e metadados sem PII. Nome, CPF, foto, token, conteúdo de mensagem e outros identificadores diretos nunca entram nos metadados.
+Telemetria de negócio usa `telemetria_eventos` (append-only) e `telemetria_diaria`. O contrato de colunas é mantido no [schema canônico](../database/schema/0001/03-operations.php) e suas extensões versionadas. A gravação recebe apenas categoria e chave permitidas, quantidade agregada e identidade autenticada do servidor; não aceita identificador de titular/usuário, valor livre ou metadados. A lista inicial de categoria/chave é `issuance / card.generated`, `messaging / whatsapp.sent`, `messaging / whatsapp.failed`, `import / rows.accepted`, `import / rows.rejected` e `validation / qr.validated`. Totais são agrupados por dia UTC. O escopo diário da Sede usa chave normalizada `0`, evitando que a semântica de `NULL` permita agregados duplicados em SQLite/MySQL.
+
+As leituras aceitam janela UTC inclusiva de até 366 dias. Admin informa explicitamente a visão global ou o cliente/unidade alvo; Cliente vê a rede; Subcliente fica restrito à própria unidade. Esses serviços de domínio ainda não representam endpoints HTTP nem telas.
 
 As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; seu cálculo e sua ativação seguem o [ADR-0011](adr/0011-observabilidade-golden-signals.md). A tabela operacional agrega por dia e ambiente e não guarda identificadores de tenant ou titular.
 

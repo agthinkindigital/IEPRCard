@@ -33,6 +33,8 @@ O schema mínimo do MVP tem 27 tabelas: exclui `pagamentos_saas`, `pagamentos_ti
 
 O catálogo executável das 27 tabelas, colunas, tipos, índices e FKs vive em `database/schema/0001/`; o SAD §4.6 mantém o DER conceitual e aponta para esse catálogo, sem duplicar o dicionário físico. Diretórios de versão são imutáveis; evoluções acrescentam uma versão e uma migração numerada. A migração `0001` aplica apenas a versão inicial, de forma repetível.
 
+Para `telemetria_diaria`, o índice único não pode depender apenas da coluna nullable `subcliente_id`: SQLite e MySQL permitem múltiplas chaves únicas com `NULL`, o que duplica agregados da Sede sob gravações concorrentes. A extensão `0004` adiciona `subcliente_scope_id`, normalizada para `0` na Sede e para o ID da unidade; a migração `0005` consolida agregados legados duplicados antes do backfill. Escritas novas sempre usam essa chave normalizada.
+
 **Migração:** em bancos já criados com o adendo, usar `ALTER TABLE ... ADD COLUMN` + view de compatibilidade, sem `DROP` na mesma release (Expand & Contract, ADR-0010). Nomes antigos sobrevivem como views somente leitura por uma release.
 
 ## Alternativas consideradas

@@ -149,6 +149,8 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 * **Critério de Aceite:** Passar no `TDD-06`.
 
+* O contrato backend de gravação agregada, leitura com escopo e concorrência nas tabelas canônicas está em execução na [GitHub #43](https://github.com/agthinkindigital/IEPRCard/issues/43); telas aguardam mockup/guia aprovados, e a ferramenta MCP depende do contrato de leitura validado.
+
 
 
 ### ÉPICO 7: Servidor MCP para Evolução e Edição Agêntica (Req 18)
