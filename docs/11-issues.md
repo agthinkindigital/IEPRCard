@@ -182,7 +182,7 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 * **Perfis Prontos (Presets):** Ao criar um Cliente novo, o sistema já semeia 4 perfis editáveis: *Dirigente de Subcliente*, *Secretário (Emissor de Carteirinhas)*, *Tesoureiro* e *Cadastrador de Membros*.
 
 
-* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)** — provisionamento inicial da Sede e do titular foi entregue na [Issue #17](https://github.com/agthinkindigital/IEPRCard/issues/17); ciclo de vida manual da Sede, na [Issue #18](https://github.com/agthinkindigital/IEPRCard/issues/18); e configuração/distribuição backend de cotas, na [Issue #23](https://github.com/agthinkindigital/IEPRCard/issues/23). A aplicação dos limites aos fluxos de cadastro, importação e emissão será fatiada conforme esses fluxos entrarem no escopo. Sem cobrança, checkout ou automação por webhook.
+* **Nova `ISSUE-005B`: Cotas e ativação manual de contas pelo Admin (sem cobrança)** — provisionamento inicial da Sede e do titular foi entregue na [Issue #17](https://github.com/agthinkindigital/IEPRCard/issues/17); ciclo de vida manual da Sede, na [Issue #18](https://github.com/agthinkindigital/IEPRCard/issues/18); e configuração/distribuição backend de cotas, na [Issue #23](https://github.com/agthinkindigital/IEPRCard/issues/23). A aplicação dos limites nos fluxos backend de cadastro individual, importação confirmada e emissão foi entregue nas [Issues #27](https://github.com/agthinkindigital/IEPRCard/issues/27), [#32](https://github.com/agthinkindigital/IEPRCard/issues/32) e [#46](https://github.com/agthinkindigital/IEPRCard/issues/46). Sem cobrança, checkout ou automação por webhook.
 
 
 
