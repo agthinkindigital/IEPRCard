@@ -9,5 +9,10 @@
 /var/admin-migration-job.json
 /var/admin-migration-job.json.lock
 /var/admin-migration-job.json.worker.lock
+/var/schema-update-job.json
+/var/schema-update-job.json.lock
+/var/schema-update-job.json.worker.lock
+/var/schema-update-job.json.audit.jsonl
+/var/schema-update-job.json.audit.jsonl.lock
 *.sqlite
 *.sqlite-*

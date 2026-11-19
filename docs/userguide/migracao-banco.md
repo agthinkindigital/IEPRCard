@@ -14,9 +14,11 @@ A atualização usa apenas os arquivos de migration versionados que já fazem pa
 4. Confirme o backup e selecione **Enfileirar atualização**. O worker agendado processa os arquivos em ordem e a tela acompanha o estado; não envie a mesma operação novamente enquanto estiver em fila ou execução.
 5. Ao concluir, confira o resultado e a validação do schema. A auditoria registra a release, o administrador, os horários e o resultado.
 
+Em hospedagem compartilhada, configure um Cron para executar `php /caminho/privado/do-projeto/database/process-schema-update.php` a cada minuto e disponibilize ao processo as mesmas variáveis de ambiente do PHP web, incluindo `APP_ENV=production` e `DB_*`. A página apenas enfileira o job; não mantém uma requisição aberta nem tenta iniciar comandos do sistema pelo PHP-FPM.
+
 As migrations de produção são versionadas, aditivas e idempotentes. Se uma execução falhar, alterações de schema já aplicadas não são desfeitas automaticamente. Leia o resultado e a pré-verificação antes de repetir; a operação só pode ser repetida porque os scripts existentes verificam o que já foi aplicado. Se o resultado indicar divergência não segura, interrompa o deploy e peça revisão técnica.
 
-O painel não aceita SQL, nomes de arquivos ou comandos enviados pelo navegador. As migrations ficam no repositório, são revisadas junto com a release e não são executadas em requisições normais da aplicação. O histórico é separado dos registros migrados; não há cópia de dados pessoais neste fluxo.
+O painel não aceita SQL, nomes de arquivos ou comandos enviados pelo navegador. As migrations ficam no repositório, são revisadas junto com a release e não são executadas em requisições normais da aplicação. O histórico operacional fica em arquivos JSONL privados sob `var/`, fora da raiz pública, e registra apenas IDs de administrador e migration, release, horários e resultado técnico. Ele não usa `auditoria_processos`, que exige vínculo com tenant, nem cria uma tabela nova. Não há cópia de dados pessoais neste fluxo.
 
 ## Cópia de dados SQLite → MySQL/MariaDB
 
