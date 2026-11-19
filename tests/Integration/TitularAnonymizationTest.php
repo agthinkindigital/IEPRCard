@@ -43,6 +43,22 @@ try {
         ]);
         $titularId = (int) $pdo->lastInsertId();
         $now = 1_800_000_000;
+        $keylessRequestId = bin2hex(random_bytes(20));
+        $activeKey = getenv('IEPR_ANONYMIZATION_KEY');
+        putenv('IEPR_ANONYMIZATION_KEY=');
+        $keyFailure = null;
+        try {
+            titularAnonymizationRequest($pdo, $fixture['tenant_id'], $titularId, $keylessRequestId, $now);
+        } catch (RuntimeException $exception) {
+            $keyFailure = $exception->getMessage();
+        } finally {
+            putenv('IEPR_ANONYMIZATION_KEY=' . ($activeKey === false ? '' : $activeKey));
+        }
+        $keylessRow = $pdo->prepare('SELECT COUNT(*) FROM solicitacoes_anonimizacao WHERE solicitacao_id = :id');
+        $keylessRow->execute(['id' => $keylessRequestId]);
+        if ($keyFailure !== 'ANONYMIZATION_KEY_UNAVAILABLE' || (int) $keylessRow->fetchColumn() !== 0) {
+            throw new RuntimeException($driver . ': a missing encryption key must fail closed before writing a deletion request.');
+        }
         $requestId = bin2hex(random_bytes(20));
 
         $request = titularAnonymizationRequest(
