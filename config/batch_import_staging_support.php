@@ -58,9 +58,11 @@ function batchImportStagingPrivateRoot(): string
         || batchImportStagingPathWithin($root, $public)) {
         throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
     }
-    @chmod($root, 0700);
-    if (DIRECTORY_SEPARATOR === '/' && ((fileperms($root) ?: 0) & 0077) !== 0) {
-        throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
+    if (DIRECTORY_SEPARATOR === '/') {
+        @chmod($root, 0700);
+        if (((fileperms($root) ?: 0) & 0077) !== 0) {
+            throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
+        }
     }
 
     return $root;

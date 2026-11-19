@@ -79,7 +79,7 @@ O perfil GD/WebP/FreeType/`mbstring` foi validado na CI MySQL/MariaDB e concluí
 
 O renderizador backend de frente/verso WebP, dependente dos três contratos concluídos e ainda sem interface, está fatiado na [GitHub #36](https://github.com/agthinkindigital/IEPRCard/issues/36).
 
-* **ISSUE-009: Gestor de Múltiplos Designs e Editor Visual de Coordenadas**
+* **ISSUE-009: Gestor de Múltiplos Designs e Editor Visual de Coordenadas** — mockup e guias aprovados pelo mantenedor e publicados em `DEV`; catálogo e editor estão fatiados na [#61](https://github.com/agthinkindigital/IEPRCard/issues/61).
 * **Arquivos:** `painel/designs.php`, `painel/editor-design.php`
 * **Descrição:** Permitir que o Cliente faça upload da arte de fundo (Frente e Verso) de múltiplos modelos de carteirinha e posicione visualmente (arrastar e soltar no canvas) os campos variáveis (textos, foto do titular, QR Code, código de barras), salvando o `mapa_campos_json` e o `mapeamento_fixo_json`.
 * **Critério de Aceite:** Criar 3 layouts distintos para o mesmo Cliente e testar o posicionamento com preview instantâneo.

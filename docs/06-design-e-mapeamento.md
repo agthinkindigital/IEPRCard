@@ -84,7 +84,11 @@ O formato executável é:
 
 O motor considera somente variáveis declaradas em `elementos`. Uma variável de texto com `obrigatorio: true` precisa de mapeamento e valor não vazio; ausências geram erro estruturado com código e caminho, sem incluir dados de titulares. Variáveis opcionais sem mapeamento ou valor resolvem para string vazia. `_sistema_url_validacao` nunca aceita origem configurada pelo cliente ou lote: seu valor entra separadamente pelo contexto de sistema. Em qualquer erro, nenhum mapa parcial de valores é retornado.
 
-Esta etapa entrega apenas resolução pura; persistência da configuração, wizard, consulta de titulares e renderização pertencem às fatias seguintes.
+O catálogo/editor da Sede persiste mapas e mapeamentos fixos em `designs_carteirinha`; a importação pode fornecer o mapeamento variável do lote. A prévia do editor usa o renderizador WebP com valores sintéticos e não consulta titulares.
+
+### Catálogo, rascunhos e edição segura
+
+Design criado ou editado pelo catálogo permanece com `ativo = 0`; publicação é uma ação separada. O catálogo é escopado à Sede e guarda fundos em storage privado por tenant. Designs ativos são somente leitura nesta tela. Edições de rascunhos ficam bloqueadas enquanto houver emissão vinculada em `aguardando_mapa`, `na_fila` ou `processando`, pois o worker lê o mapa e os fundos persistidos ao executar o job. A interface aprovada e suas operações estão no [guia funcional do editor](userguide/designs-carteirinhas.md).
 
 
 ## Telas do MVP
