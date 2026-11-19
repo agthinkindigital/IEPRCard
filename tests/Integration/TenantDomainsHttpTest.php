@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
+require_once dirname(__DIR__, 2) . '/config/tenant_auth.php';
 
 $root = dirname(__DIR__, 2);
 $directory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-tenant-domains-' . bin2hex(random_bytes(6));
@@ -53,15 +54,23 @@ unset($pdo);
 $previousSessionName = session_name();
 $previousSessionId = session_id();
 $previousSessionSavePath = session_save_path();
+$previousSessionSettings = [];
+foreach (['session.use_strict_mode', 'session.use_only_cookies', 'session.use_trans_sid', 'session.gc_maxlifetime'] as $setting) {
+    $previousSessionSettings[$setting] = ini_get($setting);
+}
+$previousCookieParameters = session_get_cookie_params();
+$previousTenantCookie = $_COOKIE['IEPRCARDTENANT'] ?? null;
 if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
-$sessionId = bin2hex(random_bytes(24));
+$hadTenantCookie = array_key_exists('IEPRCARDTENANT', $_COOKIE);
 $csrf = bin2hex(random_bytes(32));
 session_save_path($directory);
-session_name('IEPRCARDTENANT');
-session_id($sessionId);
-session_start();
+unset($_COOKIE['IEPRCARDTENANT']);
+if (!tenantAuthStartSession(false)) {
+    throw new RuntimeException('Could not start the owner test session.');
+}
+$sessionId = session_id();
 $_SESSION = [
     'tenant_user_id' => $userId,
     'tenant_id' => $tenantId,
@@ -72,9 +81,12 @@ $_SESSION = [
     'csrf_token' => $csrf,
 ];
 session_write_close();
-$delegateSessionId = bin2hex(random_bytes(24));
-session_id($delegateSessionId);
-session_start();
+session_id('');
+unset($_COOKIE['IEPRCARDTENANT']);
+if (!tenantAuthStartSession(false)) {
+    throw new RuntimeException('Could not start the delegated test session.');
+}
+$delegateSessionId = session_id();
 $_SESSION = [
     'tenant_user_id' => $delegateUserId,
     'tenant_id' => $tenantId,
@@ -206,6 +218,15 @@ try {
     session_save_path($previousSessionSavePath);
     session_name($previousSessionName);
     session_id($previousSessionId);
+    foreach ($previousSessionSettings as $setting => $value) {
+        if (is_string($value)) ini_set($setting, $value);
+    }
+    session_set_cookie_params($previousCookieParameters);
+    if ($hadTenantCookie) {
+        $_COOKIE['IEPRCARDTENANT'] = $previousTenantCookie;
+    } else {
+        unset($_COOKIE['IEPRCARDTENANT']);
+    }
     foreach ($oldEnvironment as $key => $value) {
         $value === null ? putenv($key) : putenv($key . '=' . $value);
     }
