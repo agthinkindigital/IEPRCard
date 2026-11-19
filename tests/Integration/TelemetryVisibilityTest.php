@@ -99,7 +99,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         static fn () => telemetryBusinessRecord($pdo, ['id' => 1301, 'papel_sistema' => 'responsavel_sub', 'tenant_id' => $tenantIds[0], 'subcliente_id' => $subclientIds[2]], 'issuance', 'card.generated', 1),
         static fn () => telemetryBusinessRead($pdo, $sedeA, ['mode' => 'tenant', 'tenant_id' => $tenantIds[1]], $window),
         static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[0], 'subcliente_id' => $subclientIds[0]], $window),
-        static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[1]], $window),
+        static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => max($tenantIds) + 10000], $window),
         static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[0]], ['from' => '2026-11-17', 'to' => '2027-11-17']),
         static fn () => telemetryBusinessRead($pdo, $admin, [], $window),
         static fn () => telemetryBusinessRead($pdo, $unit['id'] ?? [], ['mode' => 'unit'], $window),
