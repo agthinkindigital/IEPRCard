@@ -12,7 +12,7 @@ function operationalConfigurationTestWorkerStart(PDO $pdo, int $now, string $pha
     } catch (Throwable $exception) {
         $cause = $exception->getPrevious();
         $details = $cause instanceof PDOException
-            ? ['class' => get_class($cause), 'message' => $cause->getMessage(), 'sqlstate' => $cause->getCode(), 'driver_code' => $cause->errorInfo[1] ?? null, 'driver_message' => $cause->errorInfo[2] ?? null, 'trace' => $cause->getTraceAsString()]
+            ? ['class' => get_class($cause), 'message' => $cause->getMessage(), 'sqlstate' => $cause->getCode(), 'driver_code' => $cause->errorInfo[1] ?? null, 'driver_message' => $cause->errorInfo[2] ?? null]
             : null;
         throw new RuntimeException($phase . ': ' . $exception->getMessage() . ' ' . json_encode($details));
     }

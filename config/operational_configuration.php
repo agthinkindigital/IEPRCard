@@ -117,6 +117,18 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
     $environment = operationalBatchMetricsEnvironment();
     $now ??= time();
 
+    // There is nothing to promote on a fresh installation. Keep this as a
+    // read-only fast path; a setting saved concurrently will be picked up by
+    // the next worker invocation.
+    $existing = $pdo->prepare(
+        "SELECT id FROM configuracoes_operacionais WHERE ambiente = :environment "
+        . "AND estado IN ('pendente', 'ativa') ORDER BY versao DESC, id DESC LIMIT 1"
+    );
+    $existing->execute(['environment' => $environment]);
+    if ($existing->fetchColumn() === false) {
+        return null;
+    }
+
     for ($attempt = 0; $attempt < 3; $attempt++) {
         try {
             operationalConfigBeginTransaction($pdo, $driver);
@@ -157,7 +169,9 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
             }
 
             if (!is_array($row)) {
-                $pdo->commit();
+                if ($pdo->inTransaction()) {
+                    $pdo->commit();
+                }
                 return null;
             }
 
