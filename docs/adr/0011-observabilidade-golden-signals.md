@@ -21,7 +21,7 @@
   - **Erros:** 5xx, `COTA_EXCEDIDA`, webhook rejeitado, falha de render, DLQ;
   - **Saturação:** disco, conexões MySQL, `pm.max_children`, backlog da fila, CPU.
 - Telemetria de negócio e operacional ficam em domínios separados: `telemetria_eventos` (append-only, sem PII) é a de negócio; a operacional alimenta dashboards/alertas e não é exposta a Subclientes. Dados e métricas obedecem à política de privacidade em `docs/01` e `docs/08`.
-- Métricas operacionais de lote registram demanda diária, tempo em fila, duração, throughput, falhas/retries e saturação. O painel mostra lote recomendado e pico previsto sobre janela X configurável; o cálculo inicial usa P95 dos picos diários, com 30 dias propostos como padrão e histórico insuficiente sinalizado abaixo de 7 dias.
+- Métricas operacionais de lote registram demanda diária, tempo em fila, duração, throughput, falhas/retries e saturação. `duracao_media_ms` usa média ponderada de milissegundos por registro processado. O painel mostra lote recomendado e pico previsto sobre janela X configurável; o cálculo inicial usa P95 dos picos diários, com 30 dias propostos como padrão e histórico insuficiente sinalizado abaixo de 7 dias.
 - O Administrador edita lote e pico manualmente. A aplicação salva uma versão pendente; a ação `Reiniciar worker e aplicar` solicita a ativação. Em hospedagem compartilhada, a próxima execução agendada do worker aplica a versão; lotes em andamento mantêm a versão original. Ver ADR-0012 para o perfil de execução.
 - Alertas iniciais: cota > 80%, DLQ > 0, 5xx sustentado, WebP > 80 ms, disco > 80%, trial expirando, token de suporte utilizado.
 - OpenTelemetry fica como evolução; no MVP o `correlation_id` já dá rastreabilidade ponta-a-ponta.

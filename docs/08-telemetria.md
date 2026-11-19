@@ -1,9 +1,9 @@
 # Telemetria
 
-> Versão preliminar. Será refinada com os documentos de telemetria que você possui.
-
 ## Coleta
-Tabela `telemetria_eventos` (append-only e sem PII): `id, ocorrido_em, cliente_id, subcliente_id, usuario_id, tipo, quantidade, meta_json`. Alimentada pelos listeners dos eventos do sistema. Agregação diária por `cron.php` em `telemetria_diaria`. A rotina não deve copiar nome, CPF, foto, token, conteúdo de mensagem ou outro identificador direto para `meta_json`.
+Telemetria de negócio usa `telemetria_eventos` (append-only) e `telemetria_diaria`. O contrato de colunas é mantido no [schema canônico](../database/schema/0001/03-operations.php): escopo de Cliente/Subcliente, categoria, chave de evento, quantidade e metadados sem PII. Nome, CPF, foto, token, conteúdo de mensagem e outros identificadores diretos nunca entram nos metadados.
+
+As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; seu cálculo e sua ativação seguem o [ADR-0011](adr/0011-observabilidade-golden-signals.md). A tabela operacional agrega por dia e ambiente e não guarda identificadores de tenant ou titular.
 
 ## Métricas por nível
 | Métrica | Admin | Cliente | Subcliente |

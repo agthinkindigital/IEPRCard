@@ -9,6 +9,12 @@ require_once dirname(__DIR__, 2) . '/config/batch_import_confirmation.php';
 
 foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
+    $previousAppEnvironment = getenv('APP_ENV');
+    putenv('APP_ENV=test');
+    $metricsNow = strtotime('2001-04-05 06:07:00 UTC');
+    $metricsDay = '2001-04-05';
+    $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia = :day AND ambiente = :environment')
+        ->execute(['day' => $metricsDay, 'environment' => 'test']);
     $suffix = bin2hex(random_bytes(5));
     $storagePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-' . $suffix;
     $uploadDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-upload-' . $suffix;
@@ -40,7 +46,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $fixture['tenant_id'],
             null,
             $sourcePath,
-            'titulares.csv'
+            'titulares.csv',
+            $metricsNow
         );
         $lotId = $staged['lote_id'];
 
@@ -89,7 +96,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $fixture['tenant_id'],
             null,
             $lotId,
-            ['nome_completo' => 'nome_completo', 'whatsapp' => 'whatsapp']
+            ['nome_completo' => 'nome_completo', 'whatsapp' => 'whatsapp'],
+            $metricsNow + 10
         );
 
         $holder = $pdo->prepare(
@@ -112,6 +120,17 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             || (int) $lotRecord['total_registros'] !== 1 || (int) $lotRecord['processados_sucesso'] !== 1
             || $lotRecord['status_lote'] !== 'concluido' || $lotRecord['arquivo_original_url'] !== null) {
             throw new RuntimeException($driver . ': confirming a staged lot must create the holder and finish the lot.');
+        }
+        $dailyMetrics = $pdo->prepare(
+            'SELECT pico_demanda_diario, registros_processados, duracao_media_ms, fila_maxima, falhas '
+            . 'FROM metricas_lotes_diarias WHERE dia = :day AND ambiente = :environment'
+        );
+        $dailyMetrics->execute(['day' => $metricsDay, 'environment' => 'test']);
+        $metricRecord = $dailyMetrics->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($metricRecord) || (int) $metricRecord['pico_demanda_diario'] !== 1
+            || (int) $metricRecord['registros_processados'] !== 1 || (int) $metricRecord['duracao_media_ms'] !== 10000
+            || (int) $metricRecord['fila_maxima'] < 1 || (int) $metricRecord['falhas'] !== 0) {
+            throw new RuntimeException($driver . ': batch staging and confirmation must feed daily metrics without personal data.');
         }
 
         $rollbackPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'rollback.csv';
@@ -240,6 +259,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
 
         fwrite(STDOUT, 'PASS: ' . $driver . ' confirms a staged titular import and completes the lot.' . "\n");
     } finally {
+        $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia = :day AND ambiente = :environment')
+            ->execute(['day' => $metricsDay, 'environment' => 'test']);
+        putenv('APP_ENV=' . ($previousAppEnvironment === false ? '' : $previousAppEnvironment));
         if ($auditTriggerExists) {
             $pdo->exec("DROP TRIGGER {$auditTrigger}");
         }

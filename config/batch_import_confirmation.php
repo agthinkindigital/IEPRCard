@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/batch_import_staging.php';
+require_once __DIR__ . '/operational_batch_metrics.php';
 
 /** @param array<string, mixed> $identity @param array<string, string> $mapping
  *  @return array{lote_id:int,imported:int}
@@ -39,7 +40,7 @@ function batchImportConfirm(
                 : '';
             $lotQuery = $pdo->prepare(
                 'SELECT id, tenant_id, subcliente_id, arquivo_original_url, colunas_detectadas_json, '
-                . 'total_registros, status_lote FROM lotes_importacao '
+                . 'total_registros, status_lote, criado_em FROM lotes_importacao '
                 . 'WHERE id = :id AND tenant_id = :tenant LIMIT 1' . $lockClause
             );
             $lotQuery->execute(['id' => $loteId, 'tenant' => $tenantId]);
@@ -120,6 +121,17 @@ function batchImportConfirm(
                 throw new DomainException('IMPORT_LOT_NOT_CONFIRMABLE');
             }
             $createdCount = count($records);
+            operationalBatchMetricsRecord($pdo, [
+                'demand' => (int) $lot['total_registros'],
+                'processed' => $createdCount,
+                'duration_per_record_ms' => operationalBatchMetricsDurationPerRecord(
+                    (string) $lot['criado_em'],
+                    $createdCount,
+                    $now ?? time()
+                ),
+                'queue_depth' => operationalBatchMetricsQueueDepth($pdo),
+                'failures' => 0,
+            ], $now);
         });
     } catch (RuntimeException $exception) {
         if ($exception->getMessage() === 'TENANT_QUOTA_FAILED') {

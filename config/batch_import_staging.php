@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/titular_provisioning.php';
 require_once __DIR__ . '/batch_import_parser.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
+require_once __DIR__ . '/operational_batch_metrics.php';
 
 /** @param array<string, mixed> $identity @param array<string, mixed> $upload
  *  @return array{lote_id:int,columns:list<string>,preview:list<array<string,string|null>>,errors:list<array{linha:int,campo:string,codigo:string}>,total_rows:int}
@@ -96,7 +97,11 @@ function batchImportStageFile(
         throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
     }
 
+    $ownsTransaction = !$pdo->inTransaction();
     try {
+        if ($ownsTransaction) {
+            $pdo->beginTransaction();
+        }
         $insert = $pdo->prepare(
             'INSERT INTO lotes_importacao (tenant_id, subcliente_id, usuario_id, origem_tipo, arquivo_original_url, '
             . 'colunas_detectadas_json, total_registros, processados_sucesso, processados_erro, status_lote, criado_em) '
@@ -117,7 +122,20 @@ function batchImportStageFile(
         if ($lotId < 1) {
             throw new RuntimeException('IMPORT_STAGE_FAILED');
         }
+        operationalBatchMetricsRecord($pdo, [
+            'demand' => $parsed['total_rows'],
+            'processed' => 0,
+            'duration_per_record_ms' => 0,
+            'queue_depth' => operationalBatchMetricsQueueDepth($pdo),
+            'failures' => count($parsed['errors']),
+        ], $now);
+        if ($ownsTransaction) {
+            $pdo->commit();
+        }
     } catch (Throwable) {
+        if ($ownsTransaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
         @unlink($destination);
         throw new RuntimeException('IMPORT_STAGE_FAILED');
     }
