@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1880" viewBox="0 0 1440 1880" role="img" aria-labelledby="title desc">
+  <title id="title">Painéis de telemetria IEPRCard</title>
+  <desc id="desc">Proposta de interface para Admin, Cliente e Subcliente com métricas agregadas, previsão operacional e configuração do worker exclusiva do Admin.</desc>
+  <defs>
+    <style>
+      text{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;fill:#0F172A}
+      .muted{fill:#475569}.tiny{font-size:13px}.small{font-size:15px}.body{font-size:17px}.label{font-size:14px;font-weight:600}.section{font-size:22px;font-weight:700}.heading{font-size:27px;font-weight:700}.title{font-size:35px;font-weight:750}.card{fill:#FFFFFF;stroke:#DCE3EC;stroke-width:1.5}.bg{fill:#F6F8FB}.blue{fill:#1D4ED8}.lightblue{fill:#EFF6FF}.green{fill:#166534}.lightgreen{fill:#F0FDF4}.amber{fill:#92400E}.lightamber{fill:#FFFBEB}.line{stroke:#DCE3EC;stroke-width:1.5}.axis{stroke:#94A3B8;stroke-width:1}.stroke-blue{fill:none;stroke:#1D4ED8;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.stroke-green{fill:none;stroke:#16A34A;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+    </style>
+  </defs>
+  <rect width="1440" height="1880" fill="#E8EDF4"/>
+  <text x="56" y="58" class="title">Telemetria e operação</text>
+  <text x="56" y="91" class="body muted">Mockup para revisão • mesma página, conteúdo limitado pelo perfil autenticado</text>
+
+  <!-- Admin -->
+  <rect x="48" y="120" width="1344" height="850" rx="18" class="bg"/>
+  <rect x="48" y="120" width="1344" height="70" rx="18" fill="#FFFFFF"/>
+  <path d="M48 172h1344" class="line"/>
+  <rect x="76" y="140" width="34" height="34" rx="9" fill="#1D4ED8"/>
+  <text x="87" y="164" font-size="18" font-weight="700" fill="#FFFFFF">I</text>
+  <text x="122" y="163" class="label">IEPRCard</text>
+  <text x="1120" y="162" class="small muted">Admin SaaS</text>
+  <text x="84" y="232" class="heading">Visão geral</text>
+  <text x="84" y="260" class="small muted">Dados agregados • ambiente Produção • atualizado hoje às 09:42 UTC</text>
+  <rect x="958" y="211" width="196" height="42" rx="8" class="card"/>
+  <text x="976" y="238" class="small">Todos os clientes ▾</text>
+  <rect x="1170" y="211" width="182" height="42" rx="8" class="card"/>
+  <text x="1190" y="238" class="small">Últimos 30 dias ▾</text>
+  <rect x="84" y="284" width="294" height="116" rx="12" class="card"/>
+  <text x="106" y="316" class="label muted">CARTEIRINHAS GERADAS</text>
+  <text x="106" y="361" class="heading">18.420</text>
+  <text x="260" y="361" class="small muted">no período</text>
+  <rect x="396" y="284" width="294" height="116" rx="12" class="card"/>
+  <text x="418" y="316" class="label muted">LINHAS IMPORTADAS</text>
+  <text x="418" y="361" class="heading">24.861</text>
+  <text x="506" y="361" class="small muted">no período</text>
+  <rect x="708" y="284" width="294" height="116" rx="12" class="card"/>
+  <text x="730" y="316" class="label muted">LINHAS REJEITADAS</text>
+  <text x="730" y="361" class="heading">392</text>
+  <text x="780" y="361" class="small muted">no período</text>
+  <rect x="1020" y="284" width="332" height="116" rx="12" class="card"/>
+  <text x="1042" y="316" class="label muted">VALIDAÇÕES QR</text>
+  <text x="1042" y="361" class="heading">8.120</text>
+  <text x="1100" y="361" class="small muted">no período</text>
+
+  <rect x="84" y="424" width="790" height="320" rx="12" class="card"/>
+  <text x="108" y="463" class="section">Demanda diária de emissão</text>
+  <text x="108" y="489" class="small muted">Carteirinhas solicitadas por dia • sem dados identificáveis</text>
+  <path d="M132 686H828M132 626H828M132 566H828M132 526V686" class="axis"/>
+  <text x="98" y="691" class="tiny muted">0</text><text x="92" y="631" class="tiny muted">200</text><text x="92" y="571" class="tiny muted">400</text>
+  <path d="M145 660 L205 638 L265 649 L325 601 L385 619 L445 578 L505 594 L565 552 L625 567 L685 532 L745 551 L815 520" class="stroke-blue"/>
+  <path d="M145 622 L205 622 L265 622 L325 622 L385 622 L445 622 L505 622 L565 622 L625 622 L685 622 L745 622 L815 622" class="stroke-green" stroke-dasharray="8 7"/>
+  <text x="646" y="718" class="tiny muted">— Solicitações   - - Pico P95 previsto</text>
+  <rect x="896" y="424" width="456" height="320" rx="12" class="card"/>
+  <text x="920" y="463" class="section">Previsão operacional</text>
+  <text x="920" y="490" class="small muted">Base: dias UTC completos • janela 30 dias</text>
+  <rect x="920" y="512" width="194" height="98" rx="10" class="lightblue"/>
+  <text x="938" y="541" class="label muted">PICO PREVISTO</text>
+  <text x="938" y="582" class="heading">420 <tspan class="small">/ dia</tspan></text>
+  <rect x="1130" y="512" width="198" height="98" rx="10" class="lightgreen"/>
+  <text x="1148" y="541" class="label muted">LOTE RECOMENDADO</text>
+  <text x="1148" y="582" class="heading">420</text>
+  <text x="920" y="642" class="small"><tspan font-weight="700">Configuração ativa:</tspan> lote máx. 300 • janela 30 dias</text>
+  <text x="920" y="667" class="small muted">Histórico observado: 28 de 30 dias</text>
+  <rect x="920" y="687" width="182" height="38" rx="8" fill="#1D4ED8"/>
+  <text x="939" y="712" class="small" fill="#FFFFFF">Ajustar configuração</text>
+
+  <rect x="84" y="768" width="1268" height="166" rx="12" class="card"/>
+  <text x="108" y="805" class="section">Configuração de lotes</text>
+  <rect x="108" y="824" width="205" height="58" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="122" y="846" class="tiny muted">LOTE MÁXIMO</text><text x="122" y="870" class="body">300 registros</text>
+  <rect x="326" y="824" width="205" height="58" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="340" y="846" class="tiny muted">PICO PREVISTO</text><text x="340" y="870" class="body">420 por dia</text>
+  <rect x="544" y="824" width="205" height="58" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="558" y="846" class="tiny muted">JANELA DO CÁLCULO</text><text x="558" y="870" class="body">30 dias</text>
+  <rect x="776" y="824" width="552" height="58" rx="8" class="lightamber"/>
+  <text x="796" y="848" class="label amber">Alteração salva aguardando o worker</text>
+  <text x="796" y="871" class="small amber">A versão ativa permanece em uso até a próxima execução do worker.</text>
+  <text x="84" y="954" class="tiny muted">Configuração e métricas operacionais são exclusivas do Admin. Valores ilustrativos.</text>
+
+  <!-- Cliente -->
+  <rect x="48" y="1000" width="1344" height="400" rx="18" class="bg"/>
+  <rect x="48" y="1000" width="1344" height="66" rx="18" fill="#FFFFFF"/>
+  <path d="M48 1050h1344" class="line"/>
+  <rect x="76" y="1016" width="34" height="34" rx="9" fill="#1D4ED8"/>
+  <text x="87" y="1040" font-size="18" font-weight="700" fill="#FFFFFF">I</text><text x="122" y="1040" class="label">IEPRCard</text>
+  <text x="1145" y="1040" class="small muted">Cliente • Rede Remida</text>
+  <text x="84" y="1100" class="heading">Atividade da rede</text>
+  <rect x="1078" y="1080" width="274" height="40" rx="8" class="card"/>
+  <text x="1096" y="1106" class="small">Todas as unidades ▾　30 dias ▾</text>
+  <rect x="84" y="1138" width="280" height="94" rx="12" class="card"/><text x="104" y="1168" class="label muted">CARTEIRINHAS EMITIDAS</text><text x="104" y="1209" class="heading">1.284</text>
+  <rect x="380" y="1138" width="280" height="94" rx="12" class="card"/><text x="400" y="1168" class="label muted">LINHAS ACEITAS</text><text x="400" y="1209" class="heading">12.340</text>
+  <rect x="676" y="1138" width="280" height="94" rx="12" class="card"/><text x="696" y="1168" class="label muted">LINHAS REJEITADAS</text><text x="696" y="1209" class="heading">225</text>
+  <rect x="972" y="1138" width="380" height="94" rx="12" class="card"/><text x="992" y="1168" class="label muted">VALIDAÇÕES QR</text><text x="992" y="1209" class="heading">642</text>
+  <rect x="84" y="1250" width="1268" height="122" rx="12" class="card"/>
+  <text x="108" y="1287" class="section">Resumo da rede</text><text x="108" y="1325" class="body">Linhas aceitas</text><text x="544" y="1325" class="body">12.340</text><text x="900" y="1325" class="small muted">Linhas rejeitadas</text><text x="1080" y="1325" class="small">225</text>
+  <path d="M108 1344h1220" class="line"/><text x="108" y="1365" class="small muted">Filtrar por unidade e período para consultar os agregados autorizados.</text>
+  <text x="84" y="1390" class="tiny muted">Sem dados de infraestrutura ou edição de parâmetros do worker. Filtros restritos à própria rede.</text>
+
+  <!-- Subcliente -->
+  <rect x="48" y="1430" width="1344" height="400" rx="18" class="bg"/>
+  <rect x="48" y="1430" width="1344" height="66" rx="18" fill="#FFFFFF"/>
+  <path d="M48 1480h1344" class="line"/>
+  <rect x="76" y="1446" width="34" height="34" rx="9" fill="#1D4ED8"/>
+  <text x="87" y="1470" font-size="18" font-weight="700" fill="#FFFFFF">I</text><text x="122" y="1470" class="label">IEPRCard</text>
+  <text x="1095" y="1470" class="small muted">Unidade • Congregação Itaquera</text>
+  <text x="84" y="1530" class="heading">Atividade da unidade</text>
+  <rect x="1170" y="1510" width="182" height="40" rx="8" class="card"/><text x="1190" y="1536" class="small">Últimos 30 dias ▾</text>
+  <rect x="84" y="1570" width="390" height="108" rx="12" class="card"/><text x="108" y="1605" class="label muted">CARTEIRINHAS EMITIDAS</text><text x="108" y="1651" class="heading">338</text>
+  <rect x="496" y="1570" width="390" height="108" rx="12" class="card"/><text x="520" y="1605" class="label muted">LINHAS ACEITAS</text><text x="520" y="1651" class="heading">2.640</text>
+  <rect x="908" y="1570" width="444" height="108" rx="12" class="card"/><text x="932" y="1605" class="label muted">VALIDAÇÕES QR</text><text x="932" y="1651" class="heading">126</text>
+  <rect x="84" y="1696" width="1268" height="96" rx="12" class="card"/>
+  <text x="108" y="1735" class="section">Resultado de importações</text><text x="108" y="1770" class="small muted">Linhas rejeitadas　 •　 38 no período selecionado</text>
+  <text x="84" y="1818" class="tiny muted">Escopo da unidade fixado pelo servidor. Não há seletor de outras unidades nem dados globais.</text>
+</svg>

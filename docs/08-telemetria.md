@@ -8,30 +8,33 @@ As leituras aceitam janela UTC inclusiva de até 366 dias. Admin informa explici
 As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; seu cálculo e sua ativação seguem o [ADR-0011](adr/0011-observabilidade-golden-signals.md). A tabela operacional agrega por dia e ambiente e não guarda identificadores de tenant ou titular.
 
 ## Métricas por nível
-| Métrica | Admin | Cliente | Subcliente |
+| Métrica agregada | Admin | Cliente | Subcliente |
 | --- | --- | --- | --- |
-| Carteirinhas geradas (PDF/WebP) | Global e por cliente | Rede e por unidade | Unidade |
-| Titulares no banco / criados | Global | Rede | Unidade |
-| Usuários e sub-acessos | Global | Rede | Unidade |
-| Consumo de cota | Todos | Pool e distribuição | Própria |
-| Conversas WhatsApp / IA (tokens) | Global e custo | Rede | Unidade (se delegado) |
-| Importações (linhas ok/erro) | Global | Rede | Unidade |
-| Validações por QR Code | Global | Rede | Unidade |
-| Receita, MRR, inadimplência | Sim | Próprio plano | Não |
-| Infraestrutura (fila, erros, disco) | Sim | Não | Não |
+| Carteirinhas geradas | Global ou escopo selecionado | Rede e unidade selecionada | Própria unidade |
+| Mensagens WhatsApp enviadas/falhas | Global ou escopo selecionado | Rede e unidade selecionada | Própria unidade |
+| Linhas de importação aceitas/rejeitadas | Global ou escopo selecionado | Rede e unidade selecionada | Própria unidade |
+| Validações por QR Code | Global ou escopo selecionado | Rede e unidade selecionada | Própria unidade |
+| Demanda, duração, fila e falhas de lotes | Global, apenas Admin | Não | Não |
+
+Contagens de titulares/usuários, consumo de cotas, tokens/custos de IA, receita e métricas de infraestrutura não entram neste painel até existir coleta e leitura próprias compatíveis com a privacidade e o escopo. Pagamentos e dados financeiros continuam fora do MVP.
 
 ## Painéis
-- Admin: visão global, ranking de clientes, alertas (cota > 80%, erros de fila, falhas de webhook).
-- Cliente: visão da rede com filtro por unidade e período.
-- Subcliente: visão restrita à unidade.
+- Admin: visão global ou por cliente/unidade e estado operacional de lotes. A área operacional mostra pico previsto e lote recomendado com base no P95 dos picos diários completos da janela selecionada (padrão de 30 dias, mínimo de 7 dias observados), parâmetros ativos e alterações pendentes. O Administrador pode editar lote máximo, pico previsto e janela; salvar cria uma versão pendente, aplicada somente no início da próxima execução do worker. A execução em andamento conserva a configuração que carregou. Alertas ficam limitados a métricas que a coleta operacional disponibiliza, como falhas e fila.
+- Cliente: visão agregada da própria rede, com filtro de período e unidade; não exibe infraestrutura nem permite alterar configuração operacional.
+- Subcliente: visão da própria unidade, sem filtro para outros escopos, dados de infraestrutura ou controles operacionais.
+
+Os filtros de período usam janelas suportadas pelo serviço de leitura. A previsão operacional aceita de 7 a 365 dias; dias sem registro não contam como observados, o dia UTC corrente é excluído e, com menos de 7 dias observados, o painel apresenta “Histórico insuficiente” sem inventar previsão. A previsão e a sugestão de lote são estimativas, não limites de cota nem promessa de capacidade.
+
+### Guia funcional para aprovação da interface
+
+- Uma única página de painel adapta título, métricas e filtros ao escopo resolvido pela sessão. A seleção do período e da unidade afeta apenas as leituras permitidas ao perfil; nenhum ID enviado pelo navegador amplia o escopo autorizado.
+- A visão Admin separa métricas de negócio e operação. Permite escolher global, cliente ou unidade. A configuração de lotes aparece apenas para quem tem permissão administrativa: valores ativos e pendentes, versão, janela de previsão, valores recomendados/previstos e campos editáveis. Salvar exige confirmação e informa que a alteração será carregada no próximo início do worker; não interrompe nem altera lotes em andamento.
+- A visão Cliente resume a rede e permite filtrar uma unidade e o período. A visão Subcliente fixa a unidade no backend e não apresenta seletor de unidade.
+- Estados cobertos: carregando, sem dados no período, histórico insuficiente para previsão, falha de leitura e configuração salva aguardando worker. Estado e orientação aparecem em texto, não apenas por cor.
+- Métricas nunca mostram nomes, CPF, tokens, conteúdo livre ou identificadores de titulares. Dados agregados respeitam a retenção definida nesta documentação.
+- Os serviços de domínio existentes ainda não têm rotas HTTP para o painel. A fatia de interface inclui handlers autenticados para consultar agregados e a série diária de demanda, selecionar unidades sob escopo do servidor, ler configuração ativa/pendente e salvar nova versão. Os handlers validam janela e autorização e expõem apenas as métricas listadas; gravar configuração requer permissão administrativa e CSRF.
+- O mockup visual das três variações está em [`design-system/mockups/telemetry-dashboard-mockup.svg`](../design-system/mockups/telemetry-dashboard-mockup.svg) e aguarda aprovação antes de abrir a implementação das telas.
 
 ## Privacidade
 Sem dados pessoais em `meta_json`. Métricas agregadas que não permitam reidentificação podem ser retidas por 24 meses. O ciclo de vida dos dados pessoais está definido em `docs/01-regras-de-negocio.md`.
-
-
-## Telas do MVP
-
-**Painel de telemetria**
-
-![Painel de telemetria](/telas/06-painel.png)
 
