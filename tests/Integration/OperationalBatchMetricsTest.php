@@ -71,9 +71,9 @@ try {
             'INSERT INTO metricas_lotes_diarias (dia, ambiente, pico_demanda_diario) VALUES (:day, :environment, :peak)'
         );
         for ($offset = 1; $offset <= 20; $offset++) {
-            $day = gmdate('Y-m-d', $forecastNow - ($offset * 86400));
-            $forecastInsert->execute(['day' => $day, 'environment' => 'test', 'peak' => $offset * 10]);
-            $forecastInsert->execute(['day' => $day, 'environment' => 'staging', 'peak' => 5000]);
+            $forecastDay = gmdate('Y-m-d', $forecastNow - ($offset * 86400));
+            $forecastInsert->execute(['day' => $forecastDay, 'environment' => 'test', 'peak' => $offset * 10]);
+            $forecastInsert->execute(['day' => $forecastDay, 'environment' => 'staging', 'peak' => 5000]);
         }
         $forecastInsert->execute(['day' => '2001-02-11', 'environment' => 'test', 'peak' => 9000]);
         $forecastInsert->execute(['day' => '2001-01-11', 'environment' => 'test', 'peak' => 10000]);
