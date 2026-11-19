@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1810" viewBox="0 0 1440 1810" role="img" aria-labelledby="title description">
+  <title id="title">Portal do titular e validação QR</title>
+  <desc id="description">Três estados com dados fictícios: acesso privado do titular, consulta da carteirinha digital e confirmação pública de validade por QR Code.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
+    <style>
+      text { font-family: Inter, system-ui, "Segoe UI", sans-serif; }
+      .muted { fill: #475569; }
+      .small { font-size: 13px; }
+      .body { font-size: 15px; }
+      .label { font-size: 12px; font-weight: 700; letter-spacing: .4px; }
+      .title { font-size: 28px; font-weight: 700; fill: #0F172A; }
+      .card { fill: #FFFFFF; stroke: #DCE3EC; }
+      .line { stroke: #DCE3EC; }
+      .input { fill: #FFFFFF; stroke: #94A3B8; }
+    </style>
+  </defs>
+  <rect width="1440" height="1810" fill="#F6F8FB"/>
+
+  <text x="40" y="36" class="label muted">IEPRCARD · PROPOSTA DE EXPERIÊNCIA DO TITULAR · DADOS FICTÍCIOS</text>
+
+  <!-- Acesso privado -->
+  <rect x="24" y="56" width="1392" height="520" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="24" y="56" width="1392" height="76" rx="14" fill="#FFFFFF"/>
+  <path d="M24 132h1392" class="line"/>
+  <rect x="64" y="76" width="36" height="36" rx="9" fill="#1D4ED8"/>
+  <path d="M73 94h18M82 85v18" stroke="#FFFFFF" stroke-width="2.5"/>
+  <text x="112" y="96" font-size="18" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="1192" y="101" class="small muted">Portal seguro da organização</text>
+  <rect x="24" y="133" width="1392" height="443" fill="#F6F8FB"/>
+  <text x="720" y="183" text-anchor="middle" class="label muted">1 · ACESSO PRIVADO</text>
+  <rect x="420" y="205" width="600" height="326" rx="12" class="card" filter="url(#shadow)"/>
+  <text x="468" y="253" class="title">Acesse sua carteirinha</text>
+  <text x="468" y="280" class="body muted">Entre com seus dados ou use o link individual enviado pela organização.</text>
+  <text x="468" y="319" class="label muted">CPF</text>
+  <rect x="468" y="330" width="504" height="44" rx="7" class="input"/>
+  <text x="484" y="358" class="body muted">000.000.000-00</text>
+  <text x="468" y="402" class="label muted">DATA DE NASCIMENTO</text>
+  <rect x="468" y="413" width="504" height="44" rx="7" class="input"/>
+  <text x="484" y="441" class="body muted">DD / MM / AAAA</text>
+  <rect x="468" y="474" width="504" height="40" rx="7" fill="#1D4ED8"/>
+  <text x="720" y="500" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">Acessar carteirinha</text>
+
+  <!-- Área autenticada -->
+  <rect x="24" y="610" width="1392" height="620" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="24" y="610" width="1392" height="76" rx="14" fill="#FFFFFF"/>
+  <path d="M24 686h1392" class="line"/>
+  <rect x="64" y="630" width="36" height="36" rx="9" fill="#1D4ED8"/>
+  <path d="M73 648h18M82 639v18" stroke="#FFFFFF" stroke-width="2.5"/>
+  <text x="112" y="650" font-size="18" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="1180" y="655" class="small muted">Ana Costa · <tspan fill="#1D4ED8">Sair</tspan></text>
+  <rect x="24" y="687" width="1392" height="543" fill="#F6F8FB"/>
+  <text x="64" y="730" class="label muted">2 · ÁREA AUTENTICADA</text>
+  <text x="64" y="770" class="title">Sua carteirinha</text>
+  <text x="64" y="796" class="body muted">Igreja Remida de Cristo · Congregação Itaquera</text>
+  <text x="64" y="819" class="small muted">Vinculada à Sede · somente você pode consultar esta área</text>
+  <rect x="64" y="844" width="186" height="42" rx="7" class="input"/>
+  <text x="82" y="870" class="small" fill="#0F172A">Carteirinha de membro ▾</text>
+  <text x="64" y="923" class="label muted">CARTEIRINHA DIGITAL · ATIVA</text>
+  <rect x="64" y="940" width="716" height="226" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="64" y="940" width="716" height="226" rx="14" fill="#EFF6FF"/>
+  <rect x="64" y="940" width="220" height="226" rx="14" fill="#DBEAFE"/>
+  <circle cx="174" cy="1035" r="48" fill="#FFFFFF" stroke="#93C5FD" stroke-width="3"/>
+  <circle cx="174" cy="1024" r="16" fill="#94A3B8"/>
+  <path d="M142 1072c5-19 19-28 32-28s27 9 32 28" fill="#94A3B8"/>
+  <text x="174" y="1123" text-anchor="middle" class="small muted">Foto do titular</text>
+  <text x="316" y="982" class="label" fill="#1D4ED8">IGREJA REMIDA DE CRISTO</text>
+  <text x="316" y="1024" font-size="23" font-weight="700" fill="#0F172A">Ana Costa</text>
+  <text x="316" y="1055" class="body muted">Membro · Congregação Itaquera</text>
+  <text x="316" y="1085" class="small muted">Válida até 31/12/2027</text>
+  <rect x="646" y="980" width="98" height="98" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <g fill="#0F172A">
+    <rect x="658" y="992" width="24" height="24"/><rect x="666" y="1000" width="8" height="8" fill="#FFFFFF"/>
+    <rect x="708" y="992" width="24" height="24"/><rect x="716" y="1000" width="8" height="8" fill="#FFFFFF"/>
+    <rect x="658" y="1042" width="24" height="24"/><rect x="666" y="1050" width="8" height="8" fill="#FFFFFF"/>
+    <rect x="690" y="994" width="7" height="7"/><rect x="691" y="1020" width="8" height="8"/>
+    <rect x="705" y="1030" width="7" height="7"/><rect x="721" y="1042" width="9" height="9"/>
+    <rect x="690" y="1050" width="8" height="8"/><rect x="705" y="1060" width="9" height="9"/>
+  </g>
+  <rect x="64" y="1180" width="112" height="34" rx="17" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="120" y="1202" text-anchor="middle" class="small" fill="#0F172A">‹ Frente</text>
+  <rect x="184" y="1180" width="112" height="34" rx="17" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="240" y="1202" text-anchor="middle" class="small" fill="#0F172A">Verso ›</text>
+  <rect x="952" y="940" width="384" height="108" rx="10" class="card"/>
+  <text x="976" y="975" class="label muted">AUTENTICIDADE</text>
+  <text x="976" y="1003" class="body" fill="#166534">QR Code pronto para validação</text>
+  <text x="976" y="1028" class="small muted">Aponte a câmera para conferir a situação.</text>
+  <rect x="952" y="1064" width="384" height="48" rx="8" fill="#1D4ED8"/>
+  <text x="1144" y="1094" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">Baixar PDF</text>
+  <text x="952" y="1140" class="small muted">O PDF aparece somente quando a organização libera o download.</text>
+
+  <!-- Validação pública -->
+  <rect x="24" y="1264" width="1392" height="520" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="24" y="1264" width="1392" height="76" rx="14" fill="#FFFFFF"/>
+  <path d="M24 1340h1392" class="line"/>
+  <rect x="64" y="1284" width="36" height="36" rx="9" fill="#1D4ED8"/>
+  <path d="M73 1302h18M82 1293v18" stroke="#FFFFFF" stroke-width="2.5"/>
+  <text x="112" y="1304" font-size="18" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="1196" y="1309" class="small muted">Verificação pública</text>
+  <rect x="24" y="1341" width="1392" height="443" fill="#F6F8FB"/>
+  <text x="720" y="1385" text-anchor="middle" class="label muted">3 · RESULTADO DA VALIDAÇÃO QR</text>
+  <rect x="420" y="1405" width="600" height="340" rx="12" class="card" filter="url(#shadow)"/>
+  <circle cx="720" cy="1460" r="25" fill="#DCFCE7"/>
+  <path d="m709 1460 8 8 15-17" fill="none" stroke="#166534" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="720" y="1510" text-anchor="middle" font-size="22" font-weight="700" fill="#166534">Carteirinha ativa</text>
+  <circle cx="720" cy="1570" r="34" fill="#DBEAFE"/>
+  <circle cx="720" cy="1563" r="11" fill="#94A3B8"/>
+  <path d="M697 1593c4-13 13-19 23-19s19 6 23 19" fill="#94A3B8"/>
+  <text x="720" y="1630" text-anchor="middle" font-size="18" font-weight="700" fill="#0F172A">Ana Costa</text>
+  <text x="720" y="1658" text-anchor="middle" class="body muted">Congregação Itaquera · Igreja Remida de Cristo</text>
+  <text x="720" y="1685" text-anchor="middle" class="small muted">Válida até 31/12/2027</text>
+  <text x="720" y="1724" text-anchor="middle" class="small muted">CPF e outros dados pessoais não são exibidos.</text>
+  <text x="720" y="1763" text-anchor="middle" class="small" fill="#1D4ED8">Validar outra carteirinha</text>
+</svg>
