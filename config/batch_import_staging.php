@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/titular_provisioning.php';
 require_once __DIR__ . '/batch_import_parser.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
+require_once __DIR__ . '/batch_import_photo_archive.php';
 require_once __DIR__ . '/operational_batch_metrics.php';
 
 /** @param array<string, mixed> $identity @param array<string, mixed> $upload
@@ -16,7 +17,8 @@ function batchImportStageUploadedFile(
     int $tenantId,
     ?int $subclienteId,
     array $upload,
-    ?int $now = null
+    ?int $now = null,
+    ?array $photoUpload = null
 ): array {
     $temporaryPath = $upload['tmp_name'] ?? null;
     if (($upload['error'] ?? null) !== UPLOAD_ERR_OK || !is_string($temporaryPath)
@@ -24,7 +26,28 @@ function batchImportStageUploadedFile(
         throw new DomainException('IMPORT_FILE_INVALID');
     }
 
-    return batchImportStageFile($pdo, $context, $identity, $tenantId, $subclienteId, $temporaryPath, $upload['name'], $now);
+    $photoTemporaryPath = null;
+    if ($photoUpload !== null) {
+        $photoTemporaryPath = $photoUpload['tmp_name'] ?? null;
+        if (($photoUpload['error'] ?? null) !== UPLOAD_ERR_OK || !is_string($photoTemporaryPath)
+            || !is_uploaded_file($photoTemporaryPath) || !is_string($photoUpload['name'] ?? null)
+            || strtolower(pathinfo($photoUpload['name'], PATHINFO_EXTENSION)) !== 'zip') {
+            throw new DomainException('IMPORT_PHOTO_ARCHIVE_INVALID');
+        }
+    }
+
+    return batchImportStageFile(
+        $pdo,
+        $context,
+        $identity,
+        $tenantId,
+        $subclienteId,
+        $temporaryPath,
+        $upload['name'],
+        $now,
+        $photoTemporaryPath,
+        is_string($photoUpload['name'] ?? null) ? $photoUpload['name'] : null
+    );
 }
 
 /** @param array<string, mixed> $identity
@@ -38,7 +61,9 @@ function batchImportStageFile(
     ?int $subclienteId,
     string $temporaryPath,
     string $originalName,
-    ?int $now = null
+    ?int $now = null,
+    ?string $photoArchivePath = null,
+    ?string $photoArchiveOriginalName = null
 ): array {
     if (!titularCreateCanManage($pdo, $context, $identity, $tenantId, $subclienteId)) {
         throw new DomainException('TITULAR_CREATE_DENIED');
@@ -53,6 +78,16 @@ function batchImportStageFile(
     $size = filesize($temporaryPath);
     if (!is_int($size) || $size < 1 || $size > BATCH_IMPORT_MAX_FILE_BYTES) {
         throw new DomainException('IMPORT_FILE_SIZE_INVALID');
+    }
+    if ($photoArchivePath !== null) {
+        $photoSize = is_file($photoArchivePath) && !is_link($photoArchivePath) ? filesize($photoArchivePath) : false;
+        $photoExtension = is_string($photoArchiveOriginalName)
+            ? pathinfo($photoArchiveOriginalName, PATHINFO_EXTENSION)
+            : pathinfo($photoArchivePath, PATHINFO_EXTENSION);
+        if (strtolower($photoExtension) !== 'zip'
+            || !is_int($photoSize) || $photoSize < 1 || $photoSize > BATCH_IMPORT_PHOTO_MAX_ARCHIVE_BYTES) {
+            throw new DomainException('IMPORT_PHOTO_ARCHIVE_INVALID');
+        }
     }
     $parseTemporaryPath = tempnam(sys_get_temp_dir(), 'iepr-import-');
     if (!is_string($parseTemporaryPath)) {
@@ -85,7 +120,8 @@ function batchImportStageFile(
     if (DIRECTORY_SEPARATOR === '/' && ((fileperms($realTenantDirectory) ?: 0) & 0077) !== 0) {
         throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
     }
-    $key = $tenantId . '/' . bin2hex(random_bytes(24)) . '.' . $extension;
+    $token = bin2hex(random_bytes(24));
+    $key = $tenantId . '/' . $token . '.' . $extension;
     $destination = $realTenantDirectory . DIRECTORY_SEPARATOR . basename($key);
     if (!copy($temporaryPath, $destination)) {
         @unlink($destination);
@@ -95,6 +131,26 @@ function batchImportStageFile(
     if (DIRECTORY_SEPARATOR === '/' && ((fileperms($destination) ?: 0) & 0077) !== 0) {
         @unlink($destination);
         throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
+    }
+    $storedSourceKey = 'private://' . $key;
+    $photoDestination = null;
+    if ($photoArchivePath !== null) {
+        try {
+            $photoDestination = batchImportPhotoArchiveResolvePath($tenantId, $storedSourceKey);
+            if (!copy($photoArchivePath, $photoDestination)) {
+                throw new RuntimeException('IMPORT_STAGE_FAILED');
+            }
+            @chmod($photoDestination, 0600);
+            if (DIRECTORY_SEPARATOR === '/' && ((fileperms($photoDestination) ?: 0) & 0077) !== 0) {
+                throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
+            }
+        } catch (Throwable $exception) {
+            @unlink($destination);
+            if (is_string($photoDestination)) {
+                @unlink($photoDestination);
+            }
+            throw $exception;
+        }
     }
 
     $ownsTransaction = !$pdo->inTransaction();
@@ -112,7 +168,7 @@ function batchImportStageFile(
             'subclient' => $subclienteId,
             'user' => (int) $identity['id'],
             'origin' => $extension,
-            'source' => 'private://' . $key,
+            'source' => $storedSourceKey,
             'columns' => json_encode($parsed['columns'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             'total' => $parsed['total_rows'],
             'status' => 'aguardando_mapa',
@@ -137,6 +193,9 @@ function batchImportStageFile(
             $pdo->rollBack();
         }
         @unlink($destination);
+        if (is_string($photoDestination)) {
+            @unlink($photoDestination);
+        }
         throw new RuntimeException('IMPORT_STAGE_FAILED');
     }
 
@@ -186,6 +245,7 @@ function batchImportStagingCancel(
         throw new DomainException('IMPORT_LOT_NOT_CANCELLABLE');
     }
     batchImportStagingDeleteStoredFile($tenantId, (string) $lot['arquivo_original_url']);
+    batchImportPhotoArchiveDeleteForSource($tenantId, (string) $lot['arquivo_original_url']);
     $clear = $pdo->prepare('UPDATE lotes_importacao SET arquivo_original_url = NULL WHERE id = :id');
     $clear->execute(['id' => $loteId]);
 }
@@ -224,6 +284,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
                 $pdo->commit();
                 ++$expired;
                 batchImportStagingDeleteStoredFile((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
+                batchImportPhotoArchiveDeleteForSource((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
                 $clear = $pdo->prepare(
                     "UPDATE lotes_importacao SET arquivo_original_url = NULL WHERE id = :id AND status_lote = 'expirado'"
                 );
@@ -247,6 +308,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
     $terminal->execute(['cutoff' => $cutoff]);
     foreach ($terminal->fetchAll(PDO::FETCH_ASSOC) as $lot) {
         batchImportStagingDeleteStoredFile((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
+        batchImportPhotoArchiveDeleteForSource((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
         $clear = $pdo->prepare('UPDATE lotes_importacao SET arquivo_original_url = NULL WHERE id = :id');
         $clear->execute(['id' => (int) $lot['id']]);
     }

@@ -6,6 +6,8 @@ require_once __DIR__ . '/BatchImportStagingTestSupport.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/motor_permissoes.php';
 require_once dirname(__DIR__, 2) . '/config/batch_import_confirmation.php';
+require_once dirname(__DIR__, 2) . '/config/card_issuance_worker.php';
+require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
 
 foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
@@ -19,6 +21,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $storagePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-' . $suffix;
     $uploadDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-upload-' . $suffix;
     $previousStoragePath = getenv('IEPR_PRIVATE_STORAGE_PATH');
+    $previousAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
     mkdir($uploadDirectory, 0700, true);
     putenv('IEPR_PRIVATE_STORAGE_PATH=' . $storagePath);
     $fixture = null;
@@ -26,6 +29,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $ownerId = null;
     $adminId = null;
     $lotId = null;
+    $photoLotId = null;
+    $invalidPhotoLotId = null;
+    $rollbackPhotoLotId = null;
     $rollbackLotId = null;
     $largeLotId = null;
     $originTrigger = 'import_confirm_origin_fail';
@@ -265,6 +271,283 @@ foreach (tenantTestConnections() as $driver => $pdo) {
 
         $pdo->prepare('UPDATE tenants SET limite_titulares = 600 WHERE id = :tenant')
             ->execute(['tenant' => $fixture['tenant_id']]);
+        $photoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'photos.zip';
+        $photoZip = new ZipArchive();
+        if ($photoZip->open($photoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Could not create the photo archive fixture.');
+        }
+        $photoImage = imagecreatetruecolor(8, 8);
+        $photoColor = imagecolorallocate($photoImage, 35, 120, 205);
+        imagefill($photoImage, 0, 0, $photoColor);
+        ob_start();
+        imagepng($photoImage);
+        $photoBytes = ob_get_clean();
+        imagedestroy($photoImage);
+        if (!is_string($photoBytes)) {
+            throw new RuntimeException('Could not encode the photo fixture.');
+        }
+        $photoZip->addFromString('529.982.247-25.png', $photoBytes);
+        $photoZip->addFromString('MAT-A2.png', $photoBytes);
+        $photoZip->close();
+        $photoSourcePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'photo-titulares.csv';
+        file_put_contents(
+            $photoSourcePath,
+            "nome;cpf;matricula\nAda Photo CPF;52998224725;MAT-A1\nGrace Photo Matricula;11144477735;mat-a2\n"
+        );
+        $photoStaged = batchImportStageFile(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $photoSourcePath,
+            'photo-titulares.csv',
+            $metricsNow + 20,
+            $photoZipPath
+        );
+        $photoLotId = $photoStaged['lote_id'];
+        $photoLotSource = $pdo->prepare('SELECT arquivo_original_url FROM lotes_importacao WHERE id = :id');
+        $photoLotSource->execute(['id' => $photoLotId]);
+        $photoSourceKey = (string) $photoLotSource->fetchColumn();
+        $stagedPhotoArchivePath = batchImportPhotoArchiveResolvePath($fixture['tenant_id'], $photoSourceKey);
+        if (!is_file($stagedPhotoArchivePath)) {
+            throw new RuntimeException($driver . ': the optional photo archive must be staged privately with its import.');
+        }
+        $photoImport = batchImportConfirm(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $photoLotId,
+            ['nome_completo' => 'nome_completo', 'cpf' => 'cpf', 'matricula' => 'matricula'],
+            $metricsNow + 30
+        );
+        $photoHoldersQuery = $pdo->prepare(
+            'SELECT id, nome_completo, foto_url FROM titulares WHERE tenant_id = :tenant AND lote_origem_id = :lot '
+            . 'ORDER BY nome_completo'
+        );
+        $photoHoldersQuery->execute(['tenant' => $fixture['tenant_id'], 'lot' => $photoLotId]);
+        $photoHolders = $photoHoldersQuery->fetchAll(PDO::FETCH_ASSOC);
+        if (($photoImport['imported'] ?? null) !== 2 || count($photoHolders) !== 2) {
+            throw new RuntimeException($driver . ': photo archive confirmation must create both mapped holders.');
+        }
+        foreach ($photoHolders as $photoHolder) {
+            $photoKey = (string) ($photoHolder['foto_url'] ?? '');
+            if (!str_starts_with($photoKey, 'private://') || str_contains($photoKey, '52998224725')
+                || str_contains($photoKey, 'MAT-A2')) {
+                throw new RuntimeException($driver . ': matched photos must be stored under opaque private keys.');
+            }
+            $photoFile = cardIssuanceWorkerResolvePath($fixture['tenant_id'], $photoKey);
+            if (!is_file($photoFile) || file_get_contents($photoFile) !== $photoBytes) {
+                throw new RuntimeException($driver . ': matched CPF/matricula photos must be retained for card issuance.');
+            }
+        }
+        $invalidArchiveCases = [
+            [
+                'entries' => [['UNKNOWN.png', $photoBytes]],
+                'records' => [['cpf' => null, 'matricula' => 'EXPECTED']],
+            ],
+            [
+                'entries' => [['DUP.png', $photoBytes]],
+                'records' => [['cpf' => null, 'matricula' => 'DUP'], ['cpf' => null, 'matricula' => 'DUP']],
+            ],
+            [
+                'entries' => [['MATCH.png', $photoBytes], ['match.PNG', $photoBytes]],
+                'records' => [['cpf' => null, 'matricula' => 'MATCH']],
+            ],
+            [
+                'entries' => [['../MATCH.png', $photoBytes]],
+                'records' => [['cpf' => null, 'matricula' => 'MATCH']],
+            ],
+        ];
+        foreach ($invalidArchiveCases as $caseIndex => $invalidArchiveCase) {
+            $caseArchivePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'invalid-case-' . $caseIndex . '.zip';
+            $caseArchive = new ZipArchive();
+            if ($caseArchive->open($caseArchivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new RuntimeException('Could not create an invalid photo archive case.');
+            }
+            foreach ($invalidArchiveCase['entries'] as [$entryName, $entryBytes]) {
+                $caseArchive->addFromString($entryName, $entryBytes);
+            }
+            $caseArchive->close();
+            $caseRejected = false;
+            try {
+                batchImportPhotoArchiveReadMatches($caseArchivePath, $invalidArchiveCase['records']);
+            } catch (DomainException $exception) {
+                $caseRejected = $exception->getMessage() === 'IMPORT_PHOTO_ARCHIVE_INVALID';
+            } finally {
+                @unlink($caseArchivePath);
+            }
+            if (!$caseRejected) {
+                throw new RuntimeException($driver . ': orphaned, ambiguous, duplicate or traversal entries must be rejected.');
+            }
+        }
+        if (!is_array($photoHolders[0]) || !is_array($photoHolders[1])) {
+            throw new RuntimeException($driver . ': matched photo holder rows must be valid.');
+        }
+        $photoReplayRejected = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $photoLotId,
+                ['nome_completo' => 'nome_completo', 'cpf' => 'cpf', 'matricula' => 'matricula'],
+                $metricsNow + 35
+            );
+        } catch (DomainException $exception) {
+            $photoReplayRejected = $exception->getMessage() === 'IMPORT_LOT_NOT_CONFIRMABLE';
+        }
+        $photoHoldersQuery->execute(['tenant' => $fixture['tenant_id'], 'lot' => $photoLotId]);
+        if (!$photoReplayRejected || count($photoHoldersQuery->fetchAll(PDO::FETCH_ASSOC)) !== 2) {
+            throw new RuntimeException($driver . ': replaying a completed photo import must not duplicate holders.');
+        }
+        if (is_file($stagedPhotoArchivePath)) {
+            throw new RuntimeException($driver . ': confirmation must remove the temporary photo archive.');
+        }
+
+        $badPhotoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'invalid-image.zip';
+        $badPhotoZip = new ZipArchive();
+        if ($badPhotoZip->open($badPhotoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Could not create the invalid photo archive fixture.');
+        }
+        $badPhotoZip->addFromString('BROKEN-1.png', 'not an image');
+        $badPhotoZip->close();
+        $badPhotoSourcePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'invalid-photo.csv';
+        file_put_contents($badPhotoSourcePath, "nome;matricula\nInvalid Photo;BROKEN-1\n");
+        $invalidPhotoLotId = batchImportStageFile(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $badPhotoSourcePath,
+            'invalid-photo.csv',
+            $metricsNow + 40,
+            $badPhotoZipPath
+        )['lote_id'];
+        $invalidPhotoSource = $pdo->prepare('SELECT arquivo_original_url FROM lotes_importacao WHERE id = :id');
+        $invalidPhotoSource->execute(['id' => $invalidPhotoLotId]);
+        $invalidPhotoSourceKey = (string) $invalidPhotoSource->fetchColumn();
+        $invalidPhotoArchivePath = batchImportPhotoArchiveResolvePath($fixture['tenant_id'], $invalidPhotoSourceKey);
+        $invalidPhotoRejected = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $invalidPhotoLotId,
+                ['nome_completo' => 'nome_completo', 'matricula' => 'matricula'],
+                $metricsNow + 50
+            );
+        } catch (DomainException $exception) {
+            $invalidPhotoRejected = $exception->getMessage() === 'IMPORT_PHOTO_ARCHIVE_INVALID';
+        }
+        $invalidPhotoState = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
+        $invalidPhotoState->execute(['id' => $invalidPhotoLotId]);
+        $invalidPhotoHolderCount = $pdo->prepare('SELECT COUNT(*) FROM titulares WHERE lote_origem_id = :lot');
+        $invalidPhotoHolderCount->execute(['lot' => $invalidPhotoLotId]);
+        if (!$invalidPhotoRejected || $invalidPhotoState->fetchColumn() !== 'aguardando_mapa'
+            || (int) $invalidPhotoHolderCount->fetchColumn() !== 0 || !is_file($invalidPhotoArchivePath)) {
+            throw new RuntimeException($driver . ': invalid images must reject confirmation atomically and remain retryable.');
+        }
+        batchImportStagingCancel($pdo, $context, $identity, $fixture['tenant_id'], null, $invalidPhotoLotId);
+        if (is_file($invalidPhotoArchivePath)) {
+            throw new RuntimeException($driver . ': canceling an invalid photo import must remove its staged ZIP.');
+        }
+
+        $rollbackPhotoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'rollback-photos.zip';
+        $rollbackPhotoZip = new ZipArchive();
+        if ($rollbackPhotoZip->open($rollbackPhotoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Could not create the rollback photo archive fixture.');
+        }
+        $rollbackPhotoZip->addFromString('ROLLBACK-PHOTO.png', $photoBytes);
+        $rollbackPhotoZip->close();
+        $rollbackPhotoSourcePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'rollback-photo.csv';
+        file_put_contents($rollbackPhotoSourcePath, "nome;matricula\nRollback Photo;ROLLBACK-PHOTO\n");
+        $rollbackPhotoLotId = batchImportStageFile(
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $rollbackPhotoSourcePath,
+            'rollback-photo.csv',
+            $metricsNow + 45,
+            $rollbackPhotoZipPath
+        )['lote_id'];
+        $tenantAssetDirectory = $storagePath . DIRECTORY_SEPARATOR . (string) $fixture['tenant_id'];
+        $filesBeforePhotoRollback = array_map(
+            static fn (string $path): string => basename($path),
+            glob($tenantAssetDirectory . DIRECTORY_SEPARATOR . '*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: []
+        );
+        $photoTrigger = 'import_confirm_photo_fail';
+        if (strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'sqlite') {
+            $pdo->exec(
+                "CREATE TRIGGER {$photoTrigger} BEFORE UPDATE OF foto_url ON titulares "
+                . "WHEN NEW.foto_url IS NOT NULL BEGIN SELECT RAISE(ABORT, 'test photo failure'); END"
+            );
+        } else {
+            $pdo->exec(
+                "CREATE TRIGGER {$photoTrigger} BEFORE UPDATE ON titulares FOR EACH ROW "
+                . "BEGIN IF NEW.foto_url IS NOT NULL THEN SIGNAL SQLSTATE '45000' "
+                . "SET MESSAGE_TEXT = 'test photo failure'; END IF; END"
+            );
+        }
+        $photoRollbackRejected = false;
+        try {
+            batchImportConfirm(
+                $pdo,
+                $context,
+                $identity,
+                $fixture['tenant_id'],
+                null,
+                $rollbackPhotoLotId,
+                ['nome_completo' => 'nome_completo', 'matricula' => 'matricula'],
+                $metricsNow + 55
+            );
+        } catch (RuntimeException $exception) {
+            $photoRollbackRejected = $exception->getMessage() === 'TITULAR_CREATE_FAILED';
+        } finally {
+            $pdo->exec("DROP TRIGGER {$photoTrigger}");
+        }
+        $filesAfterPhotoRollback = array_map(
+            static fn (string $path): string => basename($path),
+            glob($tenantAssetDirectory . DIRECTORY_SEPARATOR . '*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: []
+        );
+        $rollbackPhotoState = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
+        $rollbackPhotoState->execute(['id' => $rollbackPhotoLotId]);
+        $rollbackPhotoHolderCount = $pdo->prepare('SELECT COUNT(*) FROM titulares WHERE lote_origem_id = :lot');
+        $rollbackPhotoHolderCount->execute(['lot' => $rollbackPhotoLotId]);
+        if (!$photoRollbackRejected || $filesAfterPhotoRollback !== $filesBeforePhotoRollback
+            || $rollbackPhotoState->fetchColumn() !== 'aguardando_mapa'
+            || (int) $rollbackPhotoHolderCount->fetchColumn() !== 0) {
+            throw new RuntimeException($driver . ': a database rollback must remove new photos and keep the lot retryable.');
+        }
+        batchImportStagingCancel($pdo, $context, $identity, $fixture['tenant_id'], null, $rollbackPhotoLotId);
+
+        $photoKeyToAnonymize = (string) $photoHolders[0]['foto_url'];
+        $photoPathToAnonymize = cardIssuanceWorkerResolvePath($fixture['tenant_id'], $photoKeyToAnonymize);
+        putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(32)));
+        titularAnonymizationRequest(
+            $pdo,
+            $fixture['tenant_id'],
+            (int) $photoHolders[0]['id'],
+            hash('sha256', 'photo-anonymization-' . $photoHolders[0]['id']),
+            $metricsNow + 60
+        );
+        $anonymization = titularAnonymizationProcessDue($pdo, $metricsNow + 70, 10);
+        if ($anonymization['failed'] !== 0 || is_file($photoPathToAnonymize)) {
+            throw new RuntimeException($driver . ': holder photo must remain removed after successful anonymization.');
+        }
+
+        $pdo->prepare('UPDATE tenants SET limite_titulares = 600 WHERE id = :tenant')
+            ->execute(['tenant' => $fixture['tenant_id']]);
         $largePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'large.csv';
         $largeRows = array_map(static fn(int $number): string => 'Large import ' . $number, range(1, 500));
         file_put_contents($largePath, "nome\n" . implode("\n", $largeRows) . "\n");
@@ -299,7 +582,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         );
         $largeLotState->execute(['id' => $largeLotId]);
         $pendingLargeLot = $largeLotState->fetch(PDO::FETCH_ASSOC);
-        if (!$quotaRejected || (int) $holderCount->fetchColumn() !== 3 || !is_array($pendingLargeLot)
+        if (!$quotaRejected || (int) $holderCount->fetchColumn() !== 5 || !is_array($pendingLargeLot)
             || $pendingLargeLot['status_lote'] !== 'aguardando_mapa'
             || !is_string($pendingLargeLot['arquivo_original_url'])) {
             throw new RuntimeException($driver . ': quota rejection must leave the entire staged import retryable.');
@@ -324,7 +607,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $largeLotId
         );
         $holderCount->execute(['tenant' => $fixture['tenant_id']]);
-        if (($largeResult['imported'] ?? null) !== 500 || (int) $holderCount->fetchColumn() !== 503
+        if (($largeResult['imported'] ?? null) !== 500 || (int) $holderCount->fetchColumn() !== 505
             || count($largeMemberIds) !== 500 || count(array_unique($largeMemberIds)) !== 500) {
             throw new RuntimeException($driver . ': a complete 500-row import must fit in one atomic operation.');
         }
@@ -337,7 +620,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if ($originTriggerExists) {
             $pdo->exec("DROP TRIGGER {$originTrigger}");
         }
-        foreach ([$lotId, $rollbackLotId, $largeLotId] as $cleanupLotId) {
+        foreach ([$lotId, $photoLotId, $invalidPhotoLotId, $rollbackPhotoLotId, $rollbackLotId, $largeLotId] as $cleanupLotId) {
             if ($cleanupLotId !== null) {
                 $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $cleanupLotId]);
             }
@@ -363,6 +646,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $previousStoragePath === false
             ? putenv('IEPR_PRIVATE_STORAGE_PATH')
             : putenv('IEPR_PRIVATE_STORAGE_PATH=' . $previousStoragePath);
+        $previousAnonymizationKey === false
+            ? putenv('IEPR_ANONYMIZATION_KEY')
+            : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
     }
 }
 

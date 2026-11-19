@@ -22,6 +22,7 @@ function batchImportConfirm(
     }
     $createdCount = 0;
     $sourceKey = null;
+    $photoStoredKeys = [];
     try {
         tenantQuotaRunLocked($pdo, $tenantId, function () use (
             $pdo,
@@ -33,7 +34,8 @@ function batchImportConfirm(
             $mapping,
             $now,
             &$createdCount,
-            &$sourceKey
+            &$sourceKey,
+            &$photoStoredKeys
         ): void {
             $lockClause = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql'
                 ? ' FOR UPDATE'
@@ -93,6 +95,10 @@ function batchImportConfirm(
                 }
                 $records[] = $record;
             }
+            $photoArchivePath = batchImportPhotoArchiveResolvePath($tenantId, $sourceKey);
+            $photoMatches = is_file($photoArchivePath)
+                ? batchImportPhotoArchiveReadMatches($photoArchivePath, $records)
+                : [];
 
             motorPermissoesCacheLimpar($pdo);
             if (!titularCreateCanManage($pdo, $context, $identity, $tenantId, $subclienteId)) {
@@ -101,7 +107,7 @@ function batchImportConfirm(
             titularCreateBatchValidateScope($pdo, $tenantId, $subclienteId, count($records));
             titularCreateBatchValidateTargets($pdo, $tenantId, $records);
 
-            foreach ($records as $record) {
+            foreach ($records as $recordIndex => $record) {
                 $titularId = titularCreateInsert($pdo, $identity, $tenantId, $subclienteId, $record);
                 $origin = $pdo->prepare(
                     'UPDATE titulares SET lote_origem_id = :lot WHERE id = :id AND tenant_id = :tenant '
@@ -116,6 +122,28 @@ function batchImportConfirm(
                 ]);
                 if ($origin->rowCount() !== 1) {
                     throw new RuntimeException('TITULAR_CREATE_FAILED');
+                }
+                if (isset($photoMatches[$recordIndex])) {
+                    $photoKey = batchImportPhotoStorePrivate(
+                        $tenantId,
+                        $photoMatches[$recordIndex]['extension'],
+                        $photoMatches[$recordIndex]['bytes']
+                    );
+                    $photoStoredKeys[] = $photoKey;
+                    $photoUpdate = $pdo->prepare(
+                        'UPDATE titulares SET foto_url = :photo WHERE id = :id AND tenant_id = :tenant '
+                        . 'AND ((subcliente_id = :subclient_match) OR (subcliente_id IS NULL AND :subclient_null IS NULL))'
+                    );
+                    $photoUpdate->execute([
+                        'photo' => $photoKey,
+                        'id' => $titularId,
+                        'tenant' => $tenantId,
+                        'subclient_match' => $subclienteId,
+                        'subclient_null' => $subclienteId,
+                    ]);
+                    if ($photoUpdate->rowCount() !== 1) {
+                        throw new RuntimeException('TITULAR_CREATE_FAILED');
+                    }
                 }
             }
 
@@ -147,7 +175,14 @@ function batchImportConfirm(
                 'failures' => 0,
             ], $now);
         });
-    } catch (RuntimeException $exception) {
+    } catch (Throwable $exception) {
+        foreach ($photoStoredKeys as $photoKey) {
+            try {
+                batchImportPhotoDeletePrivate($tenantId, $photoKey);
+            } catch (Throwable) {
+                // Keep the original failure; orphan cleanup remains an operational follow-up.
+            }
+        }
         if ($exception->getMessage() === 'TENANT_QUOTA_FAILED') {
             throw new RuntimeException('TITULAR_CREATE_FAILED');
         }
@@ -158,6 +193,7 @@ function batchImportConfirm(
     if (is_string($sourceKey)) {
         try {
             batchImportStagingDeleteStoredFile($tenantId, $sourceKey);
+            batchImportPhotoArchiveDeleteForSource($tenantId, $sourceKey);
             $clear = $pdo->prepare(
                 "UPDATE lotes_importacao SET arquivo_original_url = NULL "
                 . "WHERE id = :id AND tenant_id = :tenant AND status_lote = 'concluido' AND arquivo_original_url = :source"

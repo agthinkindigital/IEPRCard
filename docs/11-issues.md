@@ -29,7 +29,7 @@
 
 ### ÉPICO 2: Multi-Tenancy, Domínios, Subdomínios e Permissões (Req 03, 04, 05, 12, 13)
 
-* **ISSUE-004: Resolvedor de Domínios (Clientes) e Subdomínios (Subclientes)** — fundação E02.2 concluída em [GitHub #13](https://github.com/agthinkindigital/IEPRCard/issues/13); serviço de cadastro/prova DNS concluído em [GitHub #14](https://github.com/agthinkindigital/IEPRCard/issues/14); criação backend de Subcliente com teto concluída na [GitHub #24](https://github.com/agthinkindigital/IEPRCard/issues/24). UI de gestão e validação operacional TLS/aliases seguem como slices/gates futuros.
+* **ISSUE-004: Resolvedor de Domínios (Clientes) e Subdomínios (Subclientes)** — fundação E02.2 concluída em [GitHub #13](https://github.com/agthinkindigital/IEPRCard/issues/13); serviço de cadastro/prova DNS concluído em [GitHub #14](https://github.com/agthinkindigital/IEPRCard/issues/14); criação backend de Subcliente com teto concluída na [GitHub #24](https://github.com/agthinkindigital/IEPRCard/issues/24). Mockup/guia da gestão está na [#49](https://github.com/agthinkindigital/IEPRCard/issues/49); prova operacional TLS/aliases no host está na [#51](https://github.com/agthinkindigital/IEPRCard/issues/51).
 * **Arquivos:** `config/tenant_resolver.php`, `index.php`
 * **Descrição:** Identificar pelo `$_SERVER['HTTP_HOST']` se o acesso pertence ao Admin Principal, a um Cliente (via domínio próprio CNAME ou subdomínio de 1º nível) ou a um Subcliente (via subdomínio de 2º nível ou subdomínio do domínio do Cliente), carregando o branding e escopo de banco correspondente.
 * **Critério de Aceite:** Passar no `TDD-02` (cenários de resolução de host).
@@ -43,7 +43,7 @@
 * **Critério de Aceite:** Bloquear qualquer tentativa de escalonamento de privilégio (Subcliente tentando ativar permissão revogada pelo Cliente ou Admin).
 
 
-* **ISSUE-006: Painel de Gestão de Clientes, Subclientes e Suporte Remoto Auditável**
+* **ISSUE-006: Painel de Gestão de Clientes, Subclientes e Suporte Remoto Auditável** — mockups/guias de unidades, equipe e cotas foram fatiados na [GitHub #50](https://github.com/agthinkindigital/IEPRCard/issues/50); as telas aguardam aprovação explícita.
 * **Arquivos:** `admin/clientes.php`, `painel/subclientes.php`, `includes/suporte.php`, `painel/suporte-remoto.php`
 
 
@@ -58,7 +58,7 @@
 
 ### ÉPICO 3: Importação em Lote, Preenchimento Manual e Gestão de Titulares (Req 06, 07)
 
-* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — parser backend em [#28](https://github.com/agthinkindigital/IEPRCard/issues/28), staging privado/prévia/cancelamento/expiração em [#31](https://github.com/agthinkindigital/IEPRCard/issues/31), confirmação atômica com mapeamento em [#32](https://github.com/agthinkindigital/IEPRCard/issues/32) e preservação da origem dos titulares em [#45](https://github.com/agthinkindigital/IEPRCard/issues/45). `.xls` binário, vínculo de fotos ZIP e interface de mapeamento permanecem em fatias próprias.
+* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — parser backend em [#28](https://github.com/agthinkindigital/IEPRCard/issues/28), staging privado/prévia/cancelamento/expiração em [#31](https://github.com/agthinkindigital/IEPRCard/issues/31), confirmação atômica com mapeamento em [#32](https://github.com/agthinkindigital/IEPRCard/issues/32) e preservação da origem dos titulares em [#45](https://github.com/agthinkindigital/IEPRCard/issues/45). O vínculo backend de fotos ZIP por CPF/matrícula está fatiado na [#48](https://github.com/agthinkindigital/IEPRCard/issues/48); `.xls` binário e interfaces permanecem em fatias próprias.
 * **Arquivos:** `includes/motor_importacao.php`, `includes/libs/SimpleXLSX.php`, `painel/importar-dados.php`
 * **Descrição:** Upload e leitura de arquivos `.csv`, `.xls`, `.xlsx` e `.json` com detecção automática de cabeçalhos, pré-visualização das primeiras 10 linhas, validação de CPF/Telefone e vínculo automático de fotos enviadas em pacote `.zip` (associadas por CPF ou matrícula).
 

@@ -187,13 +187,33 @@ foreach (tenantTestConnections() as $driver => $pdo) {
 
         $expiredPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired.csv';
         file_put_contents($expiredPath, "nome\nExpired Import\n");
+        $expiredPhotoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired-photos.zip';
+        $expiredPhotoZip = new ZipArchive();
+        if ($expiredPhotoZip->open($expiredPhotoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Could not create the expiring photo archive fixture.');
+        }
+        $expiredPhotoZip->addFromString('unused.txt', 'cleanup only');
+        $expiredPhotoZip->close();
         $expired = batchImportStageFile(
-            $pdo, $context, $identity, $fixture['tenant_id'], null, $expiredPath, basename($expiredPath), 1_700_000_000
+            $pdo,
+            $context,
+            $identity,
+            $fixture['tenant_id'],
+            null,
+            $expiredPath,
+            basename($expiredPath),
+            1_700_000_000,
+            $expiredPhotoZipPath
         );
         $createdLotIds[] = $expired['lote_id'];
         $expiredQuery = $pdo->prepare('SELECT arquivo_original_url FROM lotes_importacao WHERE id = :id');
         $expiredQuery->execute(['id' => $expired['lote_id']]);
-        $expiredFile = batchImportStagingResolveStoredPath($fixture['tenant_id'], (string) $expiredQuery->fetchColumn());
+        $expiredSourceKey = (string) $expiredQuery->fetchColumn();
+        $expiredFile = batchImportStagingResolveStoredPath($fixture['tenant_id'], $expiredSourceKey);
+        $expiredPhotoFile = batchImportPhotoArchiveResolvePath($fixture['tenant_id'], $expiredSourceKey);
+        if (!is_file($expiredPhotoFile)) {
+            throw new RuntimeException($driver . ': an attached photo ZIP must stay private in staging until expiry.');
+        }
         $activePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'active.csv';
         file_put_contents($activePath, "nome\nActive Import\n");
         $active = batchImportStageFile(
@@ -220,7 +240,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if (batchImportStagingCleanupExpired($pdo, $cleanupAt - 1) !== 0
             || !is_string($expiredFile) || !is_file($expiredFile)
             || batchImportStagingCleanupExpired($pdo, $cleanupAt) !== 1
-            || !is_string($expiredFile) || is_file($expiredFile) || !is_string($activeFile) || !is_file($activeFile)) {
+            || !is_string($expiredFile) || is_file($expiredFile) || is_file($expiredPhotoFile)
+            || !is_string($activeFile) || !is_file($activeFile)) {
             throw new RuntimeException($driver . ': cleanup must expire stale pending lots and leave processing lots intact.');
         }
         $expiredStatus = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
