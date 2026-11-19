@@ -1,6 +1,6 @@
 # Guia funcional: unidades, equipe e cotas
 
-Este guia cobre a administração da rede por uma Sede. Os três fluxos têm mockups próprios: [unidades](../../design-system/mockups/unidades-tenant-mockup.svg), [equipe](../../design-system/mockups/equipe-tenant-mockup.svg) e [cotas](../../design-system/mockups/cotas-tenant-mockup.svg). As telas ainda não estão implementadas.
+Este guia cobre a administração da rede por uma Sede. Os três fluxos têm mockups próprios: [unidades](../../design-system/mockups/unidades-tenant-mockup.svg), [equipe](../../design-system/mockups/equipe-tenant-mockup.svg) e [cotas](../../design-system/mockups/cotas-tenant-mockup.svg). As páginas `/tenant/unidades.php` e `/tenant/dominios.php` estão disponíveis após autenticação do tenant. Equipe e alocação de cotas ainda não estão implementadas.
 
 ## Quem pode administrar
 

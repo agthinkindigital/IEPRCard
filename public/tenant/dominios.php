@@ -153,7 +153,7 @@ function tenantDomainsRedirect(): never
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>IEPRCard · Domínios próprios</title>
-    <link rel="stylesheet" href="/assets/tenant-domains.css">
+    <link rel="stylesheet" href="/assets/tenant-admin.css">
     <script src="/assets/tenant-domains.js" defer></script>
 </head>
 <body>
@@ -161,7 +161,7 @@ function tenantDomainsRedirect(): never
     <a class="brand" href="/tenant/dominios.php"><span class="brand-mark" aria-hidden="true">+</span><strong>IEPRCard</strong></a>
     <p class="nav-heading">INSTITUIÇÃO</p>
     <p class="organization"><?= tenantDomainsEscape($organization) ?></p>
-    <nav aria-label="Configurações da instituição"><a class="active" aria-current="page" href="/tenant/dominios.php">Domínios próprios</a></nav>
+    <nav aria-label="Navegação da instituição"><a href="/tenant/unidades.php">Unidades</a><a class="active" aria-current="page" href="/tenant/dominios.php">Domínios próprios</a></nav>
     <p class="sidebar-note">Área do Cliente Master da Sede</p>
 </aside>
 <header class="topbar"><p>Painel <span aria-hidden="true">/</span> Configurações <span aria-hidden="true">/</span> <strong>Domínios próprios</strong></p></header>
