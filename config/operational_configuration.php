@@ -47,22 +47,21 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
     $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
 
     for ($attempt = 0; $attempt < 3; $attempt++) {
+        $transactionOpen = false;
         try {
             operationalConfigBeginTransaction($pdo, $driver);
-            operationalConfigRequireTransaction($pdo, 'save_started');
+            $transactionOpen = true;
             $versionQuery = 'SELECT versao FROM configuracoes_operacionais WHERE ambiente = :environment '
                 . 'ORDER BY versao DESC LIMIT 1' . ($driver === 'mysql' ? ' FOR UPDATE' : '');
             $currentVersion = $pdo->prepare($versionQuery);
             $currentVersion->execute(['environment' => $environment]);
             $version = (int) ($currentVersion->fetchColumn() ?: 0) + 1;
-            operationalConfigRequireTransaction($pdo, 'save_version_read');
 
             $supersedePending = $pdo->prepare(
                 "UPDATE configuracoes_operacionais SET estado = 'substituida' "
                 . "WHERE ambiente = :environment AND estado = 'pendente'"
             );
             $supersedePending->execute(['environment' => $environment]);
-            operationalConfigRequireTransaction($pdo, 'save_pending_superseded');
 
             $insert = $pdo->prepare(
                 'INSERT INTO configuracoes_operacionais '
@@ -76,9 +75,9 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
                 'actor' => $actorId,
                 'created' => $createdAt,
             ]);
-            operationalConfigRequireTransaction($pdo, 'save_inserted');
             $id = (int) $pdo->lastInsertId();
-            $pdo->commit();
+            operationalConfigCommitTransaction($pdo, $driver);
+            $transactionOpen = false;
 
             return [
                 'id' => $id,
@@ -88,8 +87,9 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
                 'configuracao' => $settings,
             ];
         } catch (PDOException $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            if ($transactionOpen) {
+                operationalConfigRollbackTransaction($pdo, $driver);
+                $transactionOpen = false;
             }
             if ($attempt < 2 && operationalConfigIsRetryable($exception)) {
                 usleep(10_000 * ($attempt + 1));
@@ -97,8 +97,8 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
             }
             throw new RuntimeException('OPERATIONAL_CONFIG_SAVE_FAILED', 0, $exception);
         } catch (Throwable $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            if ($transactionOpen) {
+                operationalConfigRollbackTransaction($pdo, $driver);
             }
             throw $exception;
         }
@@ -134,8 +134,10 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
     }
 
     for ($attempt = 0; $attempt < 3; $attempt++) {
+        $transactionOpen = false;
         try {
             operationalConfigBeginTransaction($pdo, $driver);
+            $transactionOpen = true;
             $pendingQuery = 'SELECT id, versao, configuracao_json FROM configuracoes_operacionais '
                 . "WHERE ambiente = :environment AND estado = 'pendente' ORDER BY versao DESC, id DESC LIMIT 1"
                 . ($driver === 'mysql' ? ' FOR UPDATE' : '');
@@ -173,15 +175,15 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
             }
 
             if (!is_array($row)) {
-                if ($pdo->inTransaction()) {
-                    $pdo->commit();
-                }
+                operationalConfigCommitTransaction($pdo, $driver);
+                $transactionOpen = false;
                 return null;
             }
 
             $settings = json_decode((string) $row['configuracao_json'], true, 512, JSON_THROW_ON_ERROR);
             $settings = operationalConfigValidateSettings(is_array($settings) ? $settings : []);
-            $pdo->commit();
+            operationalConfigCommitTransaction($pdo, $driver);
+            $transactionOpen = false;
 
             return [
                 'id' => (int) $row['id'],
@@ -192,8 +194,9 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
                 'ativou_pendente' => $activatedPending,
             ];
         } catch (PDOException $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            if ($transactionOpen) {
+                operationalConfigRollbackTransaction($pdo, $driver);
+                $transactionOpen = false;
             }
             if ($attempt < 2 && operationalConfigIsRetryable($exception)) {
                 usleep(10_000 * ($attempt + 1));
@@ -201,8 +204,8 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
             }
             throw new RuntimeException('OPERATIONAL_CONFIG_ACTIVATION_FAILED', 0, $exception);
         } catch (Throwable $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            if ($transactionOpen) {
+                operationalConfigRollbackTransaction($pdo, $driver);
             }
             throw $exception;
         }
@@ -213,30 +216,38 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
 
 function operationalConfigBeginTransaction(PDO $pdo, string $driver): void
 {
+    if (!in_array($driver, ['sqlite', 'mysql'], true)) {
+        throw new InvalidArgumentException('OPERATIONAL_CONFIG_DRIVER_INVALID');
+    }
     if ($driver === 'sqlite') {
         $pdo->exec('BEGIN IMMEDIATE TRANSACTION');
         return;
     }
-    if ($driver !== 'mysql') {
-        throw new InvalidArgumentException('OPERATIONAL_CONFIG_DRIVER_INVALID');
-    }
     $pdo->beginTransaction();
 }
 
-function operationalConfigRequireTransaction(PDO $pdo, string $stage): void
+function operationalConfigCommitTransaction(PDO $pdo, string $driver): void
 {
-    if (!$pdo->inTransaction()) {
-        $details = ['driver' => $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)];
-        if ($details['driver'] === 'mysql') {
-            $details['autocommit'] = $pdo->query('SELECT @@autocommit')->fetchColumn();
-            $engine = $pdo->prepare(
-                'SELECT ENGINE FROM information_schema.tables '
-                . 'WHERE table_schema = DATABASE() AND table_name = :table_name'
-            );
-            $engine->execute(['table_name' => 'configuracoes_operacionais']);
-            $details['table_engine'] = $engine->fetchColumn();
+    if ($driver === 'sqlite') {
+        $pdo->exec('COMMIT');
+        return;
+    }
+    $pdo->commit();
+}
+
+function operationalConfigRollbackTransaction(PDO $pdo, string $driver): void
+{
+    if ($driver === 'sqlite') {
+        try {
+            $pdo->exec('ROLLBACK');
+        } catch (PDOException) {
+            // Preserve the original failure if SQLite already ended the transaction.
         }
-        throw new RuntimeException('OPERATIONAL_CONFIG_TRANSACTION_LOST:' . $stage . ':' . json_encode($details));
+        return;
+    }
+
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
     }
 }
 

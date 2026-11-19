@@ -5,32 +5,6 @@ require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/operational_configuration.php';
 
-function operationalConfigurationTestWorkerStart(PDO $pdo, int $now, string $phase): ?array
-{
-    try {
-        return operationalConfigWorkerStart($pdo, $now);
-    } catch (Throwable $exception) {
-        $cause = $exception->getPrevious();
-        $details = $cause instanceof PDOException
-            ? ['class' => get_class($cause), 'message' => $cause->getMessage(), 'sqlstate' => $cause->getCode(), 'driver_code' => $cause->errorInfo[1] ?? null, 'driver_message' => $cause->errorInfo[2] ?? null]
-            : null;
-        throw new RuntimeException($phase . ': ' . $exception->getMessage() . ' ' . json_encode($details));
-    }
-}
-
-function operationalConfigurationTestSavePending(PDO $pdo, array $settings, int $now): array
-{
-    try {
-        return operationalConfigSavePending($pdo, $settings, null, $now);
-    } catch (Throwable $exception) {
-        $cause = $exception->getPrevious();
-        $details = $cause instanceof PDOException
-            ? ['class' => get_class($cause), 'message' => $cause->getMessage(), 'sqlstate' => $cause->getCode(), 'driver_code' => $cause->errorInfo[1] ?? null, 'driver_message' => $cause->errorInfo[2] ?? null, 'trace' => $cause->getTraceAsString()]
-            : null;
-        throw new RuntimeException('first pending save: ' . $exception->getMessage() . ' ' . json_encode($details));
-    }
-}
-
 $previousEnvironment = getenv('APP_ENV');
 putenv('APP_ENV=staging');
 $now = strtotime('2026-01-02 12:00:00 UTC');
@@ -60,11 +34,11 @@ try {
                 throw new RuntimeException($driver . ': malformed or out-of-range operational settings must be rejected.');
             }
         }
-        if (operationalConfigurationTestWorkerStart($pdo, $now, 'initial worker start') !== null) {
+        if (operationalConfigWorkerStart($pdo, $now) !== null) {
             throw new RuntimeException($driver . ': a fresh environment must have no active operational snapshot.');
         }
 
-        $pending = operationalConfigurationTestSavePending($pdo, $settings, $now);
+        $pending = operationalConfigSavePending($pdo, $settings, null, $now);
         $pendingState = $pdo->prepare('SELECT estado, ativado_em FROM configuracoes_operacionais WHERE id = :id');
         $pendingState->execute(['id' => $pending['id']]);
         $pendingRow = $pendingState->fetch(PDO::FETCH_ASSOC);
@@ -75,8 +49,8 @@ try {
             throw new RuntimeException($driver . ': saving manual settings must create a pending version without changing active settings.');
         }
 
-        $snapshot = operationalConfigurationTestWorkerStart($pdo, $now + 5, 'first activation');
-        $activeAgain = operationalConfigurationTestWorkerStart($pdo, $now + 10, 'idempotent activation');
+        $snapshot = operationalConfigWorkerStart($pdo, $now + 5);
+        $activeAgain = operationalConfigWorkerStart($pdo, $now + 10);
         $states = $pdo->query("SELECT estado, COUNT(*) AS total FROM configuracoes_operacionais WHERE ambiente = 'staging' GROUP BY estado")
             ->fetchAll(PDO::FETCH_KEY_PAIR);
         if (($snapshot['id'] ?? null) !== $pending['id'] || ($snapshot['versao'] ?? null) !== 1
@@ -91,7 +65,7 @@ try {
         $updatedSettings['lote_maximo_registros'] = 50;
         $updated = operationalConfigSavePending($pdo, $updatedSettings, null, $now + 15);
         $stillActive = $pdo->query("SELECT id FROM configuracoes_operacionais WHERE ambiente = 'staging' AND estado = 'ativa'")->fetchColumn();
-        $nextSnapshot = operationalConfigurationTestWorkerStart($pdo, $now + 20, 'replacement activation');
+        $nextSnapshot = operationalConfigWorkerStart($pdo, $now + 20);
         $replacementStates = $pdo->query("SELECT estado, COUNT(*) AS total FROM configuracoes_operacionais WHERE ambiente = 'staging' GROUP BY estado")
             ->fetchAll(PDO::FETCH_KEY_PAIR);
         if (($updated['versao'] ?? null) !== 2 || ($updated['estado'] ?? null) !== 'pendente'
@@ -152,7 +126,11 @@ try {
                         fclose($entry['stderr']);
                         $exit = proc_close($entry['process']);
                         if ($exit !== 0 || $stderr !== '') {
-                            throw new RuntimeException('Operational configuration race worker failed.');
+                            throw new RuntimeException('Operational configuration race worker failed: ' . json_encode([
+                                'exit' => $exit,
+                                'stdout' => $stdout,
+                                'stderr' => $stderr,
+                            ]));
                         }
                         $results[] = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
                     }
