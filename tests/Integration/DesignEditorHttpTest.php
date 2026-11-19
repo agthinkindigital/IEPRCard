@@ -72,6 +72,7 @@ $designEditorHttpTenantInsert->execute([
     'slug' => $designEditorHttpForeignSlug,
 ]);
 $designEditorHttpForeignTenantId = (int) $designEditorHttpPdo->lastInsertId();
+$designEditorHttpPendingJobId = null;
 $designEditorHttpUserInsert = $designEditorHttpPdo->prepare(
     'INSERT INTO usuarios (tenant_id, papel_sistema, nome, email, senha_hash, ativo) '
     . 'VALUES (:tenant, :role, :name, :email, :password, 1)'
@@ -226,6 +227,42 @@ try {
         'mapeamento_fixo_json' => $designEditorHttpMapping,
     ]));
     if ($designEditorHttpStatus !== 303) throw new RuntimeException('An unchanged inactive design should remain safely editable.');
+    $designEditorHttpPendingJobDb = dbConnect($designEditorHttpConfiguration);
+    $designEditorHttpPendingJobDb->prepare(
+        'INSERT INTO lotes_importacao (tenant_id, usuario_id, design_id, origem_tipo, total_registros, status_lote, criado_em) '
+        . 'VALUES (:tenant, :user, :design, :origin, 1, :status, :created)'
+    )->execute([
+        'tenant' => $designEditorHttpTenantId,
+        'user' => $designEditorHttpUserId,
+        'design' => $designEditorHttpDraftId,
+        'origin' => 'emissao',
+        'status' => 'na_fila',
+        'created' => dbAgora(),
+    ]);
+    $designEditorHttpPendingJobId = (int) $designEditorHttpPendingJobDb->lastInsertId();
+    unset($designEditorHttpPendingJobDb);
+    [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpRequest(
+        $designEditorHttpUrl . '?id=' . $designEditorHttpDraftId,
+        $designEditorHttpCookie,
+        $designEditorHttpHost
+    );
+    if ($designEditorHttpStatus !== 200 || !str_contains((string) $designEditorHttpBody, 'Aguarde as emissões deste design terminarem')
+        || str_contains((string) $designEditorHttpBody, 'type="submit">Salvar design')) {
+        throw new RuntimeException('A design with a pending issuance job must be read-only in the editor.');
+    }
+    [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpRequest($designEditorHttpUrl . '?id=' . $designEditorHttpDraftId, $designEditorHttpCookie, $designEditorHttpHost, 'POST', http_build_query([
+        'csrf_token' => $designEditorHttpCsrf, 'design_id' => $designEditorHttpDraftId,
+        'nome_layout' => 'Alteração durante emissão', 'mapa_campos_json' => $designEditorHttpDefaults,
+        'mapeamento_fixo_json' => $designEditorHttpMapping,
+    ]));
+    if ($designEditorHttpStatus !== 409 || !str_contains((string) $designEditorHttpBody, 'emissões pendentes')) {
+        throw new RuntimeException('A pending issuance job must block design mutation with HTTP 409.');
+    }
+    $designEditorHttpPendingJobDb = dbConnect($designEditorHttpConfiguration);
+    $designEditorHttpPendingJobDb->prepare('DELETE FROM lotes_importacao WHERE id = :id AND tenant_id = :tenant')
+        ->execute(['id' => $designEditorHttpPendingJobId, 'tenant' => $designEditorHttpTenantId]);
+    $designEditorHttpPendingJobId = null;
+    unset($designEditorHttpPendingJobDb);
     [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpMultipartRequest($designEditorHttpUrl, $designEditorHttpCookie, $designEditorHttpHost, [
         'csrf_token' => $designEditorHttpCsrf, 'nome_layout' => 'Invalid upload',
         'mapa_campos_json' => $designEditorHttpDefaults, 'mapeamento_fixo_json' => $designEditorHttpMapping,
@@ -261,6 +298,10 @@ try {
     if (is_dir($designEditorHttpPrivateRoot)) @rmdir($designEditorHttpPrivateRoot);
     if ($designEditorHttpMysql) {
         $cleanupPdo = dbConnect($designEditorHttpConfiguration);
+        if ($designEditorHttpPendingJobId !== null) {
+            $cleanupPdo->prepare('DELETE FROM lotes_importacao WHERE id = :id AND tenant_id = :tenant')
+                ->execute(['id' => $designEditorHttpPendingJobId, 'tenant' => $designEditorHttpTenantId]);
+        }
         $cleanupPdo->prepare('DELETE FROM designs_carteirinha WHERE tenant_id IN (:tenant, :foreign)')
             ->execute(['tenant' => $designEditorHttpTenantId, 'foreign' => $designEditorHttpForeignTenantId]);
         $cleanupPdo->prepare('DELETE FROM usuarios WHERE tenant_id = :tenant')->execute(['tenant' => $designEditorHttpTenantId]);
