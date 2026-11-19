@@ -154,6 +154,32 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo, $context, $identity, $fixture['tenant_id'], null, $jsonStaged['lote_id']
         );
 
+        $xlsPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'php-xls-upload-' . $suffix . '.tmp';
+        if (!copy(dirname(__DIR__) . '/fixtures/simplexls-books.xls', $xlsPath)) {
+            throw new RuntimeException($driver . ': could not copy XLS staging fixture.');
+        }
+        $xlsStaged = batchImportStageFile(
+            $pdo, $context, $identity, $fixture['tenant_id'], null, $xlsPath, 'titulares.xls'
+        );
+        $createdLotIds[] = $xlsStaged['lote_id'];
+        $xlsLotQuery = $pdo->prepare('SELECT origem_tipo, arquivo_original_url FROM lotes_importacao WHERE id = :id');
+        $xlsLotQuery->execute(['id' => $xlsStaged['lote_id']]);
+        $xlsLot = $xlsLotQuery->fetch(PDO::FETCH_ASSOC);
+        $xlsStoredPath = is_array($xlsLot)
+            ? batchImportStagingResolveStoredPath($fixture['tenant_id'], (string) $xlsLot['arquivo_original_url'])
+            : null;
+        if ($xlsStaged['preview'][0]['title'] !== 'The Hobbit' || !is_array($xlsLot)
+            || $xlsLot['origem_tipo'] !== 'xls' || !is_string($xlsStoredPath)
+            || pathinfo($xlsStoredPath, PATHINFO_EXTENSION) !== 'xls' || !is_file($xlsStoredPath)) {
+            throw new RuntimeException($driver . ': XLS uploads must be staged privately with an opaque XLS source key.');
+        }
+        batchImportStagingCancel(
+            $pdo, $context, $identity, $fixture['tenant_id'], null, $xlsStaged['lote_id']
+        );
+        if (is_file($xlsStoredPath)) {
+            throw new RuntimeException($driver . ': cancelling an XLS lot must delete its private source.');
+        }
+
         $invalidPhonePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'invalid-phone.csv';
         file_put_contents($invalidPhonePath, "nome;whatsapp\nAna Invalid;(11) 80000-0000\n");
         $invalidPhoneLot = batchImportStageFile(
@@ -185,8 +211,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             throw new RuntimeException($driver . ': cancellation must be scoped and remove the private source.');
         }
 
-        $expiredPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired.csv';
-        file_put_contents($expiredPath, "nome\nExpired Import\n");
+        $expiredPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired.xls';
+        if (!copy(dirname(__DIR__) . '/fixtures/simplexls-books.xls', $expiredPath)) {
+            throw new RuntimeException($driver . ': could not copy expiring XLS staging fixture.');
+        }
         $expiredPhotoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired-photos.zip';
         $expiredPhotoZip = new ZipArchive();
         if ($expiredPhotoZip->open($expiredPhotoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {

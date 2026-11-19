@@ -23,6 +23,7 @@ function batchImportParse(string $path): array
     $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
     $rawRows = match ($extension) {
         'csv' => batchImportParserCsv($path),
+        'xls' => batchImportParserXls($path),
         'xlsx' => batchImportParserXlsx($path),
         'json' => batchImportParserJson($path),
         default => throw new DomainException('IMPORT_FORMAT_UNSUPPORTED'),
@@ -96,4 +97,5 @@ function batchImportParse(string $path): array
 
 require_once __DIR__ . '/batch_import_parser_support.php';
 require_once __DIR__ . '/batch_import_parser_readers.php';
+require_once __DIR__ . '/batch_import_parser_xls.php';
 require_once __DIR__ . '/batch_import_parser_xlsx.php';

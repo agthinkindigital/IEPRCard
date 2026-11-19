@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 function batchImportStagingResolveStoredPath(int $tenantId, string $storedKey): ?string
 {
-    if (preg_match('/^private:\/\/([1-9][0-9]*)\/([a-f0-9]{48})\.(csv|xlsx|json)$/D', $storedKey, $matches) !== 1
+    if (preg_match('/^private:\/\/([1-9][0-9]*)\/([a-f0-9]{48})\.(csv|xls|xlsx|json)$/D', $storedKey, $matches) !== 1
         || (int) $matches[1] !== $tenantId) {
         throw new RuntimeException('IMPORT_STORAGE_KEY_INVALID');
     }

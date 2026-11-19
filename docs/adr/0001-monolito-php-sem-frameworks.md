@@ -5,7 +5,7 @@
 | Status | Aceita (baseline `docs/13`, `docs/14`) |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + dono do produto |
-| Relacionados | [SAD §3.1](../architecture/SAD.md), ADR-0007, ADR-0012 |
+| Relacionados | [SAD §3.1](../architecture/SAD.md), ADR-0007, ADR-0012, ADR-0013 |
 
 ## Contexto
 
@@ -18,7 +18,7 @@ Construir um **monólito modular em PHP 8.2**, sem Laravel/Symfony, com:
 - PDO nativo como única camada de acesso a dados (ADR-0002);
 - fronteiras de módulo explícitas (`config/`, `includes/motor_*.php`, `api/`, entrypoints);
 - injeção explícita de dependências em `config/bootstrap.php`, sem Service Locator;
-- bibliotecas *single-file* embutidas em `includes/libs/` para XLSX, QR Code e PDF;
+- bibliotecas *single-file* embutidas em `includes/libs/` para XLS/XLSX, QR Code e PDF;
 - extração futura de qualquer módulo apenas via Strangler Fig com ADR específico.
 
 ## Alternativas consideradas

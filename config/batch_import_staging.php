@@ -69,7 +69,7 @@ function batchImportStageFile(
         throw new DomainException('TITULAR_CREATE_DENIED');
     }
     $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-    if (!in_array($extension, ['csv', 'xlsx', 'json'], true)) {
+    if (!in_array($extension, ['csv', 'xls', 'xlsx', 'json'], true)) {
         throw new DomainException('IMPORT_FORMAT_UNSUPPORTED');
     }
     if (!is_file($temporaryPath) || is_link($temporaryPath)) {
@@ -257,7 +257,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
     }
     $cutoff = gmdate('Y-m-d H:i:s', $now - 86400);
     $candidates = $pdo->prepare(
-        'SELECT id FROM lotes_importacao WHERE origem_tipo IN (\'csv\', \'xlsx\', \'json\') '
+        'SELECT id FROM lotes_importacao WHERE origem_tipo IN (\'csv\', \'xls\', \'xlsx\', \'json\') '
         . 'AND status_lote IN (\'aguardando_mapa\', \'na_fila\') '
         . 'AND criado_em <= :cutoff ORDER BY criado_em, id LIMIT ' . $limit
     );
@@ -270,7 +270,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
             $lockClause = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
             $lotQuery = $pdo->prepare(
                 'SELECT tenant_id, arquivo_original_url FROM lotes_importacao '
-                . 'WHERE id = :id AND origem_tipo IN (\'csv\', \'xlsx\', \'json\') '
+                . 'WHERE id = :id AND origem_tipo IN (\'csv\', \'xls\', \'xlsx\', \'json\') '
                 . 'AND status_lote IN (\'aguardando_mapa\', \'na_fila\') AND criado_em <= :cutoff'
                 . $lockClause
             );

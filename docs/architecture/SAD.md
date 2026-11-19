@@ -36,7 +36,7 @@ O valor de negócio está na hierarquia operacional: uma **Sede** contrata o pla
 
 Fluxos críticos (detalhados em §4.3 a §4.5):
 
-1. **F1 — Emissão em lote:** importação (CSV/XLSX/JSON) → normalização/validação → mapeamento De→Para → débito atômico de cota → render WebP/PDF → entrega (download, portal, WhatsApp).
+1. **F1 — Emissão em lote:** importação (CSV/XLS/XLSX/JSON) → normalização/validação → mapeamento De→Para → débito atômico de cota → render WebP/PDF → entrega (download, portal, WhatsApp).
 2. **F2 — Cobrança SaaS (futura, fora do MVP):** checkout → webhook assinado e idempotente → transição de estado da conta → propagação para Subclientes. Nenhuma cobrança ou webhook de Asaas/Mercado Pago será implementado no lançamento; ver `docs/07`.
 3. **F3 — Validação pública:** leitura do QR → verificação de estado (ativa/suspensa/vencida/revogada) → auditoria de portaria sem expor CPF.
 4. **F4 — Acesso do titular:** login por CPF + data de nascimento/senha ou token único → aterrissagem direta na carteirinha da própria unidade com variáveis `{{sede.*}}` e `{{unidade.*}}` injetadas.
@@ -80,7 +80,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-02 | Paridade e portabilidade de dados | Catálogo versionado comum em SQLite e MySQL; self-healing apenas em dev/test, drift sem DDL em produção e cópia validada por contagem/checksum | TDD-01, ADR-0005, ADR-0010 |
 | NFR-03 | Volume planejado | > 50.000 carteirinhas/mês em VPS 2 vCPU / 4 GB RAM | `docs/14` |
 | NFR-04 | Performance de render | ≤ 80 ms por carteirinha WebP (frente+verso); ≤ 3,5 s para lote PDF de 50 no runner PHP 8.2 isolado | `docs/12` GATE 3; ADR-0007 |
-| NFR-05 | Importação | 500 registros em 3 formatos sem estourar memória; 1.000+ em lotes de 25 via AJAX | `docs/11` ISSUE-007, `docs/16` |
+| NFR-05 | Importação | 500 registros em CSV, XLS, XLSX e JSON sem estourar memória; 1.000+ em lotes de 25 via AJAX | `docs/11` ISSUE-007, `docs/16` |
 | NFR-06 | Isolamento | Nenhum Subcliente lê/edita dados de outro Subcliente ou Cliente, mesmo manipulando IDs | `docs/12` GATE 2 |
 | NFR-07 | Idempotência de webhook financeiro | Mesmo `event.id` processado 2× não duplica cobrança nem estado; requisito da fase futura de pagamentos | `docs/07`, ADR-0008 |
 | NFR-08 | Segurança de token | Validação de tokens/assinaturas aplicáveis ao módulo em questão; credenciais financeiras cifradas quando integração for priorizada | `docs/13`, ADR-0008 |
@@ -166,7 +166,7 @@ Infraestrutura (PDO dual, filesystem de tenants, fila em banco)
 | Escopo | `config/tenant_scope.php` **[PROPOSTO]** | Constrói cláusula obrigatória `tenant_id`/`subcliente_id` em toda query de negócio | Não conhece regras de negócio |
 | Cotas | `includes/motor_cotas.php` | 4 dimensões, pool vs cota cravada, débito atômico | Não cobra pagamento |
 | Eventos | `includes/motor_eventos.php` | `eventoDisparar`, `hookAplicarFiltro`, gravação de telemetria | Não faz I/O externo direto (usa outbox) |
-| Importação | `includes/motor_importacao.php` | CSV/XLSX/JSON, ZIP de fotos, normalização | Não renderiza |
+| Importação | `includes/motor_importacao.php` | CSV/XLS/XLSX/JSON, ZIP de fotos, normalização | Não renderiza |
 | Mapeamento | `includes/motor_mapeamento.php` | Modo fixo e De→Para, variáveis hierárquicas | Não persiste carteirinha |
 | Renderização | `config/card_webp_renderer.php`, `includes/card_pdf_renderer.php` | WebP 1011×638, PDF CR80 e imposição A4 | Não debita cota (evento faz isso) |
 | Pagamentos (futuro) | Código de referência Asaas/Mercado Pago | Avaliar checkout, assinatura, idempotência e estados quando entrar no escopo | Não faz parte do MVP nem altera status de conta no lançamento |

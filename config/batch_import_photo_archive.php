@@ -9,7 +9,7 @@ const BATCH_IMPORT_PHOTO_MAX_PIXELS = 12_000_000;
 
 function batchImportPhotoArchiveKey(int $tenantId, string $sourceKey): string
 {
-    if (preg_match('/^private:\/\/([1-9][0-9]*)\/([a-f0-9]{48})\.(csv|xlsx|json)$/D', $sourceKey, $matches) !== 1
+    if (preg_match('/^private:\/\/([1-9][0-9]*)\/([a-f0-9]{48})\.(csv|xls|xlsx|json)$/D', $sourceKey, $matches) !== 1
         || (int) $matches[1] !== $tenantId) {
         throw new RuntimeException('IMPORT_STORAGE_KEY_INVALID');
     }

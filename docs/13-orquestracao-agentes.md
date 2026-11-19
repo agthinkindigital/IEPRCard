@@ -24,7 +24,7 @@ flowchart TD
 
 ### Regras de Ouro para o Agente Construtor
 
-1. **Proibição de Dependências Pesadas:** Não instalar frameworks (Laravel, Symfony). Utilizar PHP 8.1+ puro, PDO nativo, GD/Imagick nativos e bibliotecas *single-file* embutidas em `includes/libs/` para XLSX, QR Code e PDF.
+1. **Proibição de Dependências Pesadas:** Não instalar frameworks (Laravel, Symfony). Utilizar PHP 8.1+ puro, PDO nativo, GD/Imagick nativos e bibliotecas *single-file* embutidas em `includes/libs/` para XLS/XLSX, QR Code e PDF. Parser vendorizado e respectiva decisão: [ADR-0013](adr/0013-parser-xls-legado.md).
 2. **Preservação da Identidade Visual e Padrões Validados:** Manter o estilo CSS dark/moderno com variáveis (`--line`, `--teal`, `--text`, `--muted`, `.painel-box`, `.campo`, `.btn`) já presente em `ia-config.php` e `integracao-pagamento.php`.
 
 

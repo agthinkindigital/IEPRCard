@@ -58,12 +58,12 @@
 
 ### ÉPICO 3: Importação em Lote, Preenchimento Manual e Gestão de Titulares (Req 06, 07)
 
-* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — parser backend em [#28](https://github.com/agthinkindigital/IEPRCard/issues/28), staging privado/prévia/cancelamento/expiração em [#31](https://github.com/agthinkindigital/IEPRCard/issues/31), confirmação atômica com mapeamento em [#32](https://github.com/agthinkindigital/IEPRCard/issues/32), preservação da origem dos titulares em [#45](https://github.com/agthinkindigital/IEPRCard/issues/45) e vínculo seguro do ZIP por CPF/matrícula em [#48](https://github.com/agthinkindigital/IEPRCard/issues/48), concluídos com CI SQLite, MySQL 8.4 e MariaDB 10.11. `.xls` binário e interfaces permanecem em fatias próprias.
-* **Arquivos:** `includes/motor_importacao.php`, `includes/libs/SimpleXLSX.php`, `painel/importar-dados.php`
+* **ISSUE-007: Motor de Importação em Lote (CSV, XLS/XLSX e JSON) + Fotos em ZIP** — parser CSV/XLSX/JSON em [#28](https://github.com/agthinkindigital/IEPRCard/issues/28), staging privado/prévia/cancelamento/expiração em [#31](https://github.com/agthinkindigital/IEPRCard/issues/31), confirmação atômica com mapeamento em [#32](https://github.com/agthinkindigital/IEPRCard/issues/32), preservação da origem dos titulares em [#45](https://github.com/agthinkindigital/IEPRCard/issues/45) e vínculo seguro do ZIP por CPF/matrícula em [#48](https://github.com/agthinkindigital/IEPRCard/issues/48), concluídos com CI SQLite, MySQL 8.4 e MariaDB 10.11. Suporte `.xls` binário no parser/staging backend está na [#52](https://github.com/agthinkindigital/IEPRCard/issues/52); interfaces continuam em fatias próprias.
+* **Arquivos:** `config/batch_import_parser*.php`, `config/batch_import_staging*.php`, `includes/libs/SimpleXLS.php`, `painel/importar-dados.php`
 * **Descrição:** Upload e leitura de arquivos `.csv`, `.xls`, `.xlsx` e `.json` com detecção automática de cabeçalhos, pré-visualização das primeiras 10 linhas, validação de CPF/Telefone e vínculo automático de fotos enviadas em pacote `.zip` (associadas por CPF ou matrícula).
 
 
-* **Critério de Aceite:** Passar no `TDD-03` importando 500 registros nos 3 formatos sem estourar memória.
+* **Critério de Aceite:** Passar no `TDD-03` importando 500 registros em CSV, XLS, XLSX e JSON sem estourar memória.
 
 
 * **ISSUE-008: Preenchimento Manual Individual (com Webcam/Crop) e em Lote (Grade Web)** — os serviços backend de cadastro individual com cota ([#27](https://github.com/agthinkindigital/IEPRCard/issues/27)), criação atômica em chunks de até 25 ([#29](https://github.com/agthinkindigital/IEPRCard/issues/29)) e persistência de WhatsApp do parser ao cadastro ([#30](https://github.com/agthinkindigital/IEPRCard/issues/30)) foram concluídos com CI MySQL/MariaDB; webcam/crop, grade em lote e demais fluxos visuais continuam fora dessas fatias.

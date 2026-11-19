@@ -18,6 +18,10 @@ $overflowJsonPath = $basePath . '-overflow.json';
 $invalidXlsxPath = $basePath . '-invalid.xlsx';
 $invalidJsonPath = $basePath . '-invalid.json';
 $truncatedCsvPath = $basePath . '-truncated.csv';
+$invalidXlsPath = $basePath . '-invalid.xls';
+$xlsFixturePath = dirname(__DIR__) . '/fixtures/simplexls-books.xls';
+$xls500Path = dirname(__DIR__) . '/fixtures/simplexls-500-rows.xls';
+$overflowXlsPath = dirname(__DIR__) . '/fixtures/simplexls-501-rows.xls';
 
 try {
     $headers = ['Nome Completo', 'CPF', 'Matrícula', 'WhatsApp'];
@@ -49,6 +53,8 @@ try {
 
     $csv = batchImportParse($csvPath);
     $xlsx = batchImportParse($xlsxPath);
+    $xls = batchImportParse($xlsFixturePath);
+    $xls500 = batchImportParse($xls500Path);
     $json = batchImportParse($jsonPath);
     foreach (['CSV' => $csv, 'XLSX' => $xlsx, 'JSON' => $json] as $format => $result) {
         if (count($result['rows']) !== 500 || $result['columns'] !== ['nome_completo', 'cpf', 'matricula', 'whatsapp']
@@ -56,8 +62,17 @@ try {
             throw new RuntimeException($format . ': expected 500 normalized records, four canonical columns, ten-row preview and no errors.');
         }
     }
-    if ($csv['rows'] !== $xlsx['rows'] || $csv['rows'] !== $json['rows']) {
-        throw new RuntimeException('CSV, XLSX and JSON must produce identical normalized row arrays.');
+    if ($csv['rows'] !== $xlsx['rows'] || $csv['rows'] !== $json['rows'] || $csv['rows'] !== $xls500['rows']) {
+        throw new RuntimeException('CSV, XLSX, XLS and JSON must produce identical normalized row arrays.');
+    }
+    if ($xls500['total_rows'] !== 500 || count($xls500['preview']) !== 10 || $xls500['errors'] !== []) {
+        throw new RuntimeException('XLS must accept 500 records with the shared ten-row preview and validation contract.');
+    }
+    if ($xls['columns'] !== ['isbn', 'title', 'author', 'publisher', 'ctry']
+        || $xls['rows'][0]['isbn'] !== '618260307'
+        || $xls['rows'][0]['title'] !== 'The Hobbit'
+        || count($xls['rows']) !== 2 || count($xls['preview']) !== 2 || $xls['errors'] !== []) {
+        throw new RuntimeException('XLS must parse the first worksheet and preserve text values in the shared normalized structure.');
     }
     if ($csv['rows'][0]['nome_completo'] !== 'João Silva 000' || $csv['rows'][0]['cpf'] !== batchImportParserTestCpf(0)
         || $csv['rows'][0]['whatsapp'] !== '+5511900000000') {
@@ -85,7 +100,7 @@ try {
     file_put_contents($overflowCsvPath, implode("\n", $overflowLines));
     batchImportParserWriteXlsx($overflowXlsxPath, $headers, $overflowRecords);
     file_put_contents($overflowJsonPath, json_encode($overflowRecords, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
-    foreach ([$overflowCsvPath, $overflowXlsxPath, $overflowJsonPath] as $overflowPath) {
+    foreach ([$overflowCsvPath, $overflowXlsxPath, $overflowJsonPath, $overflowXlsPath] as $overflowPath) {
         try {
             batchImportParse($overflowPath);
             throw new RuntimeException('Every supported format must reject more than 500 records.');
@@ -96,12 +111,13 @@ try {
         }
     }
 
+    file_put_contents($invalidXlsPath, 'not an XLS workbook');
     file_put_contents($invalidXlsxPath, 'not an XLSX archive');
     file_put_contents($invalidJsonPath, '{"truncated":');
-    foreach ([[$invalidXlsxPath, 'IMPORT_XLSX_INVALID'], [$invalidJsonPath, 'IMPORT_JSON_INVALID']] as [$invalidPathToParse, $expectedCode]) {
+    foreach ([[$invalidXlsPath, 'IMPORT_XLS_INVALID'], [$invalidXlsxPath, 'IMPORT_XLSX_INVALID'], [$invalidJsonPath, 'IMPORT_JSON_INVALID']] as [$invalidPathToParse, $expectedCode]) {
         try {
             batchImportParse($invalidPathToParse);
-            throw new RuntimeException('Malformed XLSX/JSON input must fail deterministically.');
+            throw new RuntimeException('Malformed XLS/XLSX/JSON input must fail deterministically.');
         } catch (DomainException $exception) {
             if ($exception->getMessage() !== $expectedCode) {
                 throw $exception;
@@ -118,9 +134,9 @@ try {
         }
     }
 
-    fwrite(STDOUT, "PASS: CSV/XLSX/JSON import parser normalization, preview, validation and row bounds.\n");
+    fwrite(STDOUT, "PASS: CSV/XLS/XLSX/JSON import parser normalization, preview, validation and row bounds.\n");
 } finally {
-    foreach ([$csvPath, $xlsxPath, $jsonPath, $invalidPath, $overflowCsvPath, $overflowXlsxPath, $overflowJsonPath, $invalidXlsxPath, $invalidJsonPath, $truncatedCsvPath] as $path) {
+    foreach ([$csvPath, $xlsxPath, $jsonPath, $invalidPath, $overflowCsvPath, $overflowXlsxPath, $overflowJsonPath, $invalidXlsPath, $invalidXlsxPath, $invalidJsonPath, $truncatedCsvPath] as $path) {
         if (is_file($path)) {
             unlink($path);
         }
