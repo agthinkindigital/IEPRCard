@@ -252,6 +252,31 @@ foreach (tenantTestConnections() as $driver => $pdo) {
                 throw new RuntimeException($driver . ': PDF jobs must save one private consolidated PDF and the card snapshot.');
             }
             $testAssetKeys[] = $pdfRow['pdf_consolidado_url'];
+
+            $pdo->prepare('UPDATE tenants SET limite_carteirinhas = 2, consumo_carteirinhas = 0 WHERE id = :tenant')
+                ->execute(['tenant' => $fixture['tenant_id']]);
+            foreach ([
+                ['mode' => 'pdf_a4_8up', 'key' => 'request-key-a4-8up-0001'],
+                ['mode' => 'pdf_a4_10up', 'key' => 'request-key-a4-10up-001'],
+            ] as $a4Case) {
+                $a4Job = cardIssuanceCreateJob(
+                    $pdo, $context, $identity, $fixture['tenant_id'], null, $sourceLotId, $designId,
+                    $a4Case['mode'], $a4Case['key'], strtotime('2026-01-01 00:38:00 UTC')
+                );
+                if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:39:00 UTC'))) {
+                    throw new RuntimeException($driver . ': the worker must process each A4 layout.');
+                }
+                $a4Result = $pdo->prepare('SELECT status_lote, pdf_consolidado_url FROM lotes_importacao WHERE id = :id');
+                $a4Result->execute(['id' => $a4Job['job_id']]);
+                $a4Row = $a4Result->fetch(PDO::FETCH_ASSOC);
+                $a4Bytes = is_array($a4Row) ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], (string) $a4Row['pdf_consolidado_url']) : '';
+                if (!is_array($a4Row) || $a4Row['status_lote'] !== 'concluido'
+                    || !str_starts_with((string) $a4Row['pdf_consolidado_url'], 'private://')
+                    || !str_starts_with($a4Bytes, '%PDF-1.4')) {
+                    throw new RuntimeException($driver . ': A4 jobs must persist a private consolidated PDF.');
+                }
+                $testAssetKeys[] = $a4Row['pdf_consolidado_url'];
+            }
         } elseif (getenv('CI') === 'true') {
             throw new RuntimeException($driver . ': CI must provide the renderer extensions for the worker output test.');
         }
