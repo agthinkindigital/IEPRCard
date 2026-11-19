@@ -220,6 +220,7 @@ function operationalConfigBeginTransaction(PDO $pdo, string $driver): void
         throw new InvalidArgumentException('OPERATIONAL_CONFIG_DRIVER_INVALID');
     }
     if ($driver === 'sqlite') {
+        $pdo->exec('PRAGMA busy_timeout = 5000');
         $pdo->exec('BEGIN IMMEDIATE TRANSACTION');
         return;
     }
