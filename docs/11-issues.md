@@ -93,7 +93,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 * Critério de Aceite:Um mesmo lote de dados importados deve conseguir gerar carteirinhas em 2 designs diferentes do mesmo Cliente apenas trocando o layout selecionado.
 
 
-* **ISSUE-011: Renderizador de Carteirinhas em WebP (Online) e PDF (Impressão CR80 / Folha A4)** — contratos/renderizadores puros concluídos em [#33](https://github.com/agthinkindigital/IEPRCard/issues/33)–[#38](https://github.com/agthinkindigital/IEPRCard/issues/38); persistência da emissão, reserva de cota e worker CLI/cron estão fatiados na [#46](https://github.com/agthinkindigital/IEPRCard/issues/46).
+* **ISSUE-011: Renderizador de Carteirinhas em WebP (Online) e PDF (Impressão CR80 / Folha A4)** — contratos/renderizadores puros concluídos em [#33](https://github.com/agthinkindigital/IEPRCard/issues/33)–[#38](https://github.com/agthinkindigital/IEPRCard/issues/38); persistência da emissão, reserva de cota e worker CLI/cron concluídos em [#46](https://github.com/agthinkindigital/IEPRCard/issues/46).
 * **Arquivos:** `includes/motor_carteirinha_webp.php`, `includes/motor_carteirinha_pdf.php`, `painel/lotes.php`, `cron.php`
 * **Descrição:** Gerar as imagens `.webp` de frente e verso otimizadas para web/WhatsApp e o arquivo `.pdf` em 300 DPI (modo página individual CR80 para impressora térmica PVC e modo folha A4 com 8/10 carteirinhas, marcas de corte e sangria). Inclui fila assíncrona em lotes para grandes volumes.
 * **Critério de Aceite:** Passar no `TDD-04`.
