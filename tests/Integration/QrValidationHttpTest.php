@@ -102,6 +102,16 @@ try {
     if ((int) $audit !== 59) {
         throw new RuntimeException('Rate-limited attempts must not increment card reads or write audit rows.');
     }
+    unset($pdo);
+    file_put_contents($rateLimitPath, '{}', LOCK_EX);
+    if (file_put_contents($databasePath, 'invalid sqlite file', LOCK_EX) === false) {
+        throw new RuntimeException('Could not prepare the controlled database failure case.');
+    }
+    [$status, $body] = $request('/validar/' . $token);
+    if ($status !== 503 || json_decode($body, true) !== ['erro' => 'validacao_indisponivel']
+        || str_contains($body, 'sqlite') || str_contains($body, $databasePath)) {
+        throw new RuntimeException('Database failures must return a generic service error without storage details.');
+    }
     fwrite(STDOUT, "PASS: QR validation routes through local PHP with generic JSON, no-store headers and ephemeral-IP rate limiting.\n");
 } finally {
     proc_terminate($process);
