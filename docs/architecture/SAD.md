@@ -655,13 +655,9 @@ Estados propagados para todos os Subclientes filhos; `carteirinha.status_carteir
 
 ### 7.2. CI (Quality Gates 1–5)
 
-```
-pre-commit: php -l + secret scan + lint CSS/JS
-CI: composer/native deps (se houver) → php -l → TDD-01..07 + 02B (SQLite)
-    → TDD-01/02/03/05/06 em MySQL → security specs → build release → Gate N
-```
+CI para `DEV` está definida em [`.github/workflows/database-integration.yml`](../../.github/workflows/database-integration.yml): `php tests/run_all.php` executa a suíte de integração no SQLite e na matriz MySQL 8.4/MariaDB 10.11; o gate de render PDF/WebP é executado separadamente no mesmo workflow. O escopo canônico de testes está em [`docs/10-tdd.md`](../10-tdd.md); TDD-05 permanece futuro e fora do MVP. Os critérios de avanço por fase estão em [`docs/12-quality-gates.md`](../12-quality-gates.md). Todo merge exige CI verde e revisão de QA; **não publicar mudanças diretamente em `PROD`**.
 
-Gate 3 inclui benchmarks de 80 ms/WebP e 1,5 s/PDF-50; Gate 4, webhooks sem duplicidade; Gate 5, agente MCP ponta-a-ponta. Todo merge exige testes verdes e revisão de QA; **proibido commit direto em `master`**.
+Gate 3 segue os benchmarks de renderização definidos em `docs/12` e no ADR-0007; Gate 4 cobre as integrações ativas sem duplicidade; Gate 5, agente MCP ponta-a-ponta.
 
 ### 7.3. Deploy reversível **[PROPOSTO]**
 
@@ -722,7 +718,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | --- | --- | --- | --- |
 | 0 — Alinhamento | Fechar C1–C10 e validar o plano de hospedagem, recuperação e política de dados | — | Schema canônico e limites operacionais confirmados |
 | 1 — Fundação | Épicos 1–2 (PDO dual, tenant, RBAC, cotas), schema de operações/privacidade e MCP read-only autenticado desde o primeiro lançamento | Gate 1 + 2 + segurança MCP | Isolamento comprovado, TDD-01/02/02B verdes e MCP com escopos/auditoria |
-| 2 — Produção de carteirinhas | Épicos 3–4 (importação, mapeamento, render, portal) | Gate 3 | Benchmarks 80 ms / 1,5 s e QR funcional |
+| 2 — Produção de carteirinhas | Épicos 3–4 (importação, mapeamento, render, portal) | Gate 3 | Benchmarks definidos no Gate 3 e QR funcional |
 | 3 — Integrações e telemetria | Épicos ativos de IA/WhatsApp e telemetria; pagamentos e webhooks Asaas/MP explicitamente adiados | Gate 4 | Integrações ativas verificadas e visibilidade em 3 níveis |
 | 4 — Agentes e hardening | Evolução das tools MCP + outbox + observabilidade + CI/deploy | Gate 5 | MCP seguro, golden signals, deploy reversível |
 | 5 — Evolução | PWA/Wallet, renovação, templates e possível módulo financeiro/marketplace após nova priorização | novos ADRs | Produto enterprise-grade |
