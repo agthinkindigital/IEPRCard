@@ -5,6 +5,19 @@ require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/operational_configuration.php';
 
+function operationalConfigurationTestWorkerStart(PDO $pdo, int $now, string $phase): ?array
+{
+    try {
+        return operationalConfigWorkerStart($pdo, $now);
+    } catch (Throwable $exception) {
+        $cause = $exception->getPrevious();
+        $details = $cause instanceof PDOException
+            ? ['sqlstate' => $cause->getCode(), 'driver_code' => $cause->errorInfo[1] ?? null, 'driver_message' => $cause->errorInfo[2] ?? null]
+            : null;
+        throw new RuntimeException($phase . ': ' . $exception->getMessage() . ' ' . json_encode($details));
+    }
+}
+
 $previousEnvironment = getenv('APP_ENV');
 putenv('APP_ENV=staging');
 $now = strtotime('2026-01-02 12:00:00 UTC');
@@ -34,7 +47,7 @@ try {
                 throw new RuntimeException($driver . ': malformed or out-of-range operational settings must be rejected.');
             }
         }
-        if (operationalConfigWorkerStart($pdo, $now) !== null) {
+        if (operationalConfigurationTestWorkerStart($pdo, $now, 'initial worker start') !== null) {
             throw new RuntimeException($driver . ': a fresh environment must have no active operational snapshot.');
         }
 
@@ -49,8 +62,8 @@ try {
             throw new RuntimeException($driver . ': saving manual settings must create a pending version without changing active settings.');
         }
 
-        $snapshot = operationalConfigWorkerStart($pdo, $now + 5);
-        $activeAgain = operationalConfigWorkerStart($pdo, $now + 10);
+        $snapshot = operationalConfigurationTestWorkerStart($pdo, $now + 5, 'first activation');
+        $activeAgain = operationalConfigurationTestWorkerStart($pdo, $now + 10, 'idempotent activation');
         $states = $pdo->query("SELECT estado, COUNT(*) AS total FROM configuracoes_operacionais WHERE ambiente = 'staging' GROUP BY estado")
             ->fetchAll(PDO::FETCH_KEY_PAIR);
         if (($snapshot['id'] ?? null) !== $pending['id'] || ($snapshot['versao'] ?? null) !== 1
@@ -65,7 +78,7 @@ try {
         $updatedSettings['lote_maximo_registros'] = 50;
         $updated = operationalConfigSavePending($pdo, $updatedSettings, null, $now + 15);
         $stillActive = $pdo->query("SELECT id FROM configuracoes_operacionais WHERE ambiente = 'staging' AND estado = 'ativa'")->fetchColumn();
-        $nextSnapshot = operationalConfigWorkerStart($pdo, $now + 20);
+        $nextSnapshot = operationalConfigurationTestWorkerStart($pdo, $now + 20, 'replacement activation');
         $replacementStates = $pdo->query("SELECT estado, COUNT(*) AS total FROM configuracoes_operacionais WHERE ambiente = 'staging' GROUP BY estado")
             ->fetchAll(PDO::FETCH_KEY_PAIR);
         if (($updated['versao'] ?? null) !== 2 || ($updated['estado'] ?? null) !== 'pendente'
