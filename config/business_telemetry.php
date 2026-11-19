@@ -289,6 +289,25 @@ function telemetryBusinessRead(PDO $pdo, array $identity, array $scope, array $w
         $built = tenantScopeBuildPredicate($identity);
         $predicate = $built['sql'];
         $params = $built['params'];
+    } elseif ($identity['papel_sistema'] === 'titular_cliente' && $mode === 'unit'
+        && count($scope) === 2 && array_key_exists('subcliente_id', $scope)) {
+        $subclienteId = filter_var($scope['subcliente_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($subclienteId === false) {
+            throw new DomainException('TELEMETRIA_ESCOPO_INVALIDO');
+        }
+        $verify = $pdo->prepare(
+            "SELECT 1 FROM tenants WHERE id = :child AND parent_id = :tenant AND tipo = 'subcliente' "
+            . "AND status_conta = 'ativo' LIMIT 1"
+        );
+        $verify->execute(['child' => $subclienteId, 'tenant' => $identity['tenant_id']]);
+        $unitExists = $verify->fetchColumn() !== false;
+        $verify->closeCursor();
+        if (!$unitExists) {
+            throw new DomainException('TELEMETRIA_ESCOPO_INVALIDO');
+        }
+        $built = tenantScopeBuildPredicate($identity);
+        $predicate = $built['sql'] . ' AND subcliente_id = :scope_subcliente_id';
+        $params = $built['params'] + ['scope_subcliente_id' => $subclienteId];
     } elseif (in_array($identity['papel_sistema'], ['responsavel_sub', 'subacesso'], true)
         && $identity['subcliente_id'] !== null && $mode === 'unit' && count($scope) === 1) {
         $built = tenantScopeBuildPredicate($identity);

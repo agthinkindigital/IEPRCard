@@ -56,7 +56,12 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $admin = $createIdentity('superadmin', null);
     $window = ['from' => '2026-11-17', 'to' => '2026-11-17'];
     $global = telemetryBusinessRead($pdo, $admin, ['mode' => 'global'], $window);
+    $adminTenant = telemetryBusinessRead($pdo, $admin, ['mode' => 'tenant', 'tenant_id' => $tenantIds[0]], $window);
+    $adminUnit = telemetryBusinessRead($pdo, $admin, [
+        'mode' => 'unit', 'tenant_id' => $tenantIds[0], 'subcliente_id' => $subclientIds[1],
+    ], $window);
     $network = telemetryBusinessRead($pdo, $sedeA, ['mode' => 'network'], $window);
+    $clientUnit = telemetryBusinessRead($pdo, $sedeA, ['mode' => 'unit', 'subcliente_id' => $subclientIds[1]], $window);
     $unit = telemetryBusinessRead($pdo, $subA1, ['mode' => 'unit'], $window);
     $mcpNetwork = telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[0]], $window);
 
@@ -64,7 +69,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         return array_sum(array_map(static fn (array $row): int => $row['categoria'] === $category ? (int) $row['quantidade'] : 0, $rows));
     };
     if ($sum($global, 'issuance') !== 10 || $sum($global, 'messaging') !== 5
+        || $sum($adminTenant, 'issuance') !== 7 || $sum($adminTenant, 'messaging') !== 3
+        || $sum($adminUnit, 'issuance') !== 1 || $sum($adminUnit, 'messaging') !== 1
         || $sum($network, 'issuance') !== 7 || $sum($network, 'messaging') !== 3
+        || $sum($clientUnit, 'issuance') !== 1 || $sum($clientUnit, 'messaging') !== 1
         || $sum($mcpNetwork, 'issuance') !== 7 || $sum($mcpNetwork, 'messaging') !== 3
         || $sum($unit, 'issuance') !== 3 || $sum($unit, 'messaging') !== 2) {
         throw new RuntimeException($driver . ': Admin, Sede, MCP Sede network, and Subcliente reads must match the 10 issuance / 5 messaging fixture without cross-scope leakage.');
@@ -91,6 +99,28 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $rootDaily->execute(['tenant' => $tenantIds[0]]);
     if ((int) $dailyRows->fetchColumn() !== 5 || (int) $rootDaily->fetchColumn() !== 3) {
         throw new RuntimeException($driver . ': normalized Sede scope must hold one unique daily total independent of SQL NULL uniqueness semantics.');
+    }
+
+    $pdo->prepare("UPDATE tenants SET status_conta = 'suspenso' WHERE id = :id")->execute(['id' => $subclientIds[1]]);
+    foreach ([
+        ['mode' => 'unit', 'subcliente_id' => $subclientIds[2]],
+        ['mode' => 'unit', 'subcliente_id' => 'not-an-id'],
+        ['mode' => 'unit'],
+        ['mode' => 'unit', 'subcliente_id' => $subclientIds[1], 'tenant_id' => $tenantIds[1]],
+        ['mode' => 'unit', 'subcliente_id' => $subclientIds[1]],
+    ] as $invalidUnitScope) {
+        try {
+            telemetryBusinessRead($pdo, $sedeA, $invalidUnitScope, $window);
+            throw new RuntimeException($driver . ': malformed, inactive, or cross-Sede unit scopes must be rejected.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'TELEMETRIA_ESCOPO_INVALIDO') throw $exception;
+        }
+    }
+    try {
+        telemetryBusinessRead($pdo, $subA1, ['mode' => 'unit', 'subcliente_id' => $subclientIds[1]], $window);
+        throw new RuntimeException($driver . ': Subcliente must not select another unit in the network.');
+    } catch (DomainException $exception) {
+        if ($exception->getMessage() !== 'TELEMETRIA_ESCOPO_INVALIDO') throw $exception;
     }
 
     foreach ([
@@ -235,6 +265,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     }
     if ($racePath !== null) {
         $racePdo = null;
+        unset($after, $eventCount);
+        gc_collect_cycles();
         if (is_file($racePath)) unlink($racePath);
     }
 
