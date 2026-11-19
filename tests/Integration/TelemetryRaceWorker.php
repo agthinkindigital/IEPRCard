@@ -15,6 +15,8 @@ $pdo = dbConnect($driver === 'sqlite'
 $query = $pdo->prepare('SELECT id, papel_sistema, tenant_id, subcliente_id FROM usuarios WHERE id = :id');
 $query->execute(['id' => (int) $userId]);
 $identity = $query->fetch(PDO::FETCH_ASSOC);
+$query->closeCursor();
+unset($query);
 if (!is_array($identity)) {
     fwrite(STDERR, "Telemetry race identity missing.\n");
     exit(1);
