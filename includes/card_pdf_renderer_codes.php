@@ -27,7 +27,7 @@ function cardPdfDrawCodeElement(
         $target = max(1, (int) round($element['tamanho']));
         $scale = intdiv($target, max(imagesx($bitmap), imagesy($bitmap)));
         if ($scale < 1) {
-            imagedestroy($bitmap);
+            unset($bitmap);
             return ['code' => 'qr_area_too_small', 'path' => $idPath];
         }
         $width = imagesx($bitmap) * $scale;
@@ -53,7 +53,7 @@ function cardPdfDrawCodeElement(
         $targetHeight = max(1, (int) round($element['altura']));
         $scale = intdiv($targetWidth, imagesx($bitmap));
         if ($scale < 1) {
-            imagedestroy($bitmap);
+            unset($bitmap);
             return ['code' => 'barcode_area_too_small', 'path' => $idPath];
         }
         $width = imagesx($bitmap) * $scale;
@@ -63,7 +63,7 @@ function cardPdfDrawCodeElement(
     }
 
     cardPdfDrawBitmapVector($pdf, $bitmap, $x, $y, $width, $height, $offsetXmm, $offsetYmm);
-    imagedestroy($bitmap);
+    unset($bitmap);
     return null;
 }
 

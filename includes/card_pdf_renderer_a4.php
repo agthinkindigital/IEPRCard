@@ -10,7 +10,7 @@ function cardPdfCreateBleedBackground(string $backgroundPng): ?string
     $source = $decoded['image'];
     $bleed = imagecreatetruecolor(1082, 709);
     if (!$bleed instanceof GdImage) {
-        imagedestroy($source);
+        unset($source);
         return null;
     }
     $white = imagecolorallocate($bleed, 255, 255, 255);
@@ -24,11 +24,11 @@ function cardPdfCreateBleedBackground(string $backgroundPng): ?string
         $color = imagecolorat($source, $corner[2], $corner[3]);
         imagefilledrectangle($bleed, $corner[0], $corner[1], $corner[0] + 35, $corner[1] + 35, $color);
     }
-    imagedestroy($source);
+    unset($source);
     ob_start();
     $encoded = imagepng($bleed);
     $png = ob_get_clean();
-    imagedestroy($bleed);
+    unset($bleed);
     return $encoded && is_string($png) && $png !== '' ? $png : null;
 }
 

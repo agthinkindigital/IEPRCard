@@ -34,12 +34,12 @@ function cardWebpAssertIndependentDecode(string $webp, string $expected): void
     $path = tempnam(sys_get_temp_dir(), 'ieprcard-code-');
     if (!$image instanceof GdImage || $path === false) {
         if ($image instanceof GdImage) {
-            imagedestroy($image);
+            unset($image);
         }
         throw new RuntimeException('Could not create a temporary barcode fixture.');
     }
     imagepng($image, $path);
-    imagedestroy($image);
+    unset($image);
     $pipes = [];
     $process = proc_open([$scanner, '--quiet', '--raw', $path], [
         0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w'],
@@ -75,7 +75,7 @@ imagefill($background, 0, 0, $white);
 ob_start();
 imagepng($background);
 $backgroundPng = ob_get_clean();
-imagedestroy($background);
+unset($background);
 
 $result = cardRenderWebpSides($design, [], ['frente' => $backgroundPng, 'verso' => $backgroundPng], []);
 if (($result['valid'] ?? null) !== true || ($result['errors'] ?? null) !== []
@@ -111,7 +111,7 @@ for ($pixelY = 20; $pixelY < 140; ++$pixelY) {
         }
     }
 }
-imagedestroy($renderedFront);
+unset($renderedFront);
 if ($darkPixels < 10) {
     throw new RuntimeException('Text should be drawn visibly at its design coordinates.');
 }
@@ -149,7 +149,7 @@ imagefill($photo, 0, 0, $red);
 ob_start();
 imagepng($photo);
 $photoPng = ob_get_clean();
-imagedestroy($photo);
+unset($photo);
 $photoDesign = $design;
 $photoDesign['elementos'] = [[
     'id' => 'el_foto', 'lado' => 'frente', 'tipo' => 'foto_titular', 'chave_variavel' => 'foto',
@@ -163,7 +163,7 @@ if (($photoResult['valid'] ?? null) !== true) {
 $renderedPhotoCard = imagecreatefromstring($photoResult['images']['frente']);
 $photoPixel = imagecolorsforindex($renderedPhotoCard, imagecolorat($renderedPhotoCard, 180, 180));
 $outsidePixel = imagecolorsforindex($renderedPhotoCard, imagecolorat($renderedPhotoCard, 50, 50));
-imagedestroy($renderedPhotoCard);
+unset($renderedPhotoCard);
 if ($photoPixel['red'] < 180 || $photoPixel['green'] > 50 || $outsidePixel['red'] < 230) {
     throw new RuntimeException('The photo should be cropped into its box without changing the surrounding background.');
 }
@@ -179,7 +179,7 @@ if (($borderResult['valid'] ?? null) !== true) {
 $borderCard = imagecreatefromstring($borderResult['images']['frente']);
 $borderPixel = imagecolorsforindex($borderCard, imagecolorat($borderCard, 102, 180));
 $roundedCorner = imagecolorsforindex($borderCard, imagecolorat($borderCard, 100, 100));
-imagedestroy($borderCard);
+unset($borderCard);
 if ($borderPixel['blue'] < 180 || $borderPixel['red'] > 60 || $roundedCorner['red'] < 230) {
     throw new RuntimeException('Photo border color and rounded transparent corners should be preserved.');
 }
@@ -205,7 +205,7 @@ for ($pixelY = 100; $pixelY < 250; ++$pixelY) {
         }
     }
 }
-imagedestroy($renderedBarcode);
+unset($renderedBarcode);
 if ($barcodeDarkPixels < 1000) {
     throw new RuntimeException('CODE128 bars should be visible in the configured rectangle.');
 }

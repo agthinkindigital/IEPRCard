@@ -51,13 +51,13 @@ function cardRenderWebpSides(mixed $designSource, mixed $values, mixed $backgrou
 
         $canvas = imagecreatetruecolor(1011, 638);
         if ($canvas === false) {
-            imagedestroy($background['image']);
+            unset($background['image']);
             return cardRenderFailure('image_allocation_failed', '$.render');
         }
         $white = imagecolorallocate($canvas, 255, 255, 255);
         imagefill($canvas, 0, 0, $white);
         cardRenderCopyCover($canvas, $background['image'], 0, 0, 1011, 638);
-        imagedestroy($background['image']);
+        unset($background['image']);
 
         foreach ($design['elementos'] as $index => $element) {
             if ($element['lado'] === $side) {
@@ -69,7 +69,7 @@ function cardRenderWebpSides(mixed $designSource, mixed $values, mixed $backgrou
                     default => ['code' => 'unsupported_element', 'path' => '$.design.elementos[' . $index . ']'],
                 };
                 if ($elementResult !== null) {
-                    imagedestroy($canvas);
+                    unset($canvas);
                     return cardRenderFailure($elementResult['code'], $elementResult['path']);
                 }
             }
@@ -78,7 +78,7 @@ function cardRenderWebpSides(mixed $designSource, mixed $values, mixed $backgrou
         ob_start();
         $encoded = imagewebp($canvas, null, 85);
         $webp = ob_get_clean();
-        imagedestroy($canvas);
+        unset($canvas);
         if (!$encoded || !is_string($webp) || $webp === '') {
             return cardRenderFailure('image_encode_failed', '$.render.' . $side);
         }

@@ -181,7 +181,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             ob_start();
             imagepng($background);
             $backgroundBytes = ob_get_clean();
-            imagedestroy($background);
+            unset($background);
             $backgroundRoot = batchImportStagingPrivateRoot() . DIRECTORY_SEPARATOR . (string) $fixture['tenant_id'];
             if (!is_dir($backgroundRoot)) { mkdir($backgroundRoot, 0700, true); }
             foreach (['frente', 'verso'] as $side) {

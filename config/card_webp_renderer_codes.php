@@ -25,7 +25,7 @@ function cardRenderQrElement(GdImage $canvas, array $element, string $value): ?a
     $targetSize = max(1, (int) round($element['tamanho']));
     $scale = intdiv($targetSize, max(imagesx($qr), imagesy($qr)));
     if ($scale < 1) {
-        imagedestroy($qr);
+        unset($qr);
         return ['code' => 'qr_area_too_small', 'path' => '$.design.elementos.' . $element['id']];
     }
     $scaledWidth = imagesx($qr) * $scale;
@@ -36,7 +36,7 @@ function cardRenderQrElement(GdImage $canvas, array $element, string $value): ?a
     imagefilledrectangle($canvas, (int) round($element['x']), (int) round($element['y']),
         (int) round($element['x']) + $targetSize - 1, (int) round($element['y']) + $targetSize - 1, $white);
     imagecopyresized($canvas, $qr, $x, $y, 0, 0, $scaledWidth, $scaledHeight, imagesx($qr), imagesy($qr));
-    imagedestroy($qr);
+    unset($qr);
     return null;
 }
 
@@ -67,7 +67,7 @@ function cardRenderBarcodeElement(GdImage $canvas, array $element, string $value
     $targetHeight = max(1, (int) round($element['altura']));
     $scale = intdiv($targetWidth, imagesx($barcode));
     if ($scale < 1) {
-        imagedestroy($barcode);
+        unset($barcode);
         return ['code' => 'barcode_area_too_small', 'path' => '$.design.elementos.' . $element['id']];
     }
 
@@ -79,7 +79,7 @@ function cardRenderBarcodeElement(GdImage $canvas, array $element, string $value
         (int) round($element['x']) + $targetWidth - 1, $drawY + $targetHeight - 1, $white);
     imagecopyresized($canvas, $barcode, $drawX, $drawY, 0, 0,
         $drawWidth, $targetHeight, imagesx($barcode), imagesy($barcode));
-    imagedestroy($barcode);
+    unset($barcode);
     return null;
 }
 

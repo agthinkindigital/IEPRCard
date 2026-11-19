@@ -282,7 +282,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         ob_start();
         imagepng($photoImage);
         $photoBytes = ob_get_clean();
-        imagedestroy($photoImage);
+        unset($photoImage);
         if (!is_string($photoBytes)) {
             throw new RuntimeException('Could not encode the photo fixture.');
         }

@@ -190,7 +190,7 @@ try {
     ob_start();
     imagepng($designEditorHttpBackground);
     $designEditorHttpBackgroundBytes = (string) ob_get_clean();
-    imagedestroy($designEditorHttpBackground);
+    unset($designEditorHttpBackground);
     [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpMultipartRequest($designEditorHttpUrl, $designEditorHttpCookie, $designEditorHttpHost, [
         'csrf_token' => $designEditorHttpCsrf, 'nome_layout' => 'Rascunho validado',
         'mapa_campos_json' => $designEditorHttpDefaults, 'mapeamento_fixo_json' => $designEditorHttpMapping,

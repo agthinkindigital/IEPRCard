@@ -106,7 +106,7 @@ if ($method === 'POST') {
                 header('Content-Type: application/json; charset=utf-8');
                 exit(json_encode(['error' => 'invalid_upload']));
             }
-            imagedestroy($decoded['image']);
+            unset($decoded['image']);
             $previewUploads[$side] = $bytes;
         }
         $previewResult = designEditorPreview($tenantId, $design ?? [], $previewMap, $previewUploads);

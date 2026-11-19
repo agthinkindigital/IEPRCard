@@ -100,7 +100,7 @@ function designEditorStoreBackgrounds(int $tenantId, array $design, array $uploa
         if (!is_string($bytes) || !function_exists('cardRenderDecodeImage')) throw new DomainException('invalid_upload_' . $side);
         $decoded = cardRenderDecodeImage($bytes, '$.fundo.' . $side);
         if (!isset($decoded['image'])) throw new DomainException('invalid_upload_' . $side);
-        imagedestroy($decoded['image']);
+        unset($decoded['image']);
         $info = getimagesizefromstring($bytes);
         $extension = match ($info['mime'] ?? '') { 'image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', default => null };
         if ($extension === null) throw new DomainException('invalid_upload_' . $side);
@@ -179,7 +179,7 @@ function designEditorPreview(int $tenantId, array $design, array $map, array $up
             ob_start();
             imagepng($canvas);
             $bytes = (string) ob_get_clean();
-            imagedestroy($canvas);
+            unset($canvas);
         }
         $backgrounds[$side] = $bytes;
     }

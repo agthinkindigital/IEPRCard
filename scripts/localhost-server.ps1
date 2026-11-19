@@ -110,7 +110,8 @@ $stderrPath = Join-Path $runtimeRoot "php-$port.err.log"
 [System.IO.File]::WriteAllText($heartbeatPath, [DateTime]::UtcNow.ToString('o'))
 $env:IEPRCARD_LOCAL_HEARTBEAT = $heartbeatPath
 
-$arguments = (@($phpIniArguments) + @('-S', "127.0.0.1:$port", '-t', "`"$publicRoot`"")) -join ' '
+$routerScript = Join-Path $publicRoot 'router.php'
+$arguments = (@($phpIniArguments) + @('-S', "127.0.0.1:$port", '-t', "`"$publicRoot`"", "`"$routerScript`"")) -join ' '
 $server = Start-Process -FilePath $php -ArgumentList $arguments -PassThru -NoNewWindow `
     -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
 

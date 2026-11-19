@@ -30,7 +30,7 @@ function cardRenderPhotoElement(GdImage $canvas, array $element, array $photoAss
     $innerHeight = max(1, $height - 2 * $borderWidth);
     $photoLayer = imagecreatetruecolor($innerWidth, $innerHeight);
     if ($photoLayer === false) {
-        imagedestroy($decoded['image']);
+        unset($decoded['image']);
         return ['code' => 'image_allocation_failed', 'path' => '$.design.elementos.' . $element['id']];
     }
     imagealphablending($photoLayer, false);
@@ -44,8 +44,8 @@ function cardRenderPhotoElement(GdImage $canvas, array $element, array $photoAss
     }
     imagealphablending($canvas, true);
     imagecopy($canvas, $photoLayer, $x + $borderWidth, $y + $borderWidth, 0, 0, $innerWidth, $innerHeight);
-    imagedestroy($photoLayer);
-    imagedestroy($decoded['image']);
+    unset($photoLayer);
+    unset($decoded['image']);
     return null;
 }
 

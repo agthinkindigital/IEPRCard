@@ -35,13 +35,13 @@ function cardPdfDrawPhotoElement(
     $localElement['y'] = 0;
     $error = cardRenderPhotoElement($patch, $localElement, $photoAssets);
     if ($error !== null) {
-        imagedestroy($patch);
+        unset($patch);
         return $error;
     }
     ob_start();
     $encoded = imagejpeg($patch, null, 92);
     $png = ob_get_clean();
-    imagedestroy($patch);
+    unset($patch);
     if (!$encoded || !is_string($png) || $png === '') {
         return ['code' => 'image_encode_failed', 'path' => '$.design.elementos.' . $element['id']];
     }

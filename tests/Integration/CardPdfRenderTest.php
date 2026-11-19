@@ -171,7 +171,7 @@ imagefill($background, 0, 0, $white);
 ob_start();
 imagepng($background);
 $backgroundPng = ob_get_clean();
-imagedestroy($background);
+unset($background);
 
 $result = cardRenderPdfSides($design, [], ['frente' => $backgroundPng, 'verso' => $backgroundPng]);
 if (($result['valid'] ?? null) !== true || !is_string($result['pdf'] ?? null)
@@ -246,13 +246,13 @@ imagefill($frontColor, 0, 0, imagecolorallocate($frontColor, 210, 20, 20));
 ob_start();
 imagepng($frontColor);
 $frontColorPng = ob_get_clean();
-imagedestroy($frontColor);
+unset($frontColor);
 $backColor = imagecreatetruecolor(1011, 638);
 imagefill($backColor, 0, 0, imagecolorallocate($backColor, 20, 40, 210));
 ob_start();
 imagepng($backColor);
 $backColorPng = ob_get_clean();
-imagedestroy($backColor);
+unset($backColor);
 $a4Design = $design;
 $a4Design['elementos'] = [
     [
@@ -281,21 +281,21 @@ cardPdfAssertScans($a4Bleed['pdf'], 2, 'ABC123');
 $frontPage = imagecreatefromstring(cardPdfRenderPage($a4Bleed['pdf'], 1));
 if (!$frontPage instanceof GdImage || abs(imagesx($frontPage) - 2480) > 1 || abs(imagesy($frontPage) - 3508) > 1) {
     if ($frontPage instanceof GdImage) {
-        imagedestroy($frontPage);
+        unset($frontPage);
     }
     throw new RuntimeException('A4 pages must render to 300 DPI portrait dimensions.');
 }
 $frontPixel = imagecolorsforindex($frontPage, imagecolorat($frontPage, 700, 700));
-imagedestroy($frontPage);
+unset($frontPage);
 $backPage = imagecreatefromstring(cardPdfRenderPage($a4Bleed['pdf'], 2));
 if (!$backPage instanceof GdImage || abs(imagesx($backPage) - 2480) > 1 || abs(imagesy($backPage) - 3508) > 1) {
     if ($backPage instanceof GdImage) {
-        imagedestroy($backPage);
+        unset($backPage);
     }
     throw new RuntimeException('A4 pages must render to 300 DPI portrait dimensions.');
 }
 $backPixel = imagecolorsforindex($backPage, imagecolorat($backPage, 1780, 700));
-imagedestroy($backPage);
+unset($backPage);
 if ($frontPixel['red'] < 180 || $backPixel['blue'] < 180) {
     throw new RuntimeException('A4 front/back sheet positions must align for long-edge duplex printing.');
 }
@@ -342,7 +342,7 @@ imagefill($photo, 0, 0, $red);
 ob_start();
 imagepng($photo);
 $photoPng = ob_get_clean();
-imagedestroy($photo);
+unset($photo);
 $photoDesign = $design;
 $photoDesign['elementos'] = [[
     'id' => 'el_foto', 'lado' => 'frente', 'tipo' => 'foto_titular', 'chave_variavel' => 'foto',
@@ -359,13 +359,13 @@ if ($frontPng !== null) {
     if (!$front instanceof GdImage || abs(imagesx($front) - 1011) > 1 || abs(imagesy($front) - 638) > 1) {
         $actual = $front instanceof GdImage ? imagesx($front) . '×' . imagesy($front) : 'invalid image';
         if ($front instanceof GdImage) {
-            imagedestroy($front);
+            unset($front);
         }
         throw new RuntimeException('A 300 DPI CR80 PDF face must render to 1011×638 pixels; got ' . $actual . '.');
     }
     $photoPixel = imagecolorsforindex($front, imagecolorat($front, 150, 150));
     $backgroundPixel = imagecolorsforindex($front, imagecolorat($front, 50, 50));
-    imagedestroy($front);
+    unset($front);
     if ($photoPixel['red'] < 180 || $photoPixel['green'] > 50 || $backgroundPixel['red'] < 230) {
         throw new RuntimeException('The photo must occupy its mapped area without changing the background.');
     }
@@ -402,7 +402,7 @@ for ($index = 0; $index < 50; ++$index) {
     ob_start();
     imagepng($benchmarkPhoto);
     $benchmarkPhotoPng = ob_get_clean();
-    imagedestroy($benchmarkPhoto);
+    unset($benchmarkPhoto);
     $batchCards[] = [
         'design' => $benchmarkDesign,
         'values' => [...$benchmarkValues, '_sistema_url_validacao' => $qrValue . '/' . $index,

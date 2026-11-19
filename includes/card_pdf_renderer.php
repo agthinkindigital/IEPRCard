@@ -91,7 +91,7 @@ if (!class_exists('IEPRCardPdfDocument', false)) {
             }
             $this->temporaryAssets = [];
             foreach ($this->decodedBackgroundCache as $image) {
-                imagedestroy($image);
+                unset($image);
             }
             $this->decodedBackgroundCache = [];
         }
@@ -161,17 +161,17 @@ function cardRenderPdfSides(
             }
             $background = imagecreatetruecolor(1011, 638);
             if (!$background instanceof GdImage) {
-                imagedestroy($decoded['image']);
+                unset($decoded['image']);
                 return cardPdfFailure('image_allocation_failed', '$.render.' . $side);
             }
             $white = imagecolorallocate($background, 255, 255, 255);
             imagefill($background, 0, 0, $white);
             cardRenderCopyCover($background, $decoded['image'], 0, 0, 1011, 638);
-            imagedestroy($decoded['image']);
+            unset($decoded['image']);
             ob_start();
             $encoded = imagepng($background);
             $backgroundPng = ob_get_clean();
-            imagedestroy($background);
+            unset($background);
             if (!$encoded || !is_string($backgroundPng) || $backgroundPng === '') {
                 return cardPdfFailure('image_encode_failed', '$.render.' . $side);
             }

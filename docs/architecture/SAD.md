@@ -339,11 +339,12 @@ sequenceDiagram
     Tit->>Val: le QR (codigo_validacao_qr)
     Val->>DB: SELECT status_carteirinha + validade + status_conta da sede
     alt ativa e dentro da validade e conta adimplente
-        Val-->>Tit: selo CARTEIRINHA ATIVA (foto e nome; sem CPF)
+        Val-->>Tit: JSON status=ativa, motivo_codigo=ativa
     else suspensa/vencida/revogada
-        Val-->>Tit: selo SUSPENSA/VENCIDA + motivo generico
+        Val-->>Tit: JSON com estado público e motivo genérico, sem dados pessoais
     end
-    Val->>DB: UPDATE total_leituras_qr + auditoria de portaria (IP/UA)
+    Val->>DB: UPDATE atômico do contador + auditoria minimizada por tenant/unidade
+    Note over DB: Sem ID de titular/carteirinha, token, IP ou User-Agent; rate limit usa hash efêmero de IP
 ```
 
 ### 4.6. DER-alvo do produto (schema do MVP definido no ADR-0005)

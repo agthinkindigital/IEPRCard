@@ -159,7 +159,7 @@ function batchImportPhotoArchiveReadMatches(string $archivePath, array $records)
             if (!$decoded instanceof GdImage) {
                 throw new DomainException('IMPORT_PHOTO_ARCHIVE_INVALID');
             }
-            imagedestroy($decoded);
+            unset($decoded);
             $matches[$matchesForStem[0]] = ['extension' => $extension, 'bytes' => $bytes];
         }
     } finally {
