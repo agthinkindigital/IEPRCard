@@ -133,6 +133,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
                 'tenant_id' => $raceFixture['tenant_id'], 'subcliente_id' => $subclientId,
             ];
         }
+        $raceUser->closeCursor();
     }
     $raceDriver = (string) $racePdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     $raceDate = strtotime('2026-11-17 13:00:00 UTC');
@@ -144,6 +145,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $scopeId = $raceIdentity['subcliente_id'] ?? 0;
         $before->execute(['tenant' => $raceIdentity['tenant_id'], 'scope' => $scopeId, 'day' => '2026-11-17']);
         $beforeTotal = (int) $before->fetchColumn();
+        $before->closeCursor();
         $eventCount = $racePdo->prepare(
             'SELECT COUNT(*) FROM telemetria_eventos WHERE tenant_id = :tenant AND '
             . ($raceIdentity['subcliente_id'] === null ? 'subcliente_id IS NULL' : 'subcliente_id = :subclient')
@@ -153,6 +155,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if ($raceIdentity['subcliente_id'] !== null) $eventParams['subclient'] = $raceIdentity['subcliente_id'];
         $eventCount->execute($eventParams);
         $beforeEvents = (int) $eventCount->fetchColumn();
+        $eventCount->closeCursor();
+        if ($racePath !== null) {
+            $racePdo = null;
+        }
 
         $barrier = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-telemetry-race-start-' . bin2hex(random_bytes(8));
         $processes = [];
@@ -180,14 +186,24 @@ foreach (tenantTestConnections() as $driver => $pdo) {
                     throw new RuntimeException($driver . ': concurrent telemetry worker failed: ' . $stderr);
                 }
             }
+            if ($racePath !== null) {
+                $racePdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $racePath]);
+            }
             $after = $racePdo->prepare(
                 'SELECT quantidade FROM telemetria_diaria WHERE tenant_id = :tenant AND subcliente_scope_id = :scope '
                 . 'AND dia = :day AND categoria = \'issuance\' AND evento_chave = \'card.generated\''
             );
             $after->execute(['tenant' => $raceIdentity['tenant_id'], 'scope' => $scopeId, 'day' => '2026-11-17']);
             $afterTotal = (int) $after->fetchColumn();
+            $after->closeCursor();
+            $eventCount = $racePdo->prepare(
+                'SELECT COUNT(*) FROM telemetria_eventos WHERE tenant_id = :tenant AND '
+                . ($raceIdentity['subcliente_id'] === null ? 'subcliente_id IS NULL' : 'subcliente_id = :subclient')
+                . ' AND categoria = \'issuance\' AND evento_chave = \'card.generated\' AND criado_em = \'2026-11-17 13:00:00\''
+            );
             $eventCount->execute($eventParams);
             $afterEvents = (int) $eventCount->fetchColumn();
+            $eventCount->closeCursor();
             if ($afterTotal !== $beforeTotal + 30 || $afterEvents !== $beforeEvents + 30) {
                 throw new RuntimeException($driver . ': concurrent telemetry expected aggregate/events '
                     . ($beforeTotal + 30) . '/' . ($beforeEvents + 30) . ', found ' . $afterTotal . '/' . $afterEvents . '.');
