@@ -50,6 +50,12 @@ $otherDomain = $pdo->prepare("INSERT INTO dominios_tenant (tenant_id, hostname, 
 $otherDomain->execute(['tenant' => $otherTenantId, 'hostname' => 'private-' . $suffix . '.example.test']);
 unset($pdo);
 
+$previousSessionName = session_name();
+$previousSessionId = session_id();
+$previousSessionSavePath = session_save_path();
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
 $sessionId = bin2hex(random_bytes(24));
 $csrf = bin2hex(random_bytes(32));
 session_save_path($directory);
@@ -193,6 +199,12 @@ try {
     proc_terminate($process);
     proc_close($process);
     unset($pdo);
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    session_save_path($previousSessionSavePath);
+    session_name($previousSessionName);
+    session_id($previousSessionId);
     foreach ($oldEnvironment as $key => $value) {
         $value === null ? putenv($key) : putenv($key . '=' . $value);
     }
