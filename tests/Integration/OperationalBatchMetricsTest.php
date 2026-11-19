@@ -99,8 +99,8 @@ try {
         $insufficientForecast = operationalBatchMetricsForecast($pdo, 7, $forecastNow);
         if (($insufficientForecast['status'] ?? null) !== 'insufficient_history'
             || ($insufficientForecast['observed_days'] ?? null) !== 6
-            || ($insufficientForecast['forecast_peak'] ?? 'missing') !== null
-            || ($insufficientForecast['recommended_lot_size'] ?? 'missing') !== null) {
+            || !array_key_exists('forecast_peak', $insufficientForecast) || $insufficientForecast['forecast_peak'] !== null
+            || !array_key_exists('recommended_lot_size', $insufficientForecast) || $insufficientForecast['recommended_lot_size'] !== null) {
             throw new RuntimeException($driver . ': fewer than seven observed days must not produce a numeric recommendation.');
         }
 
