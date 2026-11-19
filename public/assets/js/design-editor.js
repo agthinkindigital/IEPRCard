@@ -41,7 +41,11 @@
         node.setAttribute('aria-label', `${label(item)}, posição ${item.x}, ${item.y}`);
         node.setAttribute('aria-pressed', selected === item.id ? 'true' : 'false');
         node.dataset.elementId = item.id;
-        node.addEventListener('click', () => { selected = item.id; render(); });
+        node.addEventListener('click', () => {
+            selected = item.id;
+            render();
+            stage.querySelector(`[data-element-id="${CSS.escape(item.id)}"]`)?.focus();
+        });
         node.addEventListener('keydown', (event) => {
             if (!state.editable) return;
             if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return;

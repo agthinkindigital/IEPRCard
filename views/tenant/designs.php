@@ -63,7 +63,7 @@ $readonly = !$canSave;
                 <div class="workspace" data-editor-panel="fields">
                     <div class="canvas-column">
                         <div class="canvas" id="card-canvas" tabindex="0" role="group" aria-label="Canvas CR80. Selecione um elemento e use as setas para movê-lo.">
-                            <?php foreach ($backgroundPreview as $side => $src): ?><img class="canvas-preview background-preview" data-preview-side="<?= $h($side) ?>"<?= is_string($src) ? ' src="' . $h($src) . '"' : '' ?> alt="Fundo do lado <?= $h($side) ?>"<?= $side === 'verso' ? ' hidden' : '' ?>><?php endforeach; ?>
+                            <?php foreach ($backgroundPreview as $side => $src): ?><img class="canvas-preview background-preview" data-preview-side="<?= $h($side) ?>" src="<?= $h(is_string($src) ? $src : 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=') ?>" alt=""<?= $side === 'verso' ? ' hidden' : '' ?>><?php endforeach; ?>
                             <?php foreach ($previewData as $side => $src): ?><img class="canvas-preview rendered-preview" data-rendered-side="<?= $h($side) ?>" src="<?= $h((string) $src) ?>" alt="Resultado do renderizador com dados fictícios, lado <?= $h($side) ?>" hidden><?php endforeach; ?>
                             <div class="safe-area" aria-hidden="true"></div><div id="canvas-elements"></div>
                         </div>

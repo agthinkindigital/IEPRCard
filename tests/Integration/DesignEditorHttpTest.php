@@ -144,6 +144,12 @@ try {
     if ($designEditorHttpStatus !== 200 || !str_contains((string) $designEditorHttpBody, 'Designs da carteirinha')) {
         throw new RuntimeException('Authenticated Sede operators with design view permission must reach the catalogue; received HTTP ' . $designEditorHttpStatus . ': ' . (string) $designEditorHttpBody);
     }
+    preg_match_all('/<img\b[^>]*>/i', (string) $designEditorHttpBody, $designEditorHttpImages);
+    foreach ($designEditorHttpImages[0] as $designEditorHttpImage) {
+        if (preg_match('/\bsrc\s*=/i', $designEditorHttpImage) !== 1) {
+            throw new RuntimeException('An empty design canvas must not render a broken background image placeholder.');
+        }
+    }
     $designEditorHttpPermissionDb = dbConnect($designEditorHttpConfiguration);
     $designEditorHttpPermissionDb->prepare('UPDATE plano_feature_flags SET habilitado = 0 WHERE plano_id = :plan AND feature_key = :feature')
         ->execute(['plan' => $designEditorHttpPlanId, 'feature' => 'design.ver']);
