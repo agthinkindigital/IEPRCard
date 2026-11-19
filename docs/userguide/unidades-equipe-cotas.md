@@ -1,6 +1,6 @@
 # Guia funcional: unidades, equipe e cotas
 
-Este guia cobre a administração da rede por uma Sede. Os três fluxos têm mockups próprios: [unidades](../../design-system/mockups/unidades-tenant-mockup.svg), [equipe](../../design-system/mockups/equipe-tenant-mockup.svg) e [cotas](../../design-system/mockups/cotas-tenant-mockup.svg). As páginas `/tenant/unidades.php`, `/tenant/equipe.php` e `/tenant/dominios.php` estão disponíveis após autenticação do tenant. Alocação de cotas ainda não está implementada.
+Este guia cobre a administração da rede por uma Sede. Os três fluxos têm mockups próprios: [unidades](../../design-system/mockups/unidades-tenant-mockup.svg), [equipe](../../design-system/mockups/equipe-tenant-mockup.svg) e [cotas](../../design-system/mockups/cotas-tenant-mockup.svg). As páginas `/tenant/unidades.php`, `/tenant/equipe.php` e `/tenant/cotas.php` estão disponíveis após autenticação do tenant; domínios próprios seguem em [guia específico](dominios-tenant.md).
 
 ## Quem pode administrar
 
@@ -24,11 +24,11 @@ O Cliente Master da Sede administra suas unidades, operadores e alocações dent
 
 ## Cotas e pool compartilhado
 
-1. O painel mostra os tetos da Sede para unidades, equipe, titulares ativos e emissões no período.
-2. A Sede pode reservar cotas fixas de equipe, titulares e emissões para cada unidade quando o backend permitir; o limite de número de unidades é definido no nível da Sede.
+1. O painel mostra os tetos da Sede para unidades, equipe, titulares ativos e emissões consumidas. O consumo de emissões é cumulativo conforme o contador usado pelo serviço de emissão; não representa um período mensal até existir uma regra de renovação de cotas.
+2. A Sede pode reservar cotas fixas de equipe, titulares e emissões para cada unidade; o limite de número de unidades é definido no nível da Sede.
 3. Uma unidade com `Pool` não tem reserva fixa naquela dimensão e consome do saldo compartilhado da Sede, sempre respeitando o teto global.
 4. Antes de salvar uma alocação, o sistema valida em transação que a soma das cotas fixas das unidades não ultrapassa o teto da Sede. Valores nulos representam Pool; zero representa nenhuma cota reservada.
-5. Se uma mudança reduzir o teto abaixo das alocações atuais, a alteração é recusada até que a Sede ajuste as reservas. A mensagem informa totais da própria rede.
+5. Uma reserva fixa não pode ultrapassar o teto nem ficar abaixo do uso atual da unidade. A mensagem identifica a dimensão e o limite relevante; o servidor revalida tudo em transação.
 
 ## Estados e falhas
 

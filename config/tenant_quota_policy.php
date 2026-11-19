@@ -103,6 +103,21 @@ function tenantQuotaSetSubclientAllocation(
             if ($rootLimit === null) {
                 throw new DomainException('TENANT_QUOTA_UNCONFIGURED');
             }
+            $usageQuery = match ($dimension) {
+                'limite_usuarios_equipe' => $pdo->prepare(
+                    "SELECT COUNT(*) FROM usuarios WHERE tenant_id = :tenant AND subcliente_id = :unit "
+                    . "AND ativo = 1 AND papel_sistema IN ('responsavel_sub', 'subacesso')"
+                ),
+                'limite_titulares' => $pdo->prepare(
+                    'SELECT COUNT(*) FROM titulares WHERE tenant_id = :tenant AND subcliente_id = :unit AND ativo = 1'
+                ),
+                default => $pdo->prepare('SELECT consumo_carteirinhas FROM tenants WHERE id = :unit AND parent_id = :tenant'),
+            };
+            $usageQuery->execute(['tenant' => $tenantId, 'unit' => $subclienteId]);
+            $currentUsage = (int) $usageQuery->fetchColumn();
+            if ($normalized[$dimension] !== null && $normalized[$dimension] < $currentUsage) {
+                throw new DomainException('TENANT_QUOTA_EXCEEDED');
+            }
             $total = tenantQuotaFixedAllocationTotal($pdo, $tenantId, $dimension, $subclienteId)
                 + ($normalized[$dimension] ?? 0);
             if ($total > $rootLimit) {

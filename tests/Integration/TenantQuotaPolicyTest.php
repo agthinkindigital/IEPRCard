@@ -231,6 +231,26 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             throw new RuntimeException($driver . ': NULL allocations must preserve shared-pool semantics.');
         }
 
+        $childConsumption = $pdo->prepare('UPDATE tenants SET consumo_carteirinhas = :consumption WHERE id = :id');
+        $childConsumption->execute(['consumption' => 12, 'id' => $childId]);
+        $reductionBelowUsageRejected = false;
+        try {
+            tenantQuotaSetSubclientAllocation($pdo, $ownerContext, $ownerIdentity, $tenantId, $childId, [
+                'limite_usuarios_equipe' => null,
+                'limite_titulares' => null,
+                'limite_carteirinhas' => 11,
+            ]);
+        } catch (DomainException $exception) {
+            $reductionBelowUsageRejected = $exception->getMessage() === 'TENANT_QUOTA_EXCEEDED';
+        }
+        $childRow->execute(['id' => $childId]);
+        $childAfterUsageReduction = $childRow->fetch(PDO::FETCH_ASSOC);
+        if (!$reductionBelowUsageRejected || !is_array($childAfterUsageReduction)
+            || array_values($childAfterUsageReduction) !== [null, null, null]) {
+            throw new RuntimeException($driver . ': a fixed allocation cannot be reduced below current usage.');
+        }
+        $childConsumption->execute(['consumption' => 0, 'id' => $childId]);
+
         $allocationAudit = $pdo->prepare(
             "SELECT subcliente_id, ator_usuario_id, ator_tipo, antes_json, depois_json FROM auditoria_processos "
             . "WHERE tenant_id = :tenant AND entidade_id = :entity AND acao = 'quota.subclient_allocation_changed' "

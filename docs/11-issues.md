@@ -43,7 +43,7 @@
 * **Critério de Aceite:** Bloquear qualquer tentativa de escalonamento de privilégio (Subcliente tentando ativar permissão revogada pelo Cliente ou Admin).
 
 
-* **ISSUE-006: Painel de Gestão de Clientes, Subclientes e Suporte Remoto Auditável** — mockups/guias de unidades, equipe e cotas aprovados na [GitHub #50](https://github.com/agthinkindigital/IEPRCard/issues/50); tela de unidades concluída em [#56](https://github.com/agthinkindigital/IEPRCard/issues/56). As telas de equipe/permissões [#55](https://github.com/agthinkindigital/IEPRCard/issues/55) e cotas [#57](https://github.com/agthinkindigital/IEPRCard/issues/57) permanecem pendentes.
+* **ISSUE-006: Painel de Gestão de Clientes, Subclientes e Suporte Remoto Auditável** — mockups/guias de unidades, equipe e cotas aprovados na [GitHub #50](https://github.com/agthinkindigital/IEPRCard/issues/50); telas de unidades [#56](https://github.com/agthinkindigital/IEPRCard/issues/56), equipe/permissões [#55](https://github.com/agthinkindigital/IEPRCard/issues/55) e alocação de cotas [#57](https://github.com/agthinkindigital/IEPRCard/issues/57) concluídas em `DEV`. A validação operacional de DNS/TLS segue em [#51](https://github.com/agthinkindigital/IEPRCard/issues/51).
 * **Arquivos:** `admin/clientes.php`, `painel/subclientes.php`, `includes/suporte.php`, `painel/suporte-remoto.php`
 
 

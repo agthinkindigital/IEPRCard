@@ -1,0 +1,31 @@
+.quota-ceilings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 22px; }
+.quota-ceilings h2, .quota-ceilings > .subtle { grid-column: 1 / -1; }
+.quota-ceilings h2, .quota-units h2 { margin: 0; font-size: 18px; }
+.quota-ceilings > .subtle, .quota-units > .subtle { margin: 4px 0 18px; }
+.quota-ceilings article { display: grid; gap: 8px; padding: 14px 12px; border-top: 1px solid #e2e8f0; }
+.quota-ceilings article span { color: #475569; font-size: 12px; font-weight: 650; }
+.quota-ceilings article strong { color: #0f172a; font-size: 19px; overflow-wrap: anywhere; }
+.quota-units { margin-top: 20px; }
+.quota-table-wrap { overflow-x: auto; }
+.quota-table { min-width: 920px; }
+.quota-table th, .quota-table td { padding: 14px 12px; text-align: left; vertical-align: top; }
+.quota-table tbody th { color: #0f172a; }
+.allocation-form { display: grid; min-width: 180px; gap: 8px; }
+.allocation-form label { display: grid; gap: 3px; color: #475569; font-size: 11px; }
+.allocation-form input { width: 100%; min-height: 36px; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.allocation-form .subtle { margin: 0; font-size: 11px; }
+.allocation-form button { justify-self: start; }
+.fixed-reservations { margin-top: 18px; padding: 16px 20px; border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff; color: #1e3a8a; }
+.fixed-reservations p { margin: 7px 0 0; font-size: 12px; }
+@media (max-width: 767px) {
+    .quota-ceilings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .quota-ceilings article { padding: 12px 8px; }
+    .quota-ceilings article strong { font-size: 16px; }
+    .quota-table-wrap { overflow: visible; }
+    .quota-table { min-width: 0; }
+    .quota-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .quota-table, .quota-table tbody, .quota-table tr, .quota-table td, .quota-table tbody th { display: block; width: 100%; }
+    .quota-table tr { margin-bottom: 12px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .quota-table th, .quota-table td { display: grid; grid-template-columns: 125px minmax(0, 1fr); gap: 8px; padding: 7px 0; border: 0; font-size: 12px; overflow-wrap: anywhere; }
+    .quota-table tbody th::before, .quota-table td::before { content: attr(data-label); color: #64748b; font-size: 11px; font-weight: 700; }
+}
