@@ -41,7 +41,7 @@ Nenhum módulo de negócio será considerado pronto sem passar pela suíte autom
 <br>2. Testa `mcp.design.inspect_and_map` e verifica se o preview WebP é atualizado.<br>
 
 <br>3. Testa `mcp.code.safe_patch` com um erro proposital de sintaxe PHP e confirma que o *safety guard* rejeita o patch e mantém o arquivo original intacto. |
-| **TDD-08** | `tests/Integration/TitularAnonymizationTest.php`, `tests/Integration/DualDatabaseSelfHealingTest.php` | Confirma referência cifrada em repouso, idempotência antes e depois da conclusão, processamento imediato com prazo máximo de 72 h, anonimização após 12 meses da inativação, fronteira de ano bissexto, remoção da referência concluída e ausência de reprocessamento. Repete os contratos de banco em SQLite e MySQL/MariaDB. |
+| **TDD-08** | `tests/Integration/TitularAnonymizationTest.php`, `tests/Integration/DualDatabaseSelfHealingTest.php`, `tests/Integration/MySqlConnectionSmokeTest.php` | Confirma referência cifrada em repouso, idempotência antes e depois da conclusão, processamento imediato com prazo máximo de 72 h, anonimização após 12 meses da inativação, fronteira de ano bissexto, remoção da referência concluída e ausência de reprocessamento. Repete os contratos de banco em SQLite e MySQL/MariaDB. |
 
 ---
 
