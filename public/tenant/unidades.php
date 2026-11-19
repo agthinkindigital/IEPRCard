@@ -156,6 +156,7 @@ function tenantUnitsAllocation(mixed $limit): string
         <a class="active" aria-current="page" href="/tenant/unidades.php">Unidades</a>
         <a href="/tenant/equipe.php">Equipe</a>
         <a href="/tenant/cotas.php">Cotas</a>
+        <a href="/tenant/titulares.php">Titulares</a>
         <a href="/tenant/dominios.php">Domínios próprios</a>
     </nav>
     <p class="sidebar-note">Área do Cliente Master da Sede</p>

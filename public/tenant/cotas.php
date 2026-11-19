@@ -189,6 +189,7 @@ function tenantQuotasExplainExceeded(PDO $pdo, int $tenantId, int $subclientId, 
     <nav aria-label="Navegação da instituição">
         <a href="/tenant/unidades.php">Unidades</a><a href="/tenant/equipe.php">Equipe</a>
         <a class="active" aria-current="page" href="/tenant/cotas.php">Cotas</a>
+        <a href="/tenant/titulares.php">Titulares</a>
         <a href="/tenant/dominios.php">Domínios próprios</a>
     </nav><p class="sidebar-note">Área do Cliente Master da Sede</p>
 </aside>
