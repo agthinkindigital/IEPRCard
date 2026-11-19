@@ -179,18 +179,10 @@ function telemetryBusinessRecord(
     }
 }
 
-/**
- * Read daily totals for an explicit Admin scope or the authenticated tenant scope.
- * @param array<string, mixed> $identity Authenticated identity resolved from the server-side session.
- * @param array{mode:string,tenant_id?:int,subcliente_id?:int|null} $scope
- * @param array{from:string,to:string} $window Inclusive UTC date range, at most 366 days.
- * @return list<array{dia:string,categoria:string,evento_chave:string,quantidade:int}>
- */
-function telemetryBusinessRead(PDO $pdo, array $identity, array $scope, array $window): array
+/** @param array{from:string,to:string} $window */
+function telemetryBusinessValidateWindow(array $window): void
 {
-    $identity = telemetryBusinessAssertCurrentIdentity($pdo, $identity);
-    $mode = $scope['mode'] ?? null;
-    if (!is_string($mode) || !preg_match('/^\d{4}-\d{2}-\d{2}$/D', $window['from'] ?? '')
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $window['from'] ?? '')
         || !preg_match('/^\d{4}-\d{2}-\d{2}$/D', $window['to'] ?? '')) {
         throw new InvalidArgumentException('TELEMETRIA_CONSULTA_INVALIDA');
     }
@@ -202,6 +194,70 @@ function telemetryBusinessRead(PDO $pdo, array $identity, array $scope, array $w
         || (int) $from->diff($to)->format('%a') > 365) {
         throw new InvalidArgumentException('TELEMETRIA_JANELA_INVALIDA');
     }
+}
+
+/** Read a network using the tenant bound to a currently authenticated MCP OAuth client. */
+function telemetryBusinessReadForMcp(PDO $pdo, array $principal, array $window): array
+{
+    $tenantId = filter_var($principal['tenant_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($tenantId === false || count($principal) !== 1) {
+        throw new DomainException('TELEMETRIA_IDENTIDADE_INVALIDA');
+    }
+    telemetryBusinessValidateWindow($window);
+
+    $tenant = $pdo->prepare(
+        "SELECT 1 FROM tenants WHERE id = :tenant AND parent_id IS NULL AND tipo = 'cliente' AND status_conta = 'ativo' LIMIT 1"
+    );
+    $tenant->execute(['tenant' => $tenantId]);
+    $activeTenant = $tenant->fetchColumn() !== false;
+    $tenant->closeCursor();
+    if (!$activeTenant) {
+        throw new DomainException('TELEMETRIA_IDENTIDADE_INVALIDA');
+    }
+
+    $allowedEvents = [];
+    $eventParams = [];
+    $eventIndex = 0;
+    foreach (BUSINESS_TELEMETRY_EVENTS as $category => $eventKeys) {
+        foreach ($eventKeys as $eventKey) {
+            $categoryParameter = 'allowed_category_' . $eventIndex;
+            $eventParameter = 'allowed_event_' . $eventIndex;
+            ++$eventIndex;
+            $allowedEvents[] = '(categoria = :' . $categoryParameter . ' AND evento_chave = :' . $eventParameter . ')';
+            $eventParams[$categoryParameter] = $category;
+            $eventParams[$eventParameter] = $eventKey;
+        }
+    }
+    $query = $pdo->prepare(
+        'SELECT dia, categoria, evento_chave, SUM(quantidade) AS quantidade FROM telemetria_diaria '
+        . 'WHERE tenant_id = :tenant AND dia >= :from_day AND dia <= :to_day '
+        . 'AND (' . implode(' OR ', $allowedEvents) . ') '
+        . 'GROUP BY dia, categoria, evento_chave ORDER BY dia, categoria, evento_chave'
+    );
+    $query->execute($eventParams + ['tenant' => $tenantId, 'from_day' => $window['from'], 'to_day' => $window['to']]);
+    $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+    $query->closeCursor();
+    return array_map(static fn(array $row): array => [
+        'dia' => (string) $row['dia'], 'categoria' => (string) $row['categoria'],
+        'evento_chave' => (string) $row['evento_chave'], 'quantidade' => (int) $row['quantidade'],
+    ], $rows);
+}
+
+/**
+ * Read daily totals for an explicit Admin scope or the authenticated tenant scope.
+ * @param array<string, mixed> $identity Authenticated identity resolved from the server-side session.
+ * @param array{mode:string,tenant_id?:int,subcliente_id?:int|null} $scope
+ * @param array{from:string,to:string} $window Inclusive UTC date range, at most 366 days.
+ * @return list<array{dia:string,categoria:string,evento_chave:string,quantidade:int}>
+ */
+function telemetryBusinessRead(PDO $pdo, array $identity, array $scope, array $window): array
+{
+    $identity = telemetryBusinessAssertCurrentIdentity($pdo, $identity);
+    $mode = $scope['mode'] ?? null;
+    if (!is_string($mode)) {
+        throw new InvalidArgumentException('TELEMETRIA_CONSULTA_INVALIDA');
+    }
+    telemetryBusinessValidateWindow($window);
 
     $predicate = null;
     $params = [];

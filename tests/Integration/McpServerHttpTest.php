@@ -39,6 +39,22 @@ putenv('MCP_RATE_LIMIT_PATH=' . $ratePath);
 $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
 schemaAplicarMigracoes($pdo, 'test');
 $fixture = tenantTestSeed($pdo);
+$otherFixture = tenantTestSeed($pdo);
+$dailyDate = gmdate('Y-m-d');
+$daily = $pdo->prepare(
+    'INSERT INTO telemetria_diaria (tenant_id, subcliente_id, subcliente_scope_id, dia, categoria, evento_chave, quantidade, atualizado_em) '
+    . 'VALUES (:tenant, :subclient, :scope, :day, :category, :event_key, :quantity, :updated)'
+);
+foreach ([[$fixture['tenant_id'], null, 0, 'issuance', 'card.generated', 4],
+    [$fixture['tenant_id'], $fixture['subcliente_id'], $fixture['subcliente_id'], 'issuance', 'card.generated', 3],
+    [$fixture['tenant_id'], null, 0, 'messaging', 'whatsapp.sent', 3],
+    [$otherFixture['tenant_id'], null, 0, 'issuance', 'card.generated', 9]] as [$tenantId, $subclientId, $scopeId, $category, $eventKey, $quantity]) {
+    $daily->execute([
+        'tenant' => $tenantId, 'subclient' => $subclientId, 'scope' => $scopeId,
+        'day' => $dailyDate, 'category' => $category, 'event_key' => $eventKey,
+        'quantity' => $quantity, 'updated' => $dailyDate . ' 12:00:00',
+    ]);
+}
 $clientId = 'mcp_' . bin2hex(random_bytes(20));
 $clientSecret = 'mcpsec_' . bin2hex(random_bytes(32));
 $insert = $pdo->prepare(
@@ -47,12 +63,22 @@ $insert = $pdo->prepare(
 );
 $insert->execute([
     'tenant' => $fixture['tenant_id'], 'name' => 'MCP transport client', 'client' => $clientId,
-    'hash' => password_hash($clientSecret, PASSWORD_DEFAULT), 'scopes' => '["system.read"]',
+    'hash' => password_hash($clientSecret, PASSWORD_DEFAULT), 'scopes' => '["system.read","telemetry.read"]',
 ]);
 $configuration = ['APP_ENV' => 'dev', 'MCP_PUBLIC_BASE_URL' => $baseUrl, 'MCP_OAUTH_SIGNING_KEY' => $signingKey];
 $token = mcpOauthIssueClientCredentialsToken($pdo, [
-    'grant_type' => 'client_credentials', 'resource' => $baseUrl . '/mcp', 'scope' => 'system.read',
+    'grant_type' => 'client_credentials', 'resource' => $baseUrl . '/mcp', 'scope' => 'system.read telemetry.read',
     '_basic_credentials' => ['client_id' => $clientId, 'client_secret' => $clientSecret],
+], $configuration, $ratePath)['access_token'];
+$limitedClientId = 'mcp_' . bin2hex(random_bytes(20));
+$limitedClientSecret = 'mcpsec_' . bin2hex(random_bytes(32));
+$insert->execute([
+    'tenant' => $fixture['tenant_id'], 'name' => 'MCP system-only client', 'client' => $limitedClientId,
+    'hash' => password_hash($limitedClientSecret, PASSWORD_DEFAULT), 'scopes' => '["system.read"]',
+]);
+$limitedToken = mcpOauthIssueClientCredentialsToken($pdo, [
+    'grant_type' => 'client_credentials', 'resource' => $baseUrl . '/mcp', 'scope' => 'system.read',
+    '_basic_credentials' => ['client_id' => $limitedClientId, 'client_secret' => $limitedClientSecret],
 ], $configuration, $ratePath)['access_token'];
 
 $nullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
@@ -108,7 +134,7 @@ try {
     if ($status !== 200 || !str_contains((string) $response, '"result":{}')) {
         throw new RuntimeException('MCP ping must return an empty JSON-RPC result.');
     }
-    mcpServerHttpToolAssertions($url, $token, $meta, $rpc, $rpcHeaders);
+    mcpServerHttpToolAssertions($url, $token, $limitedToken, $dailyDate, $meta, $rpc, $rpcHeaders);
     [$status, $response, $authHeaders] = mcpServerHttpRequest($url, 'POST', $body, ['Accept: application/json, text/event-stream', 'Content-Type: application/json', 'Origin: https://client.example.test']);
     if ($status !== 401 || !in_array('www-authenticate: bearer resource_metadata="' . $baseUrl . '/.well-known/oauth-protected-resource/mcp", error="invalid_token"', array_map('strtolower', $authHeaders), true)) {
         throw new RuntimeException('MCP authentication challenge must reference Protected Resource Metadata.');
@@ -187,19 +213,21 @@ try {
     }
     $activate = $pdo->prepare('UPDATE mcp_api_keys SET ativo = 1 WHERE client_id = :client');
     $activate->execute(['client' => $clientId]);
+    $pdo->prepare('UPDATE mcp_api_keys SET limite_requisicoes_minuto = 22 WHERE client_id = :client')
+        ->execute(['client' => $limitedClientId]);
     $body = $rpc('ping');
     for ($attempt = 0; $attempt < 20; ++$attempt) {
-        [$status] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('ping', null, '2026-07-28', $token));
+        [$status] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('ping', null, '2026-07-28', $limitedToken));
         if ($status !== 200) {
             throw new RuntimeException('MCP client rate limit must allow requests within the configured window.');
         }
     }
-    [$status, , $rateHeaders] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('ping', null, '2026-07-28', $token));
+    [$status, , $rateHeaders] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('ping', null, '2026-07-28', $limitedToken));
     if ($status !== 429 || !in_array('retry-after: 60', array_map('strtolower', $rateHeaders), true)) {
         throw new RuntimeException('MCP client rate limit must return HTTP 429 and Retry-After.');
     }
     $auditCount = (int) $pdo->query('SELECT COUNT(*) FROM mcp_audit_logs')->fetchColumn();
-    if ($auditCount !== 30) {
+    if ($auditCount !== 38) {
         throw new RuntimeException('Authenticated MCP protocol calls must produce sanitized audit records.');
     }
 } finally {

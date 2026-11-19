@@ -8,8 +8,8 @@ O arquivo `mcp/server.php` expõe via protocolo **Model Context Protocol (JSON-R
 
 | Nome da Tool MCP | Parâmetros de Entrada | Ação Executada pelo Sistema |
 | --- | --- | --- |
-| `mcp.system.status` | `{}` | Retorna driver de banco ativo (`sqlite` ou `mysql`), status das extensões (`gd`, `imagick`, `zip`, `curl`), espaço em disco e resumo de saúde. |
-| `mcp.telemetry.query` | `{"escopo": "admin|cliente|sub", "tenant_id": int, "periodo": "7d|30d|mes_atual"}` | Retorna o JSON estruturado de telemetria (usuários, carteirinhas PDF/WebP geradas, lotes, conversas WhatsApp e receitas). |
+| `system.read` | `{}` | Retorna estado lógico de prontidão, versão do protocolo e identificação pública do serviço, sem revelar host, banco ou configuração interna. |
+| `telemetry.read` | `{"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"}` | Retorna somente agregados diários de negócio da Sede vinculada à credencial OAuth e de seus Subclientes. A janela UTC inclusiva é limitada a 366 dias; o chamador não seleciona tenant nem unidade. |
 | `mcp.db.inspect` | `{"tabela": string}` | Lista todas as tabelas e colunas atuais usando a introspecção dual SQLite/MySQL e aponta divergências de schema. |
 | `mcp.design.inspect_and_map` | `{"design_id": int, "novo_mapa_json": object, "gerar_preview": bool}` | Atualiza as coordenadas do layout de uma carteirinha e gera uma imagem WebP de teste com dados fictícios para o agente validar visualmente o alinhamento. |
 | `mcp.batch.dry_run` | `{"lote_id": int, "limite_amostra": 3}` | Simula a importação e renderização das primeiras $N$ carteirinhas de um lote para detectar erros de fonte, foto ausente ou estouro de texto. |

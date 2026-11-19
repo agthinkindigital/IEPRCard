@@ -58,14 +58,22 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $global = telemetryBusinessRead($pdo, $admin, ['mode' => 'global'], $window);
     $network = telemetryBusinessRead($pdo, $sedeA, ['mode' => 'network'], $window);
     $unit = telemetryBusinessRead($pdo, $subA1, ['mode' => 'unit'], $window);
+    $mcpNetwork = telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[0]], $window);
 
     $sum = static function (array $rows, string $category): int {
         return array_sum(array_map(static fn (array $row): int => $row['categoria'] === $category ? (int) $row['quantidade'] : 0, $rows));
     };
     if ($sum($global, 'issuance') !== 10 || $sum($global, 'messaging') !== 5
         || $sum($network, 'issuance') !== 7 || $sum($network, 'messaging') !== 3
+        || $sum($mcpNetwork, 'issuance') !== 7 || $sum($mcpNetwork, 'messaging') !== 3
         || $sum($unit, 'issuance') !== 3 || $sum($unit, 'messaging') !== 2) {
-        throw new RuntimeException($driver . ': Admin, Sede network, and Subcliente reads must match the 10 issuance / 5 messaging fixture without cross-scope leakage.');
+        throw new RuntimeException($driver . ': Admin, Sede, MCP Sede network, and Subcliente reads must match the 10 issuance / 5 messaging fixture without cross-scope leakage.');
+    }
+
+    foreach ($mcpNetwork as $row) {
+        if (array_keys($row) !== ['dia', 'categoria', 'evento_chave', 'quantidade']) {
+            throw new RuntimeException($driver . ': MCP telemetry rows must expose only the allowlisted aggregate fields.');
+        }
     }
 
     $eventRows = $pdo->query('SELECT usuario_id, valor_associado, metadados_json FROM telemetria_eventos')->fetchAll(PDO::FETCH_ASSOC);
@@ -90,6 +98,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         static fn () => telemetryBusinessRecord($pdo, $admin, 'issuance', 'card.generated', 1),
         static fn () => telemetryBusinessRecord($pdo, ['id' => 1301, 'papel_sistema' => 'responsavel_sub', 'tenant_id' => $tenantIds[0], 'subcliente_id' => $subclientIds[2]], 'issuance', 'card.generated', 1),
         static fn () => telemetryBusinessRead($pdo, $sedeA, ['mode' => 'tenant', 'tenant_id' => $tenantIds[1]], $window),
+        static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[0], 'subcliente_id' => $subclientIds[0]], $window),
+        static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[1]], $window),
+        static fn () => telemetryBusinessReadForMcp($pdo, ['tenant_id' => $tenantIds[0]], ['from' => '2026-11-17', 'to' => '2027-11-17']),
         static fn () => telemetryBusinessRead($pdo, $admin, [], $window),
         static fn () => telemetryBusinessRead($pdo, $unit['id'] ?? [], ['mode' => 'unit'], $window),
     ] as $rejectedCall) {

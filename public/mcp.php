@@ -124,7 +124,7 @@ if ($headerError !== null) {
     $correlation = mcpHttpAudit($principal, $method, 'error', $startedAt);
     mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => $request['id'] ?? null, 'error' => $headerError], ['X-Correlation-ID' => $correlation]);
 }
-$handled = mcpServerHandleRequest($request, $principal);
+$handled = mcpServerHandleRequest(dbConnection(), $request, $principal);
 $result = $handled['status'] < 400 ? 'ok' : 'error';
 $correlation = mcpHttpAudit($principal, $method, $result, $startedAt);
 mcpHttpRespond($handled['status'], $handled['response'], ['X-Correlation-ID' => $correlation]);

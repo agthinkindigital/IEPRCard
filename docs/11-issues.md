@@ -149,7 +149,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 * **Critério de Aceite:** Passar no `TDD-06`.
 
-* O contrato backend de gravação agregada, leitura com escopo e concorrência nas tabelas canônicas foi concluído na [GitHub #43](https://github.com/agthinkindigital/IEPRCard/issues/43); telas aguardam mockup/guia aprovados, e a ferramenta MCP depende do contrato de leitura validado.
+* O contrato backend de gravação agregada, leitura com escopo e concorrência nas tabelas canônicas foi concluído na [GitHub #43](https://github.com/agthinkindigital/IEPRCard/issues/43); telas aguardam mockup/guia aprovados. A exposição via MCP está fatiada na [#44](https://github.com/agthinkindigital/IEPRCard/issues/44).
 
 
 
@@ -157,7 +157,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 * **ISSUE-017: Implementação do Servidor MCP (Streamable HTTP stateless) + Safety Guard**
 * **Arquivos:** `mcp/server.php`, `mcp/tools_registry.php`, `mcp/safety_guard.php`, `admin/mcp-config.php`
-* **Descrição:** Construir o servidor Model Context Protocol nativo em PHP e disponibilizá-lo desde o primeiro lançamento por HTTP stateless, sem processo residente. O protocolo, OAuth, escopos e limites de produção são definidos em [ADR-0009](adr/0009-mcp-escopos-e-patch-seguro.md). As Issues [#19](https://github.com/agthinkindigital/IEPRCard/issues/19) (cadastro OAuth), [#20](https://github.com/agthinkindigital/IEPRCard/issues/20) (token e descoberta), [#21](https://github.com/agthinkindigital/IEPRCard/issues/21) (transporte stateless) e [#22](https://github.com/agthinkindigital/IEPRCard/issues/22) (registry e `system.read`) foram concluídas. `telemetry.read` depende de um recorte comprovadamente isolado por Sede no E06; STDIO é opcional no ambiente local.
+* **Descrição:** Construir o servidor Model Context Protocol nativo em PHP e disponibilizá-lo desde o primeiro lançamento por HTTP stateless, sem processo residente. O protocolo, OAuth, escopos e limites de produção são definidos em [ADR-0009](adr/0009-mcp-escopos-e-patch-seguro.md). As Issues [#19](https://github.com/agthinkindigital/IEPRCard/issues/19) (cadastro OAuth), [#20](https://github.com/agthinkindigital/IEPRCard/issues/20) (token e descoberta), [#21](https://github.com/agthinkindigital/IEPRCard/issues/21) (transporte stateless) e [#22](https://github.com/agthinkindigital/IEPRCard/issues/22) (registry e `system.read`) foram concluídas. A leitura de telemetria via `telemetry.read` está em implementação na [#44](https://github.com/agthinkindigital/IEPRCard/issues/44), após o contrato isolado por Sede da [#43](https://github.com/agthinkindigital/IEPRCard/issues/43); STDIO é opcional no ambiente local.
 * **Critério de Aceite:** Passar no `TDD-07`; em produção, `tools/list` não anuncia `code.patch`, tools respeitam escopo/tenant e 100% das chamadas ficam auditadas sem PII ou segredos.
 
 

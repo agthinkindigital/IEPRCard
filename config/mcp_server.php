@@ -73,7 +73,7 @@ function mcpServerAuthenticate(PDO $pdo, ?string $authorization, ?array $configu
 }
 
 /** @param array<string, mixed> $request @param array{id:int,tenant_id:int,client_id:string,scopes:list<string>} $principal @return array{status:int,response:array<string,mixed>} */
-function mcpServerHandleRequest(array $request, array $principal): array
+function mcpServerHandleRequest(PDO $pdo, array $request, array $principal): array
 {
     $id = $request['id'] ?? null;
     if (($request['jsonrpc'] ?? null) !== '2.0' || !array_key_exists('id', $request)
@@ -103,7 +103,7 @@ function mcpServerHandleRequest(array $request, array $principal): array
         if (!is_string($params['name'] ?? null) || $params['name'] === '') {
             return ['status' => 400, 'response' => ['jsonrpc' => '2.0', 'id' => $id, 'error' => ['code' => -32602, 'message' => 'Invalid tool name.']]];
         }
-        $call = mcpToolCall($params['name'], $params['arguments'] ?? [], $principal['scopes']);
+        $call = mcpToolCall($params['name'], $params['arguments'] ?? [], $principal['scopes'], $pdo, $principal);
         if (isset($call['error'])) {
             return ['status' => 400, 'response' => ['jsonrpc' => '2.0', 'id' => $id, 'error' => $call['error']]];
         }
