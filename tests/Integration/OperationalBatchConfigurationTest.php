@@ -18,6 +18,19 @@ function operationalConfigurationTestWorkerStart(PDO $pdo, int $now, string $pha
     }
 }
 
+function operationalConfigurationTestSavePending(PDO $pdo, array $settings, int $now): array
+{
+    try {
+        return operationalConfigSavePending($pdo, $settings, null, $now);
+    } catch (Throwable $exception) {
+        $cause = $exception->getPrevious();
+        $details = $cause instanceof PDOException
+            ? ['class' => get_class($cause), 'message' => $cause->getMessage(), 'sqlstate' => $cause->getCode(), 'driver_code' => $cause->errorInfo[1] ?? null, 'driver_message' => $cause->errorInfo[2] ?? null, 'trace' => $cause->getTraceAsString()]
+            : null;
+        throw new RuntimeException('first pending save: ' . $exception->getMessage() . ' ' . json_encode($details));
+    }
+}
+
 $previousEnvironment = getenv('APP_ENV');
 putenv('APP_ENV=staging');
 $now = strtotime('2026-01-02 12:00:00 UTC');
@@ -51,7 +64,7 @@ try {
             throw new RuntimeException($driver . ': a fresh environment must have no active operational snapshot.');
         }
 
-        $pending = operationalConfigSavePending($pdo, $settings, null, $now);
+        $pending = operationalConfigurationTestSavePending($pdo, $settings, $now);
         $pendingState = $pdo->prepare('SELECT estado, ativado_em FROM configuracoes_operacionais WHERE id = :id');
         $pendingState->execute(['id' => $pending['id']]);
         $pendingRow = $pendingState->fetch(PDO::FETCH_ASSOC);
