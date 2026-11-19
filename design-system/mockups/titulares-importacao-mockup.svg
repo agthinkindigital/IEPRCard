@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1900" viewBox="0 0 1440 1900" role="img" aria-labelledby="title description">
+  <title id="title">Titulares: consulta, cadastro e importação</title>
+  <desc id="description">Duas telas administrativas: lista com cadastro individual aberto e importação de arquivo com mapeamento e prévia de dados fictícios.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
+    <style>
+      text { font-family: Inter, system-ui, "Segoe UI", sans-serif; }
+      .muted { fill: #475569; }
+      .small { font-size: 12px; }
+      .body { font-size: 14px; }
+      .label { font-size: 11px; font-weight: 700; letter-spacing: .4px; }
+      .title { font-size: 25px; font-weight: 700; fill: #0F172A; }
+      .card { fill: #FFFFFF; stroke: #DCE3EC; }
+      .line { stroke: #DCE3EC; }
+      .input { fill: #FFFFFF; stroke: #94A3B8; }
+    </style>
+  </defs>
+  <rect width="1440" height="1900" fill="#F6F8FB"/>
+
+  <!-- Consulta e cadastro individual -->
+  <text x="40" y="36" font-size="13" font-weight="700" fill="#475569">1 · TITULARES E CADASTRO INDIVIDUAL</text>
+  <rect x="24" y="56" width="1392" height="810" rx="12" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="24" y="56" width="220" height="810" rx="12" fill="#FFFFFF"/>
+  <path d="M244 56v810" class="line"/>
+  <rect x="44" y="78" width="34" height="34" rx="8" fill="#1D4ED8"/>
+  <path d="M52 95h18M61 86v18" stroke="#FFFFFF" stroke-width="2.5"/>
+  <text x="88" y="94" font-size="16" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="88" y="109" font-size="10" fill="#475569">ÁREA DA SEDE</text>
+  <text x="48" y="155" class="label muted">GESTÃO</text>
+  <rect x="38" y="170" width="190" height="40" rx="7" fill="#EFF6FF"/>
+  <rect x="38" y="170" width="3" height="40" rx="2" fill="#1D4ED8"/>
+  <text x="58" y="195" font-size="13" font-weight="700" fill="#1D4ED8">Titulares</text>
+  <text x="58" y="239" class="body muted">Importações</text>
+  <text x="58" y="283" class="body muted">Designs</text>
+  <text x="58" y="327" class="body muted">Lotes</text>
+  <text x="48" y="828" class="small muted">Leonardo Nascimento</text>
+
+  <rect x="244" y="56" width="1172" height="58" fill="#FFFFFF"/>
+  <path d="M244 114h1172" class="line"/>
+  <text x="276" y="91" class="body muted">Painel / Titulares</text>
+  <rect x="1282" y="68" width="104" height="36" rx="7" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <text x="1334" y="91" text-anchor="middle" class="small" fill="#0F172A">Sair</text>
+
+  <text x="276" y="160" class="title">Titulares</text>
+  <text x="276" y="184" class="body muted">Consulte a base e cadastre pessoas da Sede ou das unidades autorizadas.</text>
+  <rect x="1045" y="132" width="340" height="38" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="1060" y="156" class="small muted">Escopo: Sede Exemplo · Todas as unidades</text>
+  <rect x="1122" y="202" width="122" height="38" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="1183" y="226" text-anchor="middle" class="small" font-weight="600" fill="#0F172A">Novo titular</text>
+  <rect x="1254" y="202" width="132" height="38" rx="7" fill="#1D4ED8"/>
+  <text x="1320" y="226" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Importar lista</text>
+
+  <rect x="276" y="258" width="368" height="40" rx="7" class="input"/>
+  <circle cx="296" cy="277" r="6" fill="none" stroke="#64748B" stroke-width="1.5"/>
+  <path d="m301 282 5 5" stroke="#64748B" stroke-width="1.5"/>
+  <text x="316" y="282" class="small muted">Buscar nome ou matrícula</text>
+  <rect x="654" y="258" width="190" height="40" rx="7" class="input"/>
+  <text x="670" y="282" class="small muted">Unidade: todas</text>
+  <rect x="854" y="258" width="160" height="40" rx="7" class="input"/>
+  <text x="870" y="282" class="small muted">Situação: todas</text>
+  <text x="276" y="326" class="small muted">Dados de exemplo. CPF ocultado na lista.</text>
+
+  <rect x="276" y="342" width="1110" height="396" rx="8" class="card"/>
+  <rect x="276" y="342" width="1110" height="44" rx="8" fill="#F8FAFC"/>
+  <text x="294" y="369" class="label muted">NOME</text>
+  <text x="520" y="369" class="label muted">CPF</text>
+  <text x="632" y="369" class="label muted">MATRÍCULA</text>
+  <text x="760" y="369" class="label muted">UNIDADE</text>
+  <text x="916" y="369" class="label muted">SITUAÇÃO</text>
+  <text x="1042" y="369" class="label muted">ORIGEM</text>
+  <text x="1322" y="369" class="label muted">AÇÃO</text>
+  <g class="body" fill="#0F172A">
+    <text x="294" y="423">Ana Costa</text><text x="520" y="423" class="muted">***.***.**-42</text><text x="632" y="423" class="muted">M-1042</text><text x="760" y="423" class="muted">Sede</text><text x="916" y="423">Ativo</text><text x="1042" y="423" class="muted">Importação 024</text><text x="1322" y="423" fill="#1D4ED8">Abrir</text>
+    <text x="294" y="489">Bruno Lima</text><text x="520" y="489" class="muted">***.***.**-08</text><text x="632" y="489" class="muted">U-208</text><text x="760" y="489" class="muted">Unidade Norte</text><text x="916" y="489">Ativo</text><text x="1042" y="489" class="muted">Cadastro manual</text><text x="1322" y="489" fill="#1D4ED8">Abrir</text>
+    <text x="294" y="555">Cecília Alves</text><text x="520" y="555" class="muted">***.***.**-91</text><text x="632" y="555" class="muted">M-1170</text><text x="760" y="555" class="muted">Unidade Sul</text><text x="916" y="555">Ativo</text><text x="1042" y="555" class="muted">Importação 024</text><text x="1322" y="555" fill="#1D4ED8">Abrir</text>
+    <text x="294" y="621">Diego Reis</text><text x="520" y="621" class="muted">***.***.**-73</text><text x="632" y="621" class="muted">U-311</text><text x="760" y="621" class="muted">Unidade Norte</text><text x="916" y="621">Ativo</text><text x="1042" y="621" class="muted">Cadastro manual</text><text x="1322" y="621" fill="#1D4ED8">Abrir</text>
+  </g>
+  <g class="line"><path d="M276 386h1110M276 452h1110M276 518h1110M276 584h1110M276 650h1110"/></g>
+  <text x="294" y="703" class="small muted">1–4 de 128 titulares</text>
+  <text x="1292" y="703" class="small muted">Anterior  ·  1  2  3  ·  Próxima</text>
+
+  <!-- Cadastro individual drawer -->
+  <rect x="824" y="244" width="562" height="594" rx="10" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <text x="850" y="280" font-size="18" font-weight="700" fill="#0F172A">Novo titular</text>
+  <text x="850" y="303" class="small muted">O cadastro é criado na unidade do escopo selecionado.</text>
+  <path d="M850 319h510" class="line"/>
+  <text x="850" y="350" class="small" font-weight="700" fill="#0F172A">Nome completo *</text>
+  <rect x="850" y="362" width="510" height="38" rx="6" class="input"/>
+  <text x="864" y="386" class="small muted">Nome como deve aparecer no cadastro</text>
+  <text x="850" y="430" class="small" font-weight="700" fill="#0F172A">CPF</text>
+  <rect x="850" y="442" width="244" height="38" rx="6" class="input"/>
+  <text x="1110" y="430" class="small" font-weight="700" fill="#0F172A">Matrícula</text>
+  <rect x="1110" y="442" width="250" height="38" rx="6" class="input"/>
+  <text x="850" y="510" class="small" font-weight="700" fill="#0F172A">Cargo ou função</text>
+  <rect x="850" y="522" width="244" height="38" rx="6" class="input"/>
+  <text x="1110" y="510" class="small" font-weight="700" fill="#0F172A">Categoria</text>
+  <rect x="1110" y="522" width="250" height="38" rx="6" class="input"/>
+  <text x="1128" y="546" class="small muted">Selecionar categoria</text>
+  <text x="850" y="590" class="small" font-weight="700" fill="#0F172A">WhatsApp</text>
+  <rect x="850" y="602" width="244" height="38" rx="6" class="input"/>
+  <rect x="850" y="662" width="510" height="48" rx="7" fill="#EFF6FF"/>
+  <text x="868" y="683" class="small" font-weight="600" fill="#1E40AF">O cadastro individual não envia foto.</text>
+  <text x="868" y="701" class="small" fill="#1E40AF">Para fotos, use o ZIP opcional na importação em lote.</text>
+  <rect x="1090" y="760" width="112" height="40" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="1146" y="785" text-anchor="middle" class="small" font-weight="600" fill="#0F172A">Cancelar</text>
+  <rect x="1212" y="760" width="148" height="40" rx="7" fill="#1D4ED8"/>
+  <text x="1286" y="785" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Salvar titular</text>
+
+  <!-- Import wizard -->
+  <text x="40" y="928" font-size="13" font-weight="700" fill="#475569">2 · IMPORTAÇÃO EM LOTE — ARQUIVO REVISADO E COLUNAS MAPEADAS</text>
+  <rect x="24" y="948" width="1392" height="920" rx="12" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="24" y="948" width="220" height="920" rx="12" fill="#FFFFFF"/>
+  <path d="M244 948v920" class="line"/>
+  <rect x="44" y="970" width="34" height="34" rx="8" fill="#1D4ED8"/>
+  <path d="M52 987h18M61 978v18" stroke="#FFFFFF" stroke-width="2.5"/>
+  <text x="88" y="986" font-size="16" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="88" y="1001" font-size="10" fill="#475569">ÁREA DA SEDE</text>
+  <text x="58" y="1055" class="body muted">Titulares</text>
+  <rect x="38" y="1070" width="190" height="40" rx="7" fill="#EFF6FF"/>
+  <rect x="38" y="1070" width="3" height="40" rx="2" fill="#1D4ED8"/>
+  <text x="58" y="1095" font-size="13" font-weight="700" fill="#1D4ED8">Importações</text>
+  <text x="58" y="1140" class="body muted">Designs</text>
+  <text x="58" y="1184" class="body muted">Lotes</text>
+  <rect x="244" y="948" width="1172" height="58" fill="#FFFFFF"/>
+  <path d="M244 1006h1172" class="line"/>
+  <text x="276" y="983" class="body muted">Painel / Titulares / Importar</text>
+  <text x="276" y="1052" class="title">Importar titulares</text>
+  <text x="276" y="1076" class="body muted">Revise o arquivo e associe cada coluna ao campo correspondente.</text>
+
+  <g>
+    <circle cx="300" cy="1120" r="15" fill="#166534"/><text x="300" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">1</text>
+    <text x="326" y="1125" class="small" font-weight="700" fill="#166534">Arquivo</text>
+    <path d="M390 1120h78" stroke="#166534" stroke-width="2"/>
+    <circle cx="488" cy="1120" r="15" fill="#1D4ED8"/><text x="488" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
+    <text x="514" y="1125" class="small" font-weight="700" fill="#1D4ED8">Mapeamento</text>
+    <path d="M615 1120h80" class="line" stroke-width="2"/>
+    <circle cx="715" cy="1120" r="15" fill="#E2E8F0"/><text x="715" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">3</text>
+    <text x="741" y="1125" class="small muted">Confirmar</text>
+  </g>
+
+  <rect x="276" y="1152" width="1110" height="74" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <rect x="296" y="1171" width="34" height="38" rx="5" fill="#DCFCE7"/>
+  <text x="313" y="1195" text-anchor="middle" font-size="10" font-weight="700" fill="#166534">XLSX</text>
+  <text x="344" y="1182" class="body" font-weight="700" fill="#0F172A">membros_2026.xlsx</text>
+  <text x="344" y="1205" class="small muted">248 registros · 5 colunas · escopo: Sede Exemplo</text>
+  <text x="1298" y="1195" class="small" font-weight="600" fill="#166534">Arquivo armazenado em área privada</text>
+
+  <rect x="276" y="1244" width="1110" height="92" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <text x="296" y="1274" class="body" font-weight="700" fill="#0F172A">Fotos (opcional)</text>
+  <text x="296" y="1298" class="small muted">ZIP com arquivos no nível raiz; cada nome deve corresponder ao CPF ou matrícula do titular.</text>
+  <rect x="296" y="1308" width="164" height="28" rx="5" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="378" y="1327" text-anchor="middle" class="small" fill="#0F172A">Anexar ZIP</text>
+  <text x="474" y="1327" class="small muted">Aceita JPG, JPEG, PNG ou WebP; até 500 fotos e 10 MB por arquivo compactado.</text>
+
+  <text x="276" y="1370" class="body" font-weight="700" fill="#0F172A">Mapeamento de colunas</text>
+  <text x="276" y="1393" class="small muted">O nome é obrigatório. Cada campo pode ser usado uma vez.</text>
+  <rect x="276" y="1410" width="1110" height="52" rx="6" fill="#F8FAFC"/>
+  <text x="296" y="1442" class="small" font-weight="700" fill="#475569">COLUNA NO ARQUIVO</text>
+  <text x="770" y="1442" class="small" font-weight="700" fill="#475569">CAMPO DO TITULAR</text>
+  <g class="small">
+    <text x="296" y="1500" fill="#0F172A">Nome do membro</text><text x="770" y="1500" fill="#0F172A">Nome completo *</text>
+    <text x="296" y="1550" fill="#0F172A">Documento</text><text x="770" y="1550" fill="#0F172A">CPF</text>
+    <text x="296" y="1600" fill="#0F172A">Código</text><text x="770" y="1600" fill="#0F172A">Matrícula</text>
+    <text x="296" y="1650" fill="#0F172A">Celular</text><text x="770" y="1650" fill="#0F172A">WhatsApp</text>
+  </g>
+  <g>
+    <rect x="730" y="1474" width="620" height="36" rx="6" class="input"/><rect x="730" y="1524" width="620" height="36" rx="6" class="input"/>
+    <rect x="730" y="1574" width="620" height="36" rx="6" class="input"/><rect x="730" y="1624" width="620" height="36" rx="6" class="input"/>
+    <text x="748" y="1498" class="small" fill="#0F172A">Nome completo *</text><text x="748" y="1548" class="small" fill="#0F172A">CPF</text>
+    <text x="748" y="1598" class="small" fill="#0F172A">Matrícula</text><text x="748" y="1648" class="small" fill="#0F172A">WhatsApp</text>
+  </g>
+  <rect x="276" y="1680" width="1110" height="96" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <text x="296" y="1712" class="body" font-weight="700" fill="#0F172A">Prévia: 4 de 248 registros</text>
+  <text x="296" y="1736" class="small muted">Os exemplos abaixo são fictícios. A confirmação valida o lote inteiro; não há importação parcial.</text>
+  <text x="296" y="1762" class="small" fill="#475569">Ana Costa · ***.***.**-42 · M-1042</text>
+  <text x="720" y="1762" class="small" fill="#475569">Bruno Lima · ***.***.**-08 · M-1080</text>
+  <rect x="1000" y="1800" width="148" height="42" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="1074" y="1826" text-anchor="middle" class="small" font-weight="600" fill="#0F172A">Cancelar lote</text>
+  <rect x="1160" y="1800" width="226" height="42" rx="7" fill="#1D4ED8"/>
+  <text x="1273" y="1826" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Revisar e confirmar</text>
+  <text x="276" y="1847" class="small" fill="#92400E">Após confirmar, os registros são criados juntos. Se houver erro ou limite insuficiente, nenhum é importado.</text>
+</svg>
