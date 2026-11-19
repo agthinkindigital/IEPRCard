@@ -1,0 +1,44 @@
+.page-heading { align-items: center; }
+.primary-link, .disabled-action { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 18px; border-radius: 8px; font-weight: 650; text-decoration: none; }
+.primary-link { color: #fff; background: #1d4ed8; }
+.primary-link:hover { background: #1e40af; }
+.disabled-action { color: #64748b; background: #e2e8f0; cursor: not-allowed; }
+.team-quota-notice { margin: 14px 0; padding: 12px 15px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; color: #78350f; }
+.team-list { min-width: 920px; }
+.team-list th { padding: 11px 14px; }
+.team-list td { padding: 15px 14px; }
+.team-list td:first-child { min-width: 240px; }
+.team-list td strong, .team-list td small { display: block; }
+.team-list td small { margin-top: 4px; color: #64748b; font-size: 11px; overflow-wrap: anywhere; }
+.team-list td a { color: #1d4ed8; font-weight: 650; white-space: nowrap; }
+.create-operator, .operator-access, .delegated-access { margin-top: 20px; }
+.create-operator h2, .operator-access h2, .delegated-access h2 { margin: 0; font-size: 18px; }
+.create-operator > .subtle, .operator-access > .subtle, .delegated-access > .subtle { margin: 4px 0 17px; }
+.create-operator form { display: grid; max-width: 680px; gap: 9px; }
+.create-operator label { margin-top: 5px; color: #334155; font-size: 12px; font-weight: 700; }
+.create-operator input, .create-operator select { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; }
+.create-operator form small { color: #64748b; font-size: 11px; }
+.create-operator form button { justify-self: start; margin-top: 9px; }
+.delegated-access ul, .operator-access ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.delegated-access li, .operator-access li { padding: 12px 0; border-top: 1px solid #e2e8f0; }
+.delegated-access li label { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 10px; cursor: pointer; }
+.delegated-access li input { width: 17px; height: 17px; margin: 0; accent-color: #1d4ed8; }
+.delegated-access li span, .operator-access li span { font-weight: 600; }
+.delegated-access li code, .operator-access li code { color: #64748b; font-size: 11px; }
+.delegated-access form > button { margin-top: 16px; }
+.delegated-access .backend-note, .operator-access .backend-note { margin: 16px 0 0; }
+
+@media (max-width: 767px) {
+    .page-heading { display: flex; align-items: flex-start; gap: 14px; }
+    .page-heading > div { min-width: 0; }
+    .primary-link, .disabled-action { min-height: 38px; padding: 0 10px; font-size: 12px; white-space: nowrap; }
+    .table-scroll { overflow: visible; }
+    .team-list { min-width: 0; }
+    .team-list thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+    .team-list tbody, .team-list tr, .team-list td { display: block; width: 100%; }
+    .team-list tr { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .team-list td { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; min-width: 0 !important; padding: 7px 0; border: 0; font-size: 12px; overflow-wrap: anywhere; }
+    .team-list td::before { content: attr(data-label); color: #64748b; font-size: 11px; font-weight: 700; }
+    .delegated-access li label { grid-template-columns: 22px minmax(0, 1fr); }
+    .delegated-access li code { grid-column: 2; }
+}

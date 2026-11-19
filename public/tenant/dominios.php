@@ -161,7 +161,7 @@ function tenantDomainsRedirect(): never
     <a class="brand" href="/tenant/dominios.php"><span class="brand-mark" aria-hidden="true">+</span><strong>IEPRCard</strong></a>
     <p class="nav-heading">INSTITUIÇÃO</p>
     <p class="organization"><?= tenantDomainsEscape($organization) ?></p>
-    <nav aria-label="Navegação da instituição"><a href="/tenant/unidades.php">Unidades</a><a class="active" aria-current="page" href="/tenant/dominios.php">Domínios próprios</a></nav>
+    <nav aria-label="Navegação da instituição"><a href="/tenant/unidades.php">Unidades</a><a href="/tenant/equipe.php">Equipe</a><a class="active" aria-current="page" href="/tenant/dominios.php">Domínios próprios</a></nav>
     <p class="sidebar-note">Área do Cliente Master da Sede</p>
 </aside>
 <header class="topbar"><p>Painel <span aria-hidden="true">/</span> Configurações <span aria-hidden="true">/</span> <strong>Domínios próprios</strong></p></header>

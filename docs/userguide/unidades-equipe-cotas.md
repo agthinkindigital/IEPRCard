@@ -1,6 +1,6 @@
 # Guia funcional: unidades, equipe e cotas
 
-Este guia cobre a administração da rede por uma Sede. Os três fluxos têm mockups próprios: [unidades](../../design-system/mockups/unidades-tenant-mockup.svg), [equipe](../../design-system/mockups/equipe-tenant-mockup.svg) e [cotas](../../design-system/mockups/cotas-tenant-mockup.svg). As páginas `/tenant/unidades.php` e `/tenant/dominios.php` estão disponíveis após autenticação do tenant. Equipe e alocação de cotas ainda não estão implementadas.
+Este guia cobre a administração da rede por uma Sede. Os três fluxos têm mockups próprios: [unidades](../../design-system/mockups/unidades-tenant-mockup.svg), [equipe](../../design-system/mockups/equipe-tenant-mockup.svg) e [cotas](../../design-system/mockups/cotas-tenant-mockup.svg). As páginas `/tenant/unidades.php`, `/tenant/equipe.php` e `/tenant/dominios.php` estão disponíveis após autenticação do tenant. Alocação de cotas ainda não está implementada.
 
 ## Quem pode administrar
 
@@ -15,10 +15,10 @@ O Cliente Master da Sede administra suas unidades, operadores e alocações dent
 
 ## Equipe e permissões
 
-1. A lista mostra operador, unidade associada, perfil e estado de acesso. A Sede pode criar os acessos administrativos previstos pelo plano e pelas permissões ativas.
+1. A lista mostra operador, unidade associada, perfil e estado de acesso. A Sede pode consultar o acesso efetivo e criar um responsável restrito à unidade selecionada.
 2. A criação de um responsável de unidade solicita os dados definidos pelo fluxo autenticado; senha e dados de acesso não aparecem em listas nem telemetria.
 3. O contador de operadores considera o limite total da Sede. Quando uma unidade tem limite fixo de equipe, o limite local também precisa estar disponível.
-4. **Permissões delegadas às unidades** é uma allowlist comum, configurada pela Sede. Só permissões de negócio habilitadas no plano podem ser delegadas; administração, financeiro, equipe e cotas ficam fora.
+4. **Permissões delegadas às unidades** é uma allowlist comum, configurada pela Sede. A tela apresenta somente permissões de negócio habilitadas no plano; administração, financeiro, equipe e cotas ficam fora.
 5. Perfis e overrides individuais podem restringir o acesso delegado. Nunca concedem algo que o teto da Sede ou do plano não autoriza.
 6. Suspensão de conta de usuário, edição completa do perfil e recuperação de credencial exigem serviços próprios se ainda não estiverem disponíveis. Mensagens distinguem falta de permissão, conflito de e-mail e cota esgotada sem expor dados de outras unidades.
 

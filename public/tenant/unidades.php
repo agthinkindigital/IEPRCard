@@ -154,6 +154,7 @@ function tenantUnitsAllocation(mixed $limit): string
     <p class="organization"><?= tenantUnitsEscape($organization) ?></p>
     <nav aria-label="Navegação da instituição">
         <a class="active" aria-current="page" href="/tenant/unidades.php">Unidades</a>
+        <a href="/tenant/equipe.php">Equipe</a>
         <a href="/tenant/dominios.php">Domínios próprios</a>
     </nav>
     <p class="sidebar-note">Área do Cliente Master da Sede</p>
