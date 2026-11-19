@@ -96,8 +96,14 @@ function telemetryBusinessRecord(
     }
 
     for ($attempt = 0; ; $attempt++) {
+        $transactionOpen = false;
         try {
-            $pdo->beginTransaction();
+            if ($driver === 'sqlite') {
+                $pdo->exec('BEGIN IMMEDIATE');
+            } else {
+                $pdo->beginTransaction();
+            }
+            $transactionOpen = true;
             $event = $pdo->prepare(
                 'INSERT INTO telemetria_eventos (tenant_id, subcliente_id, categoria, evento_chave, quantidade, criado_em) '
                 . 'VALUES (:tenant, :subclient, :category, :event_key, :quantity, :created)'
@@ -124,11 +130,20 @@ function telemetryBusinessRecord(
                 'day' => $day, 'category' => $category, 'event_key' => $eventKey,
                 'quantity' => $quantity, 'updated' => $createdAt,
             ]);
-            $pdo->commit();
+            if ($driver === 'sqlite') {
+                $pdo->exec('COMMIT');
+            } else {
+                $pdo->commit();
+            }
+            $transactionOpen = false;
             return;
         } catch (Throwable $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
+            if ($transactionOpen) {
+                if ($driver === 'sqlite') {
+                    $pdo->exec('ROLLBACK');
+                } elseif ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
             }
             $sqliteBusy = $driver === 'sqlite' && $exception instanceof PDOException
                 && (((int) ($exception->errorInfo[1] ?? 0) === 5)

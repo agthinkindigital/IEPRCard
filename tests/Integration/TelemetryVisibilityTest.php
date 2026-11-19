@@ -189,7 +189,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $eventCount->execute($eventParams);
             $afterEvents = (int) $eventCount->fetchColumn();
             if ($afterTotal !== $beforeTotal + 30 || $afterEvents !== $beforeEvents + 30) {
-                throw new RuntimeException($driver . ': concurrent Sede/Subcliente telemetry must preserve all 30 event appends and aggregate increments.');
+                throw new RuntimeException($driver . ': concurrent telemetry expected aggregate/events '
+                    . ($beforeTotal + 30) . '/' . ($beforeEvents + 30) . ', found ' . $afterTotal . '/' . $afterEvents . '.');
             }
         } finally {
             foreach ($processes as $entry) {
