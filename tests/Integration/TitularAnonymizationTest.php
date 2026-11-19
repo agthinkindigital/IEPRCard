@@ -104,7 +104,7 @@ try {
         $retentionInsert->execute([
             'tenant' => $fixture['tenant_id'],
             'name' => 'Retention Holder ' . $suffix,
-            'cpf' => '4012888888881881',
+            'cpf' => '11144477735',
             'created' => '2024-01-01 00:00:00',
         ]);
         $retentionId = (int) $pdo->lastInsertId();
