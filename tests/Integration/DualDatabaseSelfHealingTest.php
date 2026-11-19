@@ -145,7 +145,7 @@ $migrationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory
 $firstMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $secondMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $migrationDrift = schemaInspecionar($migrationPdo);
-if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle'] || $secondMigrationRun !== $firstMigrationRun
+if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope'] || $secondMigrationRun !== $firstMigrationRun
     || array_filter($migrationDrift) !== []) {
     throw new RuntimeException('Versioned migrations must apply explicitly, be repeatable, and produce the canonical SQLite schema: ' . json_encode([$firstMigrationRun, $secondMigrationRun, $migrationDrift]));
 }
