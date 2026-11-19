@@ -60,7 +60,7 @@ function e(string $value): string
     <?php if ($dbState === 'Indisponível' && $pdoExtensions === []): ?>
         <p>Habilite <code>pdo_sqlite</code> para SQLite ou <code>pdo_mysql</code> para MySQL na configuração do PHP e abra o launcher novamente.</p>
     <?php endif; ?>
-    <p>Esta página confirma apenas o ambiente local. A área administrativa será exibida após a implementação dos módulos de autenticação.</p>
+    <p>Esta página confirma o ambiente local. Para entrar na área administrativa ou configurar o primeiro superadmin, <a href="/admin/login.php">acesse o login administrativo</a>.</p>
 </main>
 </body>
 </html>

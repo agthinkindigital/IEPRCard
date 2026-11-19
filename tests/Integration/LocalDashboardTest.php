@@ -38,10 +38,16 @@ if (!is_string($html) || !str_contains($html, 'O ambiente local aceita apenas My
 if (str_contains($html, 'local-dashboard-secret-must-not-appear')) {
     throw new RuntimeException('The local dashboard must not expose database credentials.');
 }
+if (!is_string($html) || !str_contains($html, 'href="/admin/login.php"') || !str_contains($html, 'acesse o login administrativo')) {
+    throw new RuntimeException('The local dashboard must link to the existing administrative login.');
+}
+if (str_contains($html, 'após a implementação dos módulos de autenticação')) {
+    throw new RuntimeException('The local dashboard must not describe implemented authentication as future work.');
+}
 if (!is_string($heartbeatValue) || $heartbeatValue === '') {
     throw new RuntimeException('An HTTP page render must update the idle-timeout heartbeat.');
 }
 
-fwrite(STDOUT, "PASS: local dashboard blocks remote MySQL, hides credentials, and refreshes activity.\n");
+fwrite(STDOUT, "PASS: local dashboard links to admin login, blocks remote MySQL, hides credentials, and refreshes activity.\n");
 
 return 'pass';
