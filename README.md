@@ -10,7 +10,7 @@ Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingT
 
 Para transferir dados pelo CLI, prepare um destino MySQL vazio com o schema canônico, configure `DB_DRIVER=mysql` e defina `MIGRATION_SOURCE_SQLITE_PATH`; execute `php database/migrate-sqlite-to-mysql.php`. A interface administrativa usa `MIGRATION_SOURCE_SQLITE_PATH` e `MIGRATION_TARGET_*`, exige o worker CLI agendado por Cron e não troca o banco ativo. Os dois fluxos chamam o mesmo serviço, não alteram schema e recusam destinos com registros. Consulte o [guia da interface de migração](docs/userguide/migracao-banco.md).
 
-Arquivos de importação aguardando confirmação ficam temporariamente fora de `public/`. O padrão é `var/private`; em hospedagem compartilhada, configure `IEPR_PRIVATE_STORAGE_PATH` com um diretório absoluto gravável e fora da raiz pública. Agende `php database/cleanup-import-staging.php` pelo Cron a cada 15 minutos para remover lotes pendentes após 24 horas.
+Arquivos de importação aguardando confirmação ficam temporariamente fora de `public/`. O padrão é `var/private`; em hospedagem compartilhada, configure `IEPR_PRIVATE_STORAGE_PATH` com um diretório absoluto gravável e fora da raiz pública. Agende `php database/cleanup-import-staging.php` pelo Cron a cada 15 minutos para remover lotes pendentes após 24 horas. Para anonimização, configure `IEPR_ANONYMIZATION_KEY` fora do repositório com uma chave Base64 de 32 bytes (gere com `php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`) e agende `php database/process-titular-anonymization.php` pelo Cron. O worker processa até 100 registros por execução; é possível informar um lote entre 1 e 200 como primeiro argumento.
 
 ## Ambiente local no Windows
 
