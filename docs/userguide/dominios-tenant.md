@@ -1,6 +1,6 @@
 # Guia funcional: domínios próprios
 
-Este guia descreve o onboarding de um domínio próprio para a Sede de uma instituição. O [mockup da tela](../../design-system/mockups/dominios-tenant-mockup.svg) mostra a lista e o detalhe da prova DNS. A tela ainda não foi implementada.
+Este guia descreve o onboarding de um domínio próprio para a Sede de uma instituição. O [mockup da tela](../../design-system/mockups/dominios-tenant-mockup.svg) mostra a lista e o detalhe da prova DNS. A tela autenticada está disponível em `/tenant/dominios.php`; a sessão de tenant existente deve estar ativa no host da instituição.
 
 ## Quem pode usar
 
@@ -14,7 +14,7 @@ O Cliente Master da Sede pode cadastrar um hostname para a própria instituiçã
 4. Aguarde a publicação do DNS. Depois escolha **Conferir registro DNS**. Até encontrar o valor exato, a situação continua **Aguardando DNS** e a tela orienta revisar nome e valor do TXT.
 5. Quando a prova é confirmada, o serviço invalida o desafio e muda o domínio para **TLS pendente**. Isso confirma controle do DNS; ainda não autoriza o domínio a abrir a conta.
 
-O serviço existente mostra o desafio apenas no cadastro e requer seu valor para conferência. Se a etapa for fechada antes da prova, o mockup não promete uma recuperação automática do desafio; será necessário definir e implementar um fluxo seguro de nova prova.
+O serviço mostra o desafio apenas no cadastro e requer seu valor para conferência. O token em claro fica somente na sessão autenticada; a lista e as ações são limitadas ao tenant resolvido pelo host e pela sessão. Se a sessão expirar ou a etapa for fechada antes da prova, o token não pode ser recuperado; procure o suporte. Não tente excluir ou cadastrar o mesmo hostname de novo. A recuperação segura depende de um serviço próprio.
 
 ## Estados de TLS e ativação
 
@@ -28,7 +28,7 @@ Na versão atual, o backend cobre cadastro e transição para **TLS pendente**. 
 ## Privacidade e segurança
 
 - O domínio é único globalmente; um host não verificado nunca seleciona um tenant.
-- O token da prova é segredo temporário de onboarding, não credencial de login. O banco guarda apenas o hash e o serviço o invalida após sucesso.
+- O token da prova é segredo temporário de onboarding, não credencial de login. O banco guarda apenas o hash; a sessão autenticada mantém o token até confirmação ou expiração e o serviço invalida o hash após sucesso.
 - Erros não mostram IDs, dados de outro cliente, token ou registros de sessão. Não copiar o desafio para logs ou telemetria.
 
 ## Estados de falha
