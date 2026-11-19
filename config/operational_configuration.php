@@ -226,7 +226,17 @@ function operationalConfigBeginTransaction(PDO $pdo, string $driver): void
 function operationalConfigRequireTransaction(PDO $pdo, string $stage): void
 {
     if (!$pdo->inTransaction()) {
-        throw new RuntimeException('OPERATIONAL_CONFIG_TRANSACTION_LOST:' . $stage);
+        $details = ['driver' => $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)];
+        if ($details['driver'] === 'mysql') {
+            $details['autocommit'] = $pdo->query('SELECT @@autocommit')->fetchColumn();
+            $engine = $pdo->prepare(
+                'SELECT ENGINE FROM information_schema.tables '
+                . 'WHERE table_schema = DATABASE() AND table_name = :table_name'
+            );
+            $engine->execute(['table_name' => 'configuracoes_operacionais']);
+            $details['table_engine'] = $engine->fetchColumn();
+        }
+        throw new RuntimeException('OPERATIONAL_CONFIG_TRANSACTION_LOST:' . $stage . ':' . json_encode($details));
     }
 }
 
