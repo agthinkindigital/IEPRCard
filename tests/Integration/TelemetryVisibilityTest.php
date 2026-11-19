@@ -158,6 +158,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $eventCount->closeCursor();
         if ($racePath !== null) {
             $racePdo = null;
+            unset($before, $eventCount, $raceUser);
+            gc_collect_cycles();
         }
 
         $barrier = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-telemetry-race-start-' . bin2hex(random_bytes(8));

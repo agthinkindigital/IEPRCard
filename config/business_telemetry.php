@@ -25,6 +25,7 @@ function telemetryBusinessAssertCurrentIdentity(PDO $pdo, array $identity): arra
     );
     $statement->execute(['id' => $userId]);
     $stored = $statement->fetch(PDO::FETCH_ASSOC);
+    $statement->closeCursor();
     if (!is_array($stored) || $stored['papel_sistema'] !== $role
         || (isset($identity['tenant_id']) ? (int) $identity['tenant_id'] : null) !== ($stored['tenant_id'] === null ? null : (int) $stored['tenant_id'])
         || (isset($identity['subcliente_id']) ? (int) $identity['subcliente_id'] : null) !== ($stored['subcliente_id'] === null ? null : (int) $stored['subcliente_id'])) {
@@ -54,7 +55,9 @@ function telemetryBusinessAssertCurrentIdentity(PDO $pdo, array $identity): arra
         . 'AND (:child_required IS NULL OR child.id IS NOT NULL) LIMIT 1'
     );
     $scope->execute(['tenant' => $tenantId, 'child_for_join' => $subclienteId, 'child_required' => $subclienteId]);
-    if ($scope->fetchColumn() === false) {
+    $scopeFound = $scope->fetchColumn() !== false;
+    $scope->closeCursor();
+    if (!$scopeFound) {
         throw new DomainException('TELEMETRIA_IDENTIDADE_INVALIDA');
     }
 
@@ -218,7 +221,9 @@ function telemetryBusinessRead(PDO $pdo, array $identity, array $scope, array $w
             $params = $built['params'];
             $verify = $pdo->prepare("SELECT 1 FROM tenants WHERE id = :child AND parent_id = :tenant AND tipo = 'subcliente' LIMIT 1");
             $verify->execute(['child' => $scope['subcliente_id'], 'tenant' => $scope['tenant_id']]);
-            if ($verify->fetchColumn() === false) {
+            $unitExists = $verify->fetchColumn() !== false;
+            $verify->closeCursor();
+            if (!$unitExists) {
                 throw new DomainException('TELEMETRIA_ESCOPO_INVALIDO');
             }
         } else {
