@@ -134,9 +134,10 @@ try {
         throw new RuntimeException('A tenant without an authenticated session must not see its domain screen.');
     }
 
-    [$status] = tenantDomainHttpRequest($baseUrl . '/tenant/dominios.php', 'GET', null, null, $slug . '.ieprcard.test', $delegateSessionId);
+    [$status, $delegateBody] = tenantDomainHttpRequest($baseUrl . '/tenant/dominios.php', 'GET', null, null, $slug . '.ieprcard.test', $delegateSessionId);
     if ($status !== 403) {
-        throw new RuntimeException('Delegated tenant users must not manage custom domains.');
+        throw new RuntimeException('Delegated tenant users must not manage custom domains: '
+            . json_encode(['status' => $status, 'body' => $delegateBody], JSON_THROW_ON_ERROR));
     }
 
     $cookie = 'IEPRCARDTENANT=' . $sessionId;
