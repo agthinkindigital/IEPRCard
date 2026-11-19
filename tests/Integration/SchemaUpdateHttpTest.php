@@ -47,11 +47,18 @@ if ($probe === false) {
 $address = stream_socket_get_name($probe, false);
 fclose($probe);
 $port = (int) substr((string) $address, strrpos((string) $address, ':') + 1);
-$extensionDirectory = ini_get('extension_dir');
-if (!str_starts_with($extensionDirectory, DIRECTORY_SEPARATOR)) {
-    $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
+$phpArguments = [PHP_BINARY];
+if (PHP_OS_FAMILY === 'Windows') {
+    $extensionDirectory = ini_get('extension_dir');
+    if (!str_starts_with($extensionDirectory, DIRECTORY_SEPARATOR)) {
+        $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
+    }
+    $sqliteExtension = rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll';
+    if (is_file($sqliteExtension)) {
+        $phpArguments = array_merge($phpArguments, ['-d', 'extension=pdo_sqlite']);
+    }
 }
-$phpArguments = [PHP_BINARY, '-n', '-d', 'extension_dir=' . $extensionDirectory, '-d', 'extension=pdo_sqlite', '-S', '127.0.0.1:' . $port, '-t', $root . DIRECTORY_SEPARATOR . 'public'];
+$phpArguments = array_merge($phpArguments, ['-S', '127.0.0.1:' . $port, '-t', $root . DIRECTORY_SEPARATOR . 'public']);
 $process = proc_open($phpArguments, [
     0 => ['file', PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null', 'r'],
     1 => ['file', $directory . DIRECTORY_SEPARATOR . 'php.out.log', 'a'],
