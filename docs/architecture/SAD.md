@@ -572,10 +572,10 @@ erDiagram
 - **Operação de débito linearizável:** `UPDATE tenants SET consumo_carteirinhas = consumo_carteirinhas + :n WHERE id = :tid AND consumo_carteirinhas + :n <= limite_carteirinhas`. `rowCount() === 1` confirma a reserva; caso contrário, `COTA_EXCEDIDA` antes de qualquer gravação. Funciona em SQLite e MySQL sem `FOR UPDATE`.
 - **Confirmação de importação:** o lote privado é reanalisado e até 500 titulares são validados e gravados com auditoria em uma transação sob o lock/cota da Sede. O mapeamento, contagem e estado `concluido` confirmam na mesma transação; o limite de 25 da API de cadastro em chunks permanece separado. A fonte privada é removida após o commit e o cleanup pode repetir a remoção.
 - **Pool compartilhado vs cota cravada:** `subcliente.limite_carteirinhas = NULL` consome do saldo da Sede; quando preenchido, a soma das cotas filhas é validada no backend (`Σ cota_filha ≤ teto_sede`).
-- **Idempotência de emissão:** índice único em `(titular_id, design_id, lote_id)` e em `codigo_validacao_qr`; reprocessamento do worker não duplica carteirinha nem QR.
-- **Transação):** reserva de cota + inserção do lote no mesmo `BEGIN/COMMIT`; confirmação final do consumo após o worker concluir. Falha do worker libera a reserva via TTL de reserva (tabela `reservas_cota` **[PROPOSTO]**).
+- **Idempotência de emissão:** cada pedido cria um job de lote próprio ligado à origem e ao design; a chave de pedido é persistida como hash por tenant. Semântica, limites de lote e worker CLI/cron estão em ADR-0007 e Issue #46. Índices únicos em `(titular_id, design_id, lote_id)` e `codigo_validacao_qr` impedem duplicação de saída no retry do worker.
+- **Transação:** reserva de cota e inserção do lote são atômicas; o worker confirma a reserva ao concluir ou libera somente a reserva do job após três falhas, compensando os artefatos parciais.
 - **Leituras de QR:** `UPDATE ... total_leituras_qr = total_leituras_qr + 1` (atômico) + linha de auditoria; sem `SELECT` seguido de `UPDATE` solto.
-- **Origem do lote:** `titulares.lote_origem_id` vincula cada titular importado ao lote que o criou, sem duplicar PII; o serviço de emissão valida tenant/unidade e seleciona por essa FK.
+- **Origem do lote:** `titulares.lote_origem_id` vincula cada titular importado ao lote que o criou, sem duplicar PII; o job de emissão deriva os membros dessa origem e valida tenant/unidade.
 - **N+1:** carregar titulares do lote por `lote_origem_id` e escopo em uma query; designs e categorias em mapa único por requisição; nunca `dbFetchOne` dentro de `foreach` de titular.
 
 ### 5.4. Máquina de estado da conta (canônica)

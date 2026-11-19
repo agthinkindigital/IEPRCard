@@ -19,7 +19,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 
 * **GATE 3 — Motor de Importação, Mapeamento & Renderização PDF/WebP (Após Épico 3 e 4):**
-* [ ] Suítes `TDD-03` e `TDD-04` passam 100%.
+* [ ] Suítes `TDD-03`, `TDD-04` e `TDD-10` passam 100%.
 * [ ] Tempo de geração médio em benchmark local: $\le 80\text{ ms}$ por carteirinha WebP (Frente+Verso) e $\le 1,5\text{ s}$ para um lote PDF de 50 carteirinhas.
 * [ ] Portal do titular exibe a carteirinha online e o QR Code resolve na página pública de validação.
 

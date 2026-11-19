@@ -35,6 +35,8 @@ O catálogo executável das 27 tabelas, colunas, tipos, índices e FKs vive em `
 
 A confirmação de importação mantém a origem sem copiar dados pessoais: a extensão de schema `0005` adiciona `titulares.lote_origem_id`, FK nullable para `lotes_importacao`, e a migração `0006` aplica a coluna em bancos existentes. Titulares criados manualmente permanecem com origem nula. O vínculo permite ao worker selecionar o conjunto importado e revalidar o escopo da Sede/unidade; o conjunto inicial de 27 tabelas não muda.
 
+A extensão `0006` e a migração `0007` adicionam em `lotes_importacao` a origem do job de emissão e o hash opcional da chave de idempotência, com unicidade por tenant. Jobs referenciam um lote de importação concluído e podem ter designs/modos distintos sem alterar os titulares de origem. Não são armazenadas chaves em claro nem dados pessoais adicionais; o conjunto inicial de 27 tabelas permanece igual.
+
 Para `telemetria_diaria`, o índice único não pode depender apenas da coluna nullable `subcliente_id`: SQLite e MySQL permitem múltiplas chaves únicas com `NULL`, o que duplica agregados da Sede sob gravações concorrentes. A extensão `0004` adiciona `subcliente_scope_id`, normalizada para `0` na Sede e para o ID da unidade; a migração `0005` consolida agregados legados duplicados antes do backfill. Escritas novas sempre usam essa chave normalizada.
 
 **Migração:** em bancos já criados com o adendo, usar `ALTER TABLE ... ADD COLUMN` + view de compatibilidade, sem `DROP` na mesma release (Expand & Contract, ADR-0010). Nomes antigos sobrevivem como views somente leitura por uma release.
