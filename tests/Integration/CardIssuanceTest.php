@@ -13,6 +13,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $planId = null;
     $ownerId = null;
     $sourceLotId = null;
+    $unitOwnerId = null;
+    $unitSourceLotId = null;
     $designId = null;
     $testAssetKeys = [];
     try {
@@ -45,6 +47,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'papel_sistema' => 'titular_cliente',
         ];
         $context = new TenantContext('cliente', $fixture['tenant_id'], null, []);
+        $crossTenantRejected = false;
+        try {
+            cardIssuanceCreateJob(
+                $pdo, $context, $identity, $fixture['tenant_id'] + 10000, null, 1, 1, 'webp',
+                'request-key-other-tenant', strtotime('2026-01-01 00:00:30 UTC')
+            );
+        } catch (DomainException $exception) {
+            $crossTenantRejected = $exception->getMessage() === 'ISSUANCE_DENIED';
+        }
+        if (!$crossTenantRejected) {
+            throw new RuntimeException($driver . ': the authenticated tenant must match the requested tenant.');
+        }
         $pdo->prepare(
             'INSERT INTO designs_carteirinha (tenant_id, nome_layout, orientacao, ativo, criado_em) '
             . 'VALUES (:tenant, :name, :orientation, 1, :created)'
@@ -207,6 +221,37 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             }
             $testAssetKeys[] = $issuedRow['webp_frente_url'];
             $testAssetKeys[] = $issuedRow['webp_verso_url'];
+
+            $pdo->prepare("UPDATE lotes_importacao SET status_lote = 'processando', worker_lease_until = :expired WHERE id = :id")
+                ->execute(['expired' => '2025-12-31 23:59:00', 'id' => $second['job_id']]);
+            if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:35:00 UTC'))) {
+                throw new RuntimeException($driver . ': the worker must reclaim a valid expired job.');
+            }
+            $recoveredCount = $pdo->prepare('SELECT COUNT(*) FROM carteirinhas_emitidas WHERE lote_id = :job');
+            $recoveredCount->execute(['job' => $second['job_id']]);
+            if ((int) $recoveredCount->fetchColumn() !== 1) {
+                throw new RuntimeException($driver . ': recovering a completed card must not duplicate its output row.');
+            }
+
+            $pdfJob = cardIssuanceCreateJob(
+                $pdo, $context, $identity, $fixture['tenant_id'], null, $sourceLotId, $designId, 'pdf_cr80',
+                'request-key-00000005', strtotime('2026-01-01 00:36:00 UTC')
+            );
+            if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:37:00 UTC'))) {
+                throw new RuntimeException($driver . ': the worker must process a valid CR80 PDF job.');
+            }
+            $pdfResult = $pdo->prepare('SELECT status_lote, pdf_consolidado_url FROM lotes_importacao WHERE id = :id');
+            $pdfResult->execute(['id' => $pdfJob['job_id']]);
+            $pdfRow = $pdfResult->fetch(PDO::FETCH_ASSOC);
+            $pdfBytes = is_array($pdfRow) ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], (string) $pdfRow['pdf_consolidado_url']) : '';
+            $pdfCards = $pdo->prepare('SELECT COUNT(*) FROM carteirinhas_emitidas WHERE lote_id = :job AND pdf_individual_url IS NULL');
+            $pdfCards->execute(['job' => $pdfJob['job_id']]);
+            if (!is_array($pdfRow) || $pdfRow['status_lote'] !== 'concluido'
+                || !str_starts_with((string) $pdfRow['pdf_consolidado_url'], 'private://')
+                || !str_starts_with($pdfBytes, '%PDF-1.4') || (int) $pdfCards->fetchColumn() !== 1) {
+                throw new RuntimeException($driver . ': PDF jobs must save one private consolidated PDF and the card snapshot.');
+            }
+            $testAssetKeys[] = $pdfRow['pdf_consolidado_url'];
         } elseif (getenv('CI') === 'true') {
             throw new RuntimeException($driver . ': CI must provide the renderer extensions for the worker output test.');
         }
@@ -233,6 +278,79 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             throw new RuntimeException($driver . ': WebP issuance must queue a 500-member source lot.');
         }
 
+        $pdo->prepare('UPDATE tenants SET limite_carteirinhas = 3, consumo_carteirinhas = 0, status_conta = :status, permissoes_unidade_json = :permissions WHERE id = :tenant')
+            ->execute([
+                'status' => 'ativo',
+                'permissions' => json_encode(['carteirinha.gerar'], JSON_THROW_ON_ERROR),
+                'tenant' => $fixture['tenant_id'],
+            ]);
+        $pdo->prepare('UPDATE tenants SET status_conta = :status, limite_carteirinhas = 1, consumo_carteirinhas = 0 WHERE id = :id')
+            ->execute(['status' => 'ativo', 'id' => $fixture['subcliente_id']]);
+        $pdo->prepare(
+            'INSERT INTO usuarios (tenant_id, subcliente_id, papel_sistema, nome, email, senha_hash, ativo) '
+            . 'VALUES (:tenant, :child, :role, :name, :email, :password, 1)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'child' => $fixture['subcliente_id'], 'role' => 'responsavel_sub',
+            'name' => 'Issuance unit owner', 'email' => 'issuance-unit-' . bin2hex(random_bytes(4)) . '@example.test',
+            'password' => password_hash('unused', PASSWORD_DEFAULT),
+        ]);
+        $unitOwnerId = (int) $pdo->lastInsertId();
+        $pdo->prepare('UPDATE designs_carteirinha SET compartilhado_subclientes = 1 WHERE id = :id')->execute(['id' => $designId]);
+        $pdo->prepare(
+            'INSERT INTO lotes_importacao (tenant_id, subcliente_id, usuario_id, origem_tipo, total_registros, '
+            . 'processados_sucesso, status_lote, criado_em, finalizado_em) '
+            . 'VALUES (:tenant, :child, :user, :origin, 1, 1, :status, :created, :finished)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'child' => $fixture['subcliente_id'], 'user' => $unitOwnerId,
+            'origin' => 'csv', 'status' => 'concluido', 'created' => '2026-01-01 00:00:00',
+            'finished' => '2026-01-01 00:00:01',
+        ]);
+        $unitSourceLotId = (int) $pdo->lastInsertId();
+        $pdo->prepare(
+            'INSERT INTO titulares (tenant_id, subcliente_id, nome_completo, lote_origem_id, ativo, criado_em) '
+            . 'VALUES (:tenant, :child, :name, :source, 1, :created)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'child' => $fixture['subcliente_id'], 'name' => 'Unit issuance fixture',
+            'source' => $unitSourceLotId, 'created' => '2026-01-01 00:00:00',
+        ]);
+        $unitContext = new TenantContext('subcliente', $fixture['tenant_id'], $fixture['subcliente_id'], []);
+        $unitIdentity = [
+            'id' => $unitOwnerId, 'tenant_id' => $fixture['tenant_id'],
+            'subcliente_id' => $fixture['subcliente_id'], 'papel_sistema' => 'responsavel_sub',
+        ];
+        $wrongUnitRejected = false;
+        try {
+            cardIssuanceCreateJob(
+                $pdo, $unitContext, $unitIdentity, $fixture['tenant_id'], null, $unitSourceLotId, $designId,
+                'webp', 'request-key-wrong-unit', strtotime('2026-01-01 00:49:00 UTC')
+            );
+        } catch (DomainException $exception) {
+            $wrongUnitRejected = $exception->getMessage() === 'ISSUANCE_DENIED';
+        }
+        if (!$wrongUnitRejected) {
+            throw new RuntimeException($driver . ': a unit identity must not issue outside its authenticated unit.');
+        }
+        $unitJob = cardIssuanceCreateJob(
+            $pdo, $unitContext, $unitIdentity, $fixture['tenant_id'], $fixture['subcliente_id'],
+            $unitSourceLotId, $designId, 'webp', 'request-key-unit-000001', strtotime('2026-01-01 00:50:00 UTC')
+        );
+        $fixedQuotaRejected = false;
+        try {
+            cardIssuanceCreateJob(
+                $pdo, $unitContext, $unitIdentity, $fixture['tenant_id'], $fixture['subcliente_id'],
+                $unitSourceLotId, $designId, 'webp', 'request-key-unit-000002', strtotime('2026-01-01 00:51:00 UTC')
+            );
+        } catch (DomainException $exception) {
+            $fixedQuotaRejected = $exception->getMessage() === 'COTA_EXCEDIDA';
+        }
+        $unitQuotas = $pdo->prepare('SELECT id, consumo_carteirinhas FROM tenants WHERE id IN (:root, :child) ORDER BY id');
+        $unitQuotas->execute(['root' => $fixture['tenant_id'], 'child' => $fixture['subcliente_id']]);
+        $unitQuotaRows = $unitQuotas->fetchAll(PDO::FETCH_ASSOC);
+        if (($unitJob['reused'] ?? true) !== false || !$fixedQuotaRejected || count($unitQuotaRows) !== 2
+            || (int) $unitQuotaRows[0]['consumo_carteirinhas'] !== 1 || (int) $unitQuotaRows[1]['consumo_carteirinhas'] !== 1) {
+            throw new RuntimeException($driver . ': unit issuance must honor both the Sede and fixed unit quota.');
+        }
+
         fwrite(STDOUT, 'PASS: ' . $driver . ' idempotency, 500-member queue, quota reservation, worker retry and compensation.' . "\n");
     } finally {
         if ($fixture !== null) {
@@ -245,6 +363,14 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo->prepare('DELETE FROM lotes_importacao WHERE lote_origem_id = :source')->execute(['source' => $sourceLotId]);
             $pdo->prepare('DELETE FROM titulares WHERE lote_origem_id = :source')->execute(['source' => $sourceLotId]);
             $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :source')->execute(['source' => $sourceLotId]);
+        }
+        if ($unitSourceLotId !== null) {
+            $pdo->prepare('DELETE FROM lotes_importacao WHERE lote_origem_id = :source')->execute(['source' => $unitSourceLotId]);
+            $pdo->prepare('DELETE FROM titulares WHERE lote_origem_id = :source')->execute(['source' => $unitSourceLotId]);
+            $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :source')->execute(['source' => $unitSourceLotId]);
+        }
+        if ($unitOwnerId !== null) {
+            $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $unitOwnerId]);
         }
         if ($ownerId !== null) {
             $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $ownerId]);

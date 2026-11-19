@@ -24,6 +24,12 @@ function cardIssuanceCreateJob(
         || preg_match('/^[A-Za-z0-9._~-]+$/D', $idempotencyKey) !== 1) {
         throw new DomainException('ISSUANCE_REQUEST_INVALID');
     }
+    if ($context->tenantId !== $tenantId
+        || (int) ($identity['tenant_id'] ?? 0) !== $tenantId
+        || !in_array($context->tipo, ['cliente', 'subcliente'], true)
+        || ($context->tipo === 'subcliente' && $context->subclienteId !== $subclienteId)) {
+        throw new DomainException('ISSUANCE_DENIED');
+    }
     if (!pode($pdo, $context, $identity, 'carteirinha.gerar', $subclienteId)) {
         throw new DomainException('ISSUANCE_DENIED');
     }
