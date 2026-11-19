@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="title description">
+  <title id="title">Gestão de domínios próprios</title>
+  <desc id="description">Painel de cliente com lista de domínios, estados textuais de DNS e TLS, e instrução de registro TXT para comprovar a propriedade de um domínio.</desc>
+  <defs>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="7" flood-color="#0F172A" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+  <rect width="1440" height="1040" fill="#F6F8FB"/>
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <rect x="0" y="0" width="248" height="1040" fill="#FFFFFF"/>
+    <path d="M248 0v1040" stroke="#DCE3EC"/>
+    <rect x="25" y="24" width="36" height="36" rx="9" fill="#1D4ED8"/>
+    <path d="M35 34h16v16H35zM39 30h8v4h-8z" fill="#FFFFFF"/>
+    <text x="72" y="48" font-size="18" font-weight="700" fill="#0F172A">IEPRCard</text>
+    <text x="24" y="96" font-size="11" font-weight="700" letter-spacing="1" fill="#64748B">INSTITUIÇÃO</text>
+    <text x="24" y="122" font-size="14" font-weight="600" fill="#0F172A">Instituto Exemplo</text>
+    <path d="M24 146h200" stroke="#DCE3EC"/>
+    <g font-size="14" fill="#475569">
+      <rect x="12" y="166" width="224" height="42" rx="8" fill="#FFFFFF"/>
+      <path d="M29 179h16v14H29zM33 175h8v4h-8z" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <text x="57" y="192">Visão geral</text>
+      <rect x="12" y="214" width="224" height="42" rx="8" fill="#FFFFFF"/>
+      <circle cx="37" cy="235" r="8" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <path d="M25 251c1-6 5-9 12-9s11 3 12 9" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <text x="57" y="240">Unidades e equipe</text>
+      <rect x="12" y="262" width="224" height="42" rx="8" fill="#FFFFFF"/>
+      <path d="M28 275h18v16H28zM33 271h8v4h-8z" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <text x="57" y="288">Titulares</text>
+      <rect x="12" y="310" width="224" height="42" rx="8" fill="#FFFFFF"/>
+      <path d="M28 322h18v18H28zM32 327h10M32 332h7" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <text x="57" y="336">Designs</text>
+      <rect x="12" y="358" width="224" height="42" rx="8" fill="#EFF6FF"/>
+      <path d="M28 373h18v13H28zM32 369h10v4H32z" fill="none" stroke="#1D4ED8" stroke-width="1.5"/>
+      <text x="57" y="384" font-weight="600" fill="#1D4ED8">Domínios próprios</text>
+      <rect x="12" y="406" width="224" height="42" rx="8" fill="#FFFFFF"/>
+      <circle cx="37" cy="427" r="9" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <path d="M37 421v6l4 3" fill="none" stroke="#64748B" stroke-width="1.5"/>
+      <text x="57" y="432">Atividade</text>
+    </g>
+    <path d="M24 978h200" stroke="#DCE3EC"/>
+    <circle cx="42" cy="1008" r="16" fill="#DBEAFE"/>
+    <text x="42" y="1013" text-anchor="middle" font-size="12" font-weight="700" fill="#1D4ED8">IE</text>
+    <text x="68" y="1005" font-size="13" font-weight="600" fill="#0F172A">Conta da instituição</text>
+    <text x="68" y="1022" font-size="11" fill="#64748B">Cliente master</text>
+
+    <rect x="248" y="0" width="1192" height="72" fill="#FFFFFF"/>
+    <path d="M248 72h1192" stroke="#DCE3EC"/>
+    <text x="280" y="43" font-size="13" fill="#64748B">Painel / Configurações /</text>
+    <text x="456" y="43" font-size="13" font-weight="600" fill="#0F172A">Domínios próprios</text>
+    <circle cx="1356" cy="36" r="17" fill="#F1F5F9"/>
+    <path d="M1356 27v10m0 5v1" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+
+    <text x="280" y="124" font-size="30" font-weight="700" fill="#0F172A">Domínios próprios</text>
+    <text x="280" y="153" font-size="14" fill="#475569">Conecte o domínio da sua instituição à carteirinha digital.</text>
+    <rect x="1156" y="103" width="222" height="46" rx="8" fill="#1D4ED8"/>
+    <path d="M1177 126h14m-7-7v14" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="1200" y="131" font-size="14" font-weight="600" fill="#FFFFFF">Adicionar domínio</text>
+
+    <rect x="280" y="177" width="1098" height="62" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <circle cx="307" cy="208" r="11" fill="#DBEAFE"/>
+    <text x="307" y="213" text-anchor="middle" font-size="14" font-weight="700" fill="#1D4ED8">i</text>
+    <text x="329" y="203" font-size="13" font-weight="600" fill="#1E3A8A">O domínio só direciona visitantes após a prova DNS e a ativação do HTTPS.</text>
+    <text x="329" y="222" font-size="12" fill="#1E40AF">Domínios em verificação ou com TLS pendente não são usados para abrir a conta.</text>
+
+    <g filter="url(#shadow)">
+      <rect x="280" y="259" width="657" height="716" rx="12" fill="#FFFFFF" stroke="#DCE3EC"/>
+      <rect x="957" y="259" width="421" height="716" rx="12" fill="#FFFFFF" stroke="#DCE3EC"/>
+    </g>
+    <text x="306" y="299" font-size="17" font-weight="700" fill="#0F172A">Seus domínios</text>
+    <text x="306" y="322" font-size="12" fill="#64748B">Cada domínio precisa ser verificado e ter HTTPS ativo.</text>
+    <rect x="306" y="343" width="605" height="43" rx="7" fill="#F8FAFC"/>
+    <text x="322" y="370" font-size="11" font-weight="700" letter-spacing=".4" fill="#64748B">DOMÍNIO</text>
+    <text x="600" y="370" font-size="11" font-weight="700" letter-spacing=".4" fill="#64748B">SITUAÇÃO</text>
+    <text x="790" y="370" font-size="11" font-weight="700" letter-spacing=".4" fill="#64748B">AÇÃO</text>
+    <path d="M306 386h605" stroke="#DCE3EC"/>
+
+    <text x="322" y="421" font-size="13" font-weight="600" fill="#0F172A">instituto-exemplo.org.br</text>
+    <text x="322" y="441" font-size="11" fill="#64748B">Domínio principal</text>
+    <rect x="600" y="403" width="92" height="26" rx="13" fill="#DCFCE7"/>
+    <circle cx="614" cy="416" r="3" fill="#166534"/>
+    <text x="623" y="420" font-size="11" font-weight="600" fill="#166534">Ativo</text>
+    <text x="600" y="446" font-size="11" fill="#475569">HTTPS ativo</text>
+    <rect x="790" y="407" width="91" height="32" rx="7" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="835" y="428" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">Detalhes</text>
+    <path d="M306 462h605" stroke="#E2E8F0"/>
+
+    <rect x="306" y="463" width="605" height="91" fill="#F8FAFC"/>
+    <text x="322" y="497" font-size="13" font-weight="600" fill="#0F172A">carteira.instituto-exemplo.org.br</text>
+    <text x="322" y="517" font-size="11" fill="#64748B">Adicionado hoje</text>
+    <rect x="600" y="479" width="133" height="26" rx="13" fill="#FEF3C7"/>
+    <circle cx="614" cy="492" r="3" fill="#92400E"/>
+    <text x="623" y="496" font-size="11" font-weight="600" fill="#92400E">Aguardando DNS</text>
+    <text x="600" y="527" font-size="11" fill="#475569">HTTPS ainda não iniciado</text>
+    <rect x="790" y="486" width="91" height="32" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="835" y="507" text-anchor="middle" font-size="11" font-weight="600" fill="#1D4ED8">Selecionado</text>
+    <path d="M306 554h605" stroke="#E2E8F0"/>
+
+    <text x="306" y="595" font-size="12" font-weight="700" fill="#334155">Como ler os estados</text>
+    <circle cx="315" cy="625" r="4" fill="#B91C1C"/>
+    <text x="329" y="629" font-size="12" font-weight="600" fill="#0F172A">Falha na prova DNS</text>
+    <text x="329" y="647" font-size="11" fill="#64748B">O registro TXT não foi localizado ou não corresponde ao desafio.</text>
+    <circle cx="315" cy="678" r="4" fill="#D97706"/>
+    <text x="329" y="682" font-size="12" font-weight="600" fill="#0F172A">TLS pendente</text>
+    <text x="329" y="700" font-size="11" fill="#64748B">A propriedade foi confirmada; falta ativar e validar HTTPS.</text>
+    <circle cx="315" cy="731" r="4" fill="#166534"/>
+    <text x="329" y="735" font-size="12" font-weight="600" fill="#0F172A">Ativo</text>
+    <text x="329" y="753" font-size="11" fill="#64748B">DNS verificado, HTTPS válido e host liberado para uso.</text>
+    <circle cx="315" cy="784" r="4" fill="#64748B"/>
+    <text x="329" y="788" font-size="12" font-weight="600" fill="#0F172A">Removido</text>
+    <text x="329" y="806" font-size="11" fill="#64748B">O host deixa de direcionar para esta instituição.</text>
+    <rect x="306" y="848" width="605" height="91" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+    <path d="M327 871l8 14h-16z" fill="none" stroke="#64748B" stroke-width="1.5"/>
+    <text x="347" y="878" font-size="12" font-weight="600" fill="#334155">Os estados TLS dependem da configuração do domínio no provedor.</text>
+    <text x="327" y="903" font-size="11" fill="#475569">A validação automática e a remoção ainda precisam de serviços próprios.</text>
+    <text x="327" y="921" font-size="11" fill="#475569">Este mockup mostra o destino do fluxo; ações indisponíveis não serão simuladas.</text>
+
+    <text x="983" y="299" font-size="17" font-weight="700" fill="#0F172A">Comprovar domínio</text>
+    <rect x="1262" y="277" width="91" height="25" rx="12" fill="#FEF3C7"/>
+    <text x="1308" y="294" text-anchor="middle" font-size="10" font-weight="700" fill="#92400E">PENDENTE</text>
+    <text x="983" y="326" font-size="12" fill="#475569">carteira.instituto-exemplo.org.br</text>
+
+    <g>
+      <circle cx="1000" cy="370" r="12" fill="#DCFCE7"/><path d="M994 370l4 4 8-9" fill="none" stroke="#166534" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="1022" y="375" font-size="12" font-weight="600" fill="#334155">Domínio cadastrado</text>
+      <path d="M1000 386v20" stroke="#CBD5E1" stroke-width="2"/>
+      <circle cx="1000" cy="420" r="12" fill="#DBEAFE" stroke="#1D4ED8" stroke-width="2"/>
+      <text x="1022" y="425" font-size="12" font-weight="700" fill="#1D4ED8">Prova DNS</text>
+      <path d="M1000 436v20" stroke="#CBD5E1" stroke-width="2"/>
+      <circle cx="1000" cy="470" r="12" fill="#F1F5F9"/><text x="1022" y="475" font-size="12" fill="#64748B">Ativar HTTPS (TLS)</text>
+      <path d="M1000 486v20" stroke="#CBD5E1" stroke-width="2"/>
+      <circle cx="1000" cy="520" r="12" fill="#F1F5F9"/><text x="1022" y="525" font-size="12" fill="#64748B">Domínio ativo</text>
+    </g>
+
+    <text x="983" y="566" font-size="13" font-weight="700" fill="#0F172A">1. Crie este registro no DNS</text>
+    <text x="983" y="588" font-size="11" fill="#475569">Entre no painel onde administra o domínio e adicione:</text>
+    <text x="983" y="617" font-size="11" font-weight="700" fill="#475569">TIPO</text>
+    <rect x="983" y="626" width="369" height="40" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="997" y="651" font-size="12" font-weight="600" fill="#0F172A">TXT</text>
+    <text x="983" y="693" font-size="11" font-weight="700" fill="#475569">NOME / HOST</text>
+    <rect x="983" y="702" width="369" height="51" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="997" y="724" font-size="11" fill="#0F172A">_ieprcard-verification.carteira.</text>
+    <text x="997" y="741" font-size="11" fill="#0F172A">instituto-exemplo.org.br</text>
+    <rect x="1310" y="712" width="28" height="29" rx="5" fill="#F8FAFC" stroke="#CBD5E1"/>
+    <path d="M1319 720h8v10h-8zM1316 723v10h8" fill="none" stroke="#475569" stroke-width="1.2"/>
+    <text x="983" y="780" font-size="11" font-weight="700" fill="#475569">VALOR</text>
+    <rect x="983" y="789" width="369" height="51" rx="6" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="997" y="811" font-size="10" fill="#0F172A">ieprcard-verification=0e8dca41a3f5d887</text>
+    <text x="997" y="828" font-size="10" fill="#0F172A">f417bf6a73f191e645f2a4cc3ea689d7</text>
+    <rect x="1310" y="799" width="28" height="29" rx="5" fill="#F8FAFC" stroke="#CBD5E1"/>
+    <path d="M1319 807h8v10h-8zM1316 810v10h8" fill="none" stroke="#475569" stroke-width="1.2"/>
+
+    <circle cx="990" cy="865" r="7" fill="#EFF6FF" stroke="#93C5FD"/>
+    <text x="990" y="869" text-anchor="middle" font-size="9" font-weight="700" fill="#1D4ED8">i</text>
+    <text x="1005" y="869" font-size="10" font-weight="600" fill="#334155">O desafio é mostrado uma única vez.</text>
+    <text x="983" y="888" font-size="10" fill="#64748B">Mantenha esta etapa aberta até publicar e conferir o TXT.</text>
+    <rect x="983" y="913" width="226" height="40" rx="7" fill="#1D4ED8"/>
+    <text x="1096" y="938" text-anchor="middle" font-size="12" font-weight="600" fill="#FFFFFF">Conferir registro DNS</text>
+    <rect x="1217" y="913" width="135" height="40" rx="7" fill="#FFFFFF" stroke="#CBD5E1"/>
+    <text x="1284" y="938" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Voltar à lista</text>
+  </g>
+</svg>
