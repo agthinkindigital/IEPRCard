@@ -39,6 +39,20 @@ try {
         }
 
         $pending = operationalConfigSavePending($pdo, $settings, null, $now);
+        $storedConfiguration = $pdo->prepare('SELECT configuracao_json FROM configuracoes_operacionais WHERE id = :id');
+        $storedConfiguration->execute(['id' => $pending['id']]);
+        $storedSettings = json_decode((string) $storedConfiguration->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+        if ($storedSettings !== $settings) {
+            throw new RuntimeException($driver . ': stored operational settings must contain only the approved non-personal configuration fields.');
+        }
+
+        putenv('APP_ENV=production');
+        $otherEnvironmentSnapshot = operationalConfigWorkerStart($pdo, $now + 2);
+        putenv('APP_ENV=staging');
+        if ($otherEnvironmentSnapshot !== null) {
+            throw new RuntimeException($driver . ': pending settings must not activate across runtime environments.');
+        }
+
         $pendingState = $pdo->prepare('SELECT estado, ativado_em FROM configuracoes_operacionais WHERE id = :id');
         $pendingState->execute(['id' => $pending['id']]);
         $pendingRow = $pendingState->fetch(PDO::FETCH_ASSOC);

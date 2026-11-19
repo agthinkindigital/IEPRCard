@@ -129,7 +129,9 @@ function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
         . "AND estado IN ('pendente', 'ativa') ORDER BY versao DESC, id DESC LIMIT 1"
     );
     $existing->execute(['environment' => $environment]);
-    if ($existing->fetchColumn() === false) {
+    $hasExistingConfiguration = $existing->fetchColumn() !== false;
+    $existing->closeCursor();
+    if (!$hasExistingConfiguration) {
         return null;
     }
 
