@@ -23,7 +23,20 @@ putenv('DB_PORT=' . (getenv('TEST_MYSQL_PORT') ?: '3306'));
 putenv('DB_DATABASE=' . getenv('TEST_MYSQL_DATABASE'));
 putenv('DB_USERNAME=' . getenv('TEST_MYSQL_USERNAME'));
 putenv('DB_PASSWORD=' . (getenv('TEST_MYSQL_PASSWORD') ?: ''));
-$target = dbConnection();
+$databaseAdmin = dbConnection();
+$migrationDatabase = 'ieprcard_migration_' . bin2hex(random_bytes(6));
+$databaseAdmin->exec('CREATE DATABASE `' . $migrationDatabase . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+register_shutdown_function(static function () use ($databaseAdmin, $migrationDatabase): void {
+    $databaseAdmin->exec('DROP DATABASE IF EXISTS `' . $migrationDatabase . '`');
+});
+$target = dbConnect([
+    'DB_DRIVER' => 'mysql',
+    'DB_HOST' => getenv('TEST_MYSQL_HOST'),
+    'DB_PORT' => getenv('TEST_MYSQL_PORT') ?: '3306',
+    'DB_DATABASE' => $migrationDatabase,
+    'DB_USERNAME' => getenv('TEST_MYSQL_USERNAME'),
+    'DB_PASSWORD' => getenv('TEST_MYSQL_PASSWORD') ?: '',
+]);
 schemaGarantirEstrutura($target, 'test');
 schemaAplicarMigracoes($target, 'test');
 $rollbackSource = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
