@@ -11,7 +11,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $publicRoot = Join-Path $projectRoot 'public'
 $php = (Get-Command php -ErrorAction SilentlyContinue).Source
-$portText = if ($env:IEPRCARD_PORT) { $env:IEPRCARD_PORT } else { '8080' }
+$portText = if ($env:IEPRCARD_PORT) { $env:IEPRCARD_PORT } else { '9477' }
 $port = 0
 
 if (-not $php) {
@@ -28,6 +28,7 @@ if (-not (Test-Path $publicRoot -PathType Container)) {
 }
 
 $env:APP_ENV = 'dev'
+if (-not $env:PLATFORM_HOSTNAME) { $env:PLATFORM_HOSTNAME = 'localhost' }
 if (-not $env:DB_DRIVER) { $env:DB_DRIVER = 'sqlite' }
 if ($env:DB_DRIVER -eq 'sqlite' -and -not $env:DB_SQLITE_PATH) {
     $varPath = Join-Path $projectRoot 'var'

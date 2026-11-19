@@ -108,7 +108,7 @@ try {
                     foreach ($values as $value) {
                         $pipes = [];
                         $command = [PHP_BINARY];
-                        if ($raceDriver === 'sqlite' && PHP_OS_FAMILY === 'Windows') {
+                        if ($raceDriver === 'sqlite' && PHP_OS_FAMILY === 'Windows' && !extension_loaded('pdo_sqlite')) {
                             array_push($command, '-d', 'extension=php_pdo_sqlite.dll');
                         }
                         array_push(

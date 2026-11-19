@@ -112,7 +112,7 @@ if (PHP_OS_FAMILY === 'Windows') {
     if (!str_starts_with($extensionDirectory, DIRECTORY_SEPARATOR)) {
         $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
     }
-    if (is_file(rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll')) {
+    if (!extension_loaded('pdo_sqlite') && is_file(rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll')) {
         $extensionArguments = ['-d', 'extension=pdo_sqlite'];
     }
 }

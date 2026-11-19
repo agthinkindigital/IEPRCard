@@ -112,7 +112,7 @@ $extensions = [];
 if (PHP_OS_FAMILY === 'Windows') {
     $extensionDirectory = ini_get('extension_dir');
     if (!str_starts_with($extensionDirectory, DIRECTORY_SEPARATOR)) $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
-    if (is_file(rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll')) $extensions = ['-d', 'extension=pdo_sqlite'];
+    if (!extension_loaded('pdo_sqlite') && is_file(rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll')) $extensions = ['-d', 'extension=pdo_sqlite'];
 }
 $process = proc_open(array_merge([PHP_BINARY], $extensions, ['-d', 'session.save_path=' . $quotaHttpDirectory,
     '-S', '127.0.0.1:' . $port, '-t', $quotaHttpRoot . DIRECTORY_SEPARATOR . 'public']), [

@@ -54,7 +54,7 @@ if (PHP_OS_FAMILY === 'Windows') {
         $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
     }
     $sqliteExtension = rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll';
-    if (is_file($sqliteExtension)) {
+    if (!extension_loaded('pdo_sqlite') && is_file($sqliteExtension)) {
         $phpArguments = array_merge($phpArguments, ['-d', 'extension=pdo_sqlite']);
     }
 }

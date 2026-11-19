@@ -82,7 +82,7 @@ try {
             $extensionDirectory = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . $extensionDirectory;
         }
         $sqliteExtension = rtrim($extensionDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'php_pdo_sqlite.dll';
-        if (is_file($sqliteExtension)) {
+        if (!extension_loaded('pdo_sqlite') && is_file($sqliteExtension)) {
             $arguments = ['-d', 'extension=pdo_sqlite'];
         }
     }

@@ -70,10 +70,12 @@ try {
     $phpCommand = [PHP_BINARY];
     $phpCommand[] = '-d';
     $phpCommand[] = 'extension_dir=' . ini_get('extension_dir');
-    foreach (['pdo_sqlite', 'sqlite3'] as $extension) {
+    if (!extension_loaded('pdo_sqlite')) {
         $phpCommand[] = '-d';
-        $phpCommand[] = 'extension=' . $extension;
+        $phpCommand[] = 'extension=pdo_sqlite';
     }
+    $phpCommand[] = '-d';
+    $phpCommand[] = 'extension=sqlite3';
     foreach (['race-request-key-0001', 'race-request-key-0002'] as $index => $key) {
         $process = proc_open([
             ...$phpCommand, $workerPath, $databasePath, (string) $fixture['tenant_id'], (string) $ownerId,
