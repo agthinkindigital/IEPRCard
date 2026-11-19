@@ -197,7 +197,8 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
     }
     $cutoff = gmdate('Y-m-d H:i:s', $now - 86400);
     $candidates = $pdo->prepare(
-        'SELECT id FROM lotes_importacao WHERE status_lote IN (\'aguardando_mapa\', \'na_fila\') '
+        'SELECT id FROM lotes_importacao WHERE origem_tipo IN (\'csv\', \'xlsx\', \'json\') '
+        . 'AND status_lote IN (\'aguardando_mapa\', \'na_fila\') '
         . 'AND criado_em <= :cutoff ORDER BY criado_em, id LIMIT ' . $limit
     );
     $candidates->execute(['cutoff' => $cutoff]);
@@ -209,7 +210,8 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
             $lockClause = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
             $lotQuery = $pdo->prepare(
                 'SELECT tenant_id, arquivo_original_url FROM lotes_importacao '
-                . 'WHERE id = :id AND status_lote IN (\'aguardando_mapa\', \'na_fila\') AND criado_em <= :cutoff'
+                . 'WHERE id = :id AND origem_tipo IN (\'csv\', \'xlsx\', \'json\') '
+                . 'AND status_lote IN (\'aguardando_mapa\', \'na_fila\') AND criado_em <= :cutoff'
                 . $lockClause
             );
             $lotQuery->execute(['id' => $id, 'cutoff' => $cutoff]);

@@ -200,6 +200,13 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo, $context, $identity, $fixture['tenant_id'], null, $activePath, basename($activePath), 1_700_000_000
         );
         $createdLotIds[] = $active['lote_id'];
+        $emissionInsert = $pdo->prepare(
+            "INSERT INTO lotes_importacao (tenant_id, origem_tipo, total_registros, status_lote, criado_em) "
+            . "VALUES (:tenant, 'emissao', 1, 'na_fila', :created)"
+        );
+        $emissionInsert->execute(['tenant' => $fixture['tenant_id'], 'created' => gmdate('Y-m-d H:i:s', 1_700_000_000)]);
+        $emissionJobId = (int) $pdo->lastInsertId();
+        $createdLotIds[] = $emissionJobId;
         $pdo->prepare("UPDATE lotes_importacao SET status_lote = 'processando' WHERE id = :id")
             ->execute(['id' => $active['lote_id']]);
         $activeQuery = $pdo->prepare('SELECT arquivo_original_url FROM lotes_importacao WHERE id = :id');
@@ -209,9 +216,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             static fn() => batchImportStagingCancel($pdo, $context, $identity, $fixture['tenant_id'], null, $active['lote_id']),
             'IMPORT_LOT_NOT_CANCELLABLE'
         );
-        if (batchImportStagingCleanupExpired($pdo, 1_700_000_000 + 86400 - 1) !== 0
+        $cleanupAt = 1_700_000_000 + 86400;
+        if (batchImportStagingCleanupExpired($pdo, $cleanupAt - 1) !== 0
             || !is_string($expiredFile) || !is_file($expiredFile)
-            || batchImportStagingCleanupExpired($pdo, 1_700_000_000 + 86400) !== 1
+            || batchImportStagingCleanupExpired($pdo, $cleanupAt) !== 1
             || !is_string($expiredFile) || is_file($expiredFile) || !is_string($activeFile) || !is_file($activeFile)) {
             throw new RuntimeException($driver . ': cleanup must expire stale pending lots and leave processing lots intact.');
         }
@@ -219,6 +227,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $expiredStatus->execute(['id' => $expired['lote_id']]);
         if ($expiredStatus->fetchColumn() !== 'expirado') {
             throw new RuntimeException($driver . ': an expired import lot must expose its terminal state.');
+        }
+        $emissionStatus = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
+        $emissionStatus->execute(['id' => $emissionJobId]);
+        if ($emissionStatus->fetchColumn() !== 'na_fila') {
+            throw new RuntimeException($driver . ': import cleanup must never expire a queued card issuance job.');
         }
 
         fwrite(STDOUT, 'PASS: ' . $driver . ' private import staging, scoped cancellation and expiry cleanup.' . "\n");

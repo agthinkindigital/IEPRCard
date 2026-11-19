@@ -56,6 +56,36 @@ function cardIssuanceWorkerRunOne(PDO $pdo, ?int $now = null): bool
     return true;
 }
 
+/** @return array{processed:int,skipped:bool} */
+function cardIssuanceWorkerRunBatch(PDO $pdo, int $maxJobs = 1): array
+{
+    if ($maxJobs < 1 || $maxJobs > 20) {
+        throw new InvalidArgumentException('ISSUANCE_WORKER_LIMIT_INVALID');
+    }
+    $lockPath = batchImportStagingPrivateRoot() . DIRECTORY_SEPARATOR . 'card-issuance-worker.lock';
+    $lock = @fopen($lockPath, 'c');
+    if ($lock === false) {
+        throw new RuntimeException('ISSUANCE_WORKER_LOCK_UNAVAILABLE');
+    }
+    @chmod($lockPath, 0600);
+    if (!flock($lock, LOCK_EX | LOCK_NB)) {
+        fclose($lock);
+        return ['processed' => 0, 'skipped' => true];
+    }
+
+    $processed = 0;
+    try {
+        while ($processed < $maxJobs && cardIssuanceWorkerRunOne($pdo)) {
+            ++$processed;
+        }
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+
+    return ['processed' => $processed, 'skipped' => false];
+}
+
 function cardIssuanceWorkerProcess(PDO $pdo, int $jobId, int $now): void
 {
     $query = $pdo->prepare(

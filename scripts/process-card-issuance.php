@@ -20,25 +20,12 @@ foreach (array_slice($argv, 1) as $argument) {
 }
 
 try {
-    $pdo = dbConnect();
-    $lockPath = batchImportStagingPrivateRoot() . DIRECTORY_SEPARATOR . 'card-issuance-worker.lock';
-    $lock = @fopen($lockPath, 'c');
-    if ($lock === false) {
-        throw new RuntimeException('ISSUANCE_WORKER_LOCK_UNAVAILABLE');
-    }
-    @chmod($lockPath, 0600);
-    if (!flock($lock, LOCK_EX | LOCK_NB)) {
+    $result = cardIssuanceWorkerRunBatch(dbConnect(), $maxJobs);
+    if ($result['skipped']) {
         fwrite(STDOUT, "Outro worker de emissão já está em execução.\n");
-        fclose($lock);
         exit(0);
     }
-    $processed = 0;
-    while ($processed < $maxJobs && cardIssuanceWorkerRunOne($pdo)) {
-        $processed++;
-    }
-    flock($lock, LOCK_UN);
-    fclose($lock);
-    fwrite(STDOUT, "Jobs processados: {$processed}\n");
+    fwrite(STDOUT, 'Jobs processados: ' . $result['processed'] . "\n");
     exit(0);
 } catch (Throwable $exception) {
     fwrite(STDERR, "Worker de emissão falhou: " . preg_replace('/[^A-Z0-9_]/', '', $exception->getMessage()) . "\n");
