@@ -31,24 +31,18 @@ schemaGarantirEstrutura($rollbackSource, 'test');
 schemaAplicarMigracoes($rollbackSource, 'test');
 $permissionBaselineCount = (int) $rollbackSource->query('SELECT COUNT(*) FROM permissoes')->fetchColumn();
 $rollbackSource->exec("INSERT INTO planos (nome, preco) VALUES ('Plano rollback', 19.90)");
-$oversizedName = str_repeat('x', 181);
-$rollbackInsert = $rollbackSource->prepare('INSERT INTO tenants (plano_id, tipo, nome_organizacao) VALUES (1, ?, ?)');
-$rollbackInsert->execute(['cliente', $oversizedName]);
+$rollbackSource->exec("INSERT INTO tenants (plano_id, tipo, nome_organizacao) VALUES (1, 'cliente', 'Tenant rollback')");
 
 require_once dirname(__DIR__, 2) . '/database/migration/sqlite_to_mysql.php';
-$rollbackTrigger = 'sqlite_migration_reject_oversized_org';
-$target->exec(
-    "CREATE TRIGGER {$rollbackTrigger} BEFORE INSERT ON tenants FOR EACH ROW "
-    . "BEGIN IF CHAR_LENGTH(NEW.nome_organizacao) > 180 THEN SIGNAL SQLSTATE '45000' "
-    . "SET MESSAGE_TEXT = 'test transfer rejection'; END IF; END"
-);
 $rollbackObserved = false;
 try {
-    ieprMigrarSqliteParaMysql($rollbackSource, $target);
+    ieprMigrarSqliteParaMysql($rollbackSource, $target, static function (array $progress): void {
+        if (($progress['table'] ?? null) === 'planos') {
+            throw new RuntimeException('test transfer rejection');
+        }
+    });
 } catch (RuntimeException $exception) {
     $rollbackObserved = $exception->getMessage() === 'A transferência falhou e foi revertida no destino.';
-} finally {
-    $target->exec("DROP TRIGGER {$rollbackTrigger}");
 }
 $targetRowsAfterRollback = 0;
 foreach (array_keys(\IEPRCard\Database\Schema\catalogoCanonico()) as $table) {
