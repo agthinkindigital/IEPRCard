@@ -25,6 +25,11 @@ if (preg_match('~^/portal/?$~D', $requestPath) === 1) {
     return true;
 }
 
+if (preg_match('~^/telemetria/?$~D', $requestPath) === 1) {
+    require __DIR__ . '/telemetria.php';
+    return true;
+}
+
 $decodedPath = rawurldecode($requestPath);
 $publicFile = realpath(__DIR__ . $decodedPath);
 if ($requestPath !== '/' && $publicFile !== false

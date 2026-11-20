@@ -68,15 +68,29 @@ try {
         $pdo->prepare('DELETE FROM metricas_lotes_diarias WHERE dia >= :start AND dia <= :end AND ambiente IN (\'test\', \'staging\')')
             ->execute(['start' => $forecastStart, 'end' => $forecastEnd]);
         $forecastInsert = $pdo->prepare(
-            'INSERT INTO metricas_lotes_diarias (dia, ambiente, pico_demanda_diario) VALUES (:day, :environment, :peak)'
+            'INSERT INTO metricas_lotes_diarias '
+            . '(dia, ambiente, pico_demanda_diario, registros_processados, duracao_media_ms, fila_maxima, falhas) '
+            . 'VALUES (:day, :environment, :peak, :processed, :duration, :queue, :failures)'
         );
         for ($offset = 1; $offset <= 20; $offset++) {
             $forecastDay = gmdate('Y-m-d', $forecastNow - ($offset * 86400));
-            $forecastInsert->execute(['day' => $forecastDay, 'environment' => 'test', 'peak' => $offset * 10]);
-            $forecastInsert->execute(['day' => $forecastDay, 'environment' => 'staging', 'peak' => 5000]);
+            $forecastInsert->execute([
+                'day' => $forecastDay, 'environment' => 'test', 'peak' => $offset * 10,
+                'processed' => $offset, 'duration' => $offset * 10, 'queue' => $offset * 2, 'failures' => $offset % 2,
+            ]);
+            $forecastInsert->execute([
+                'day' => $forecastDay, 'environment' => 'staging', 'peak' => 5000,
+                'processed' => 500, 'duration' => 900, 'queue' => 900, 'failures' => 999,
+            ]);
         }
-        $forecastInsert->execute(['day' => '2001-02-11', 'environment' => 'test', 'peak' => 9000]);
-        $forecastInsert->execute(['day' => '2001-01-11', 'environment' => 'test', 'peak' => 10000]);
+        $forecastInsert->execute([
+            'day' => '2001-02-11', 'environment' => 'test', 'peak' => 9000,
+            'processed' => 0, 'duration' => 0, 'queue' => 0, 'failures' => 0,
+        ]);
+        $forecastInsert->execute([
+            'day' => '2001-01-11', 'environment' => 'test', 'peak' => 10000,
+            'processed' => 0, 'duration' => 0, 'queue' => 0, 'failures' => 0,
+        ]);
         $forecast = operationalBatchMetricsForecast($pdo, now: $forecastNow);
         if (($forecast['status'] ?? null) !== 'ready'
             || ($forecast['window_days'] ?? null) !== 30
@@ -84,6 +98,16 @@ try {
             || ($forecast['forecast_peak'] ?? null) !== 190
             || ($forecast['recommended_lot_size'] ?? null) !== 190) {
             throw new RuntimeException($driver . ': default forecast must use the nearest-rank P95 of complete UTC days in the active environment.');
+        }
+
+        $summary = operationalBatchMetricsSummary($pdo, 30, $forecastNow);
+        if (($summary['window_days'] ?? null) !== 30 || ($summary['observed_days'] ?? null) !== 20
+            || ($summary['forecast_status'] ?? null) !== 'ready'
+            || ($summary['forecast_peak'] ?? null) !== 190 || ($summary['recommended_lot_size'] ?? null) !== 190
+            || ($summary['processed_total'] ?? null) !== 210 || ($summary['average_duration_per_record_ms'] ?? null) !== 137
+            || ($summary['maximum_queue_depth'] ?? null) !== 40 || ($summary['failure_total'] ?? null) !== 10
+            || ($summary['current_queue_depth'] ?? null) !== 0) {
+            throw new RuntimeException($driver . ': operational dashboard summary must aggregate only the active environment, exclude today, and weight duration by processed records.');
         }
 
         $sevenDayForecast = operationalBatchMetricsForecast($pdo, 7, $forecastNow);

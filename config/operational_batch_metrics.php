@@ -113,6 +113,44 @@ function operationalBatchMetricsForecast(PDO $pdo, int $windowDays = 30, ?int $n
     ];
 }
 
+/**
+ * @return array{window_days:int,observed_days:int,forecast_status:'ready'|'insufficient_history',forecast_peak:?int,recommended_lot_size:?int,processed_total:int,average_duration_per_record_ms:int,maximum_queue_depth:int,failure_total:int,current_queue_depth:int}
+ */
+function operationalBatchMetricsSummary(PDO $pdo, int $windowDays = 30, ?int $now = null): array
+{
+    $forecast = operationalBatchMetricsForecast($pdo, $windowDays, $now);
+    $environment = operationalBatchMetricsEnvironment();
+    $today = (new DateTimeImmutable('@' . ($now ?? time())))
+        ->setTimezone(new DateTimeZone('UTC'))
+        ->setTime(0, 0);
+    $end = $today->modify('-1 day')->format('Y-m-d');
+    $start = $today->modify('-' . $windowDays . ' days')->format('Y-m-d');
+    $query = $pdo->prepare(
+        'SELECT COALESCE(SUM(registros_processados), 0) AS processed_total, '
+        . 'COALESCE(SUM(registros_processados * duracao_media_ms), 0) AS weighted_duration_sum, '
+        . 'COALESCE(MAX(fila_maxima), 0) AS maximum_queue_depth, COALESCE(SUM(falhas), 0) AS failure_total '
+        . 'FROM metricas_lotes_diarias WHERE ambiente = :environment AND dia >= :start AND dia <= :end'
+    );
+    $query->execute(['environment' => $environment, 'start' => $start, 'end' => $end]);
+    $totals = $query->fetch(PDO::FETCH_ASSOC) ?: [];
+    $processedTotal = (int) ($totals['processed_total'] ?? 0);
+
+    return [
+        'window_days' => $forecast['window_days'],
+        'observed_days' => $forecast['observed_days'],
+        'forecast_status' => $forecast['status'],
+        'forecast_peak' => $forecast['forecast_peak'],
+        'recommended_lot_size' => $forecast['recommended_lot_size'],
+        'processed_total' => $processedTotal,
+        'average_duration_per_record_ms' => $processedTotal > 0
+            ? (int) round((int) ($totals['weighted_duration_sum'] ?? 0) / $processedTotal)
+            : 0,
+        'maximum_queue_depth' => (int) ($totals['maximum_queue_depth'] ?? 0),
+        'failure_total' => (int) ($totals['failure_total'] ?? 0),
+        'current_queue_depth' => operationalBatchMetricsQueueDepth($pdo),
+    ];
+}
+
 function operationalBatchMetricsEnvironment(): string
 {
     $environment = strtolower(trim((string) (getenv('APP_ENV') ?: 'production')));

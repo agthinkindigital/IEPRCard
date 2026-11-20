@@ -134,7 +134,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 ### ÉPICO 6: Telemetria Multi-Nível (Req 14, 14.1, 14.2)
 
-* **ISSUE-016: Motor de Coleta e Painéis de Telemetria em 3 Camadas** — coleta, previsão e leituras com escopo concluídas nas [#40](https://github.com/agthinkindigital/IEPRCard/issues/40)–[#43](https://github.com/agthinkindigital/IEPRCard/issues/43) e [#63](https://github.com/agthinkindigital/IEPRCard/issues/63). O mockup e guia foram aprovados; a interface e handlers HTTP estão fatiados nas [#70](https://github.com/agthinkindigital/IEPRCard/issues/70) e [#71](https://github.com/agthinkindigital/IEPRCard/issues/71). As métricas permitidas e os limites por perfil são definidos em [`docs/08-telemetria.md`](08-telemetria.md).
+* **ISSUE-016: Motor de Coleta e Painéis de Telemetria em 3 Camadas** — coleta, previsão e leituras com escopo concluídas nas [#40](https://github.com/agthinkindigital/IEPRCard/issues/40)–[#43](https://github.com/agthinkindigital/IEPRCard/issues/43) e [#63](https://github.com/agthinkindigital/IEPRCard/issues/63). O mockup e guia foram aprovados; a página e os handlers de telemetria estão implementados em `DEV` na [#70](https://github.com/agthinkindigital/IEPRCard/issues/70), em validação de CI. Os controles administrativos de configuração permanecem na [#71](https://github.com/agthinkindigital/IEPRCard/issues/71), dependente da #70. As métricas permitidas e os limites por perfil estão em [`docs/08-telemetria.md`](08-telemetria.md).
 
 
 * **Critério de Aceite:** Passar no `TDD-06`.
