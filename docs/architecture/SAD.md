@@ -349,6 +349,8 @@ sequenceDiagram
     Note over DB: Sem ID de titular/carteirinha, token, IP ou User-Agent; rate limit usa hash efêmero de IP
 ```
 
+A leitura privada deriva o titular da sessão `IEPRCARDPORTAL`, revalida acesso, tenant e unidade no banco e não aceita IDs de titular enviados pelo cliente. O token individual é bearer de 32 bytes: somente seu digest SHA-256 fica em `titulares.token_unico_carteira`.
+
 ### 4.6. DER-alvo do produto (schema do MVP definido no ADR-0005)
 
 O diagrama mostra o modelo completo previsto. No MVP, não criar `pagamentos_saas`, `pagamentos_titular`, `contas_recebedoras`, `repasses_titular` nem `configuracoes_gateway`; cobrança, checkout e webhooks Asaas/Mercado Pago ficam para fase futura. O contrato inicial de banco é o conjunto reduzido de 27 tabelas descrito no ADR-0005.
@@ -422,7 +424,7 @@ erDiagram
         int subcliente_id FK "NULL=Sede"
         int categoria_id FK
         varchar cpf
-        varchar token_unico_carteira UK "SHA-256 digest; raw token only in the holder link"
+        varchar token_unico_carteira UK "digest SHA-256; token bruto apenas no link"
         varchar foto_url
         int acesso_app_liberado
         int ativo
