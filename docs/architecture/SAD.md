@@ -159,19 +159,21 @@ Infraestrutura (PDO dual, filesystem de tenants, fila em banco)
 
 ### 3.3. Mapa de responsabilidades
 
-| Módulo | Arquivos (baseline `docs/02`) | Responsabilidade | Não faz |
-| --- | --- | --- | --- |
-| Resolução de tenant | `config/tenant_resolver.php` | `HTTP_HOST` → admin/cliente/subcliente + branding | Não decide permissão |
-| RBAC | `includes/motor_permissoes.php` | `pode(perm, subclienteId?)`, teto descendente, cache por request | Não filtra SQL (quem filtra é o TenantScope) |
-| Escopo | `config/tenant_scope.php` **[PROPOSTO]** | Constrói cláusula obrigatória `tenant_id`/`subcliente_id` em toda query de negócio | Não conhece regras de negócio |
-| Cotas | `includes/motor_cotas.php` | 4 dimensões, pool vs cota cravada, débito atômico | Não cobra pagamento |
-| Eventos | `includes/motor_eventos.php` | `eventoDisparar`, `hookAplicarFiltro`, gravação de telemetria | Não faz I/O externo direto (usa outbox) |
-| Importação | `includes/motor_importacao.php` | CSV/XLS/XLSX/JSON, ZIP de fotos, normalização | Não renderiza |
-| Mapeamento | `includes/motor_mapeamento.php` | Modo fixo e De→Para, variáveis hierárquicas | Não persiste carteirinha |
-| Renderização | `config/card_webp_renderer.php`, `includes/card_pdf_renderer.php` | WebP 1011×638, PDF CR80 e imposição A4 | Não debita cota (evento faz isso) |
-| Pagamentos (futuro) | Código de referência Asaas/Mercado Pago | Avaliar checkout, assinatura, idempotência e estados quando entrar no escopo | Não faz parte do MVP nem altera status de conta no lançamento |
-| Telemetria | `includes/motor_telemetria.php` | Append-only de negócio + agregação diária | Não contém PII |
-| MCP | `mcp/server.php`, `tools_registry.php`, `safety_guard.php` | JSON-RPC 2.0, escopos, auditoria | Não executa patch em produção |
+Esta tabela descreve responsabilidades lógicas do alvo arquitetural, não um inventário de arquivos nem uma declaração do que já está implementado. Estado executável deve ser conferido no código e nas Issues vinculadas ao roadmap.
+
+| Módulo | Responsabilidade | Não faz |
+| --- | --- | --- |
+| Resolução de tenant | Resolver host para Admin/Cliente/Subcliente e seu branding | Não decide permissão |
+| RBAC | Aplicar permissões e tetos descendentes | Não substitui filtros de escopo em consultas |
+| Escopo **[PROPOSTO]** | Construir filtros obrigatórios de tenant/unidade em consultas de negócio | Não conhece regras de negócio |
+| Cotas | Aplicar tetos, pool/alocações e reservas atômicas | Não cobra pagamento |
+| Eventos e outbox **[PROPOSTO]** | Persistir eventos de domínio e efeitos externos na mesma transação | Não chama APIs externas na transação |
+| Importação | Validar e persistir titulares a partir de arquivos suportados | Não renderiza carteirinhas |
+| Mapeamento | Resolver campos do titular para elementos do design | Não persiste a emissão |
+| Renderização | Gerar WebP e PDF nos formatos definidos | Não decide permissões ou cotas |
+| Pagamentos (futuro) | Avaliar checkout, cobrança, idempotência e estados após priorização | Não faz parte do MVP nem altera status de conta |
+| Telemetria | Registrar eventos permitidos e agregar métricas sem PII | Não armazena dados pessoais |
+| MCP | Expor ferramentas autenticadas com escopos e auditoria | Não executa patch em produção |
 
 ---
 
@@ -621,11 +623,11 @@ Estados propagados para todos os Subclientes filhos; `carteirinha.status_carteir
 
 ### 6.1. Eventos internos e outbox **[PROPOSTO]**
 
-`motor_eventos.php` mantém as primitivas `eventoDisparar()` e `hookAplicarFiltro()` do baseline. Efeitos externos (WhatsApp, e-mail, chamadas a gateway) **não** ocorrem dentro do listener síncrono: o listener grava em `outbox_eventos` na mesma transação da mudança de estado. O worker drena com retry exponencial (1 min, 5 min, 25 min), circuit breaker por provedor e DLQ after 5 tentativas. Isso elimina a janela "banco commitou, WhatsApp não enviou" sem exigir Kafka/RabbitMQ. Ver ADR-0006.
+O alvo arquitetural usa eventos de domínio e outbox transacional, com efeitos externos fora da transação de negócio. Esse dispatcher e seu worker ainda não estão implementados no repositório. Quando priorizados, devem seguir o retry, a idempotência e a política de DLQ do [ADR-0006](../adr/0006-event-bus-e-outbox.md).
 
-### 6.2. Webhooks ativos e referência financeira futura
+### 6.2. Webhooks: critérios para integrações aprovadas e referência financeira futura
 
-- MVP: validar assinatura e idempotência apenas nos webhooks das integrações efetivamente implementadas, como WhatsApp.
+- MVP: validar assinatura e idempotência para cada webhook que venha a ser implementado e aprovado. Atualmente não há webhook de WhatsApp ativo no código.
 - Fase financeira futura: validar Asaas com token via `hash_equals()` e Mercado Pago com HMAC conforme contrato vigente; não provisionar nem integrar esses webhooks no MVP. Ver ADR-0008.
 - Idempotência por identificador do provedor e armazenamento persistente apropriado para cada integração ativa.
 - Resposta `2xx` rápida: processamento pesado vai para outbox, evitando timeout do provedor.
