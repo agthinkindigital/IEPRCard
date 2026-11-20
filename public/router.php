@@ -20,6 +20,11 @@ if (preg_match('~^/portal/carteirinha/([1-9][0-9]*)/([^/]+)$~D', $requestPath, $
     return true;
 }
 
+if (preg_match('~^/portal/?$~D', $requestPath) === 1) {
+    require __DIR__ . '/portal/index.php';
+    return true;
+}
+
 $decodedPath = rawurldecode($requestPath);
 $publicFile = realpath(__DIR__ . $decodedPath);
 if ($requestPath !== '/' && $publicFile !== false
