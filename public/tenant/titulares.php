@@ -33,6 +33,7 @@ $identityUnitId = $identity['subcliente_id'];
 $canRead = pode($pdo, $context, $identity, 'titular.ver', $identityUnitId);
 $canCreate = pode($pdo, $context, $identity, 'titular.criar', $identityUnitId);
 $canImport = pode($pdo, $context, $identity, 'titular.importar', $identityUnitId);
+$canIssue = pode($pdo, $context, $identity, 'carteirinha.gerar', $identityUnitId);
 if (!$canRead) {
     http_response_code(403);
     exit('Sua conta não tem permissão para consultar titulares.');
@@ -421,6 +422,7 @@ function tenantTitularesDomainMessage(string $error): string
             <a href="/tenant/dominios.php">Domínios próprios</a>
         <?php endif; ?>
         <a class="active" aria-current="page" href="/tenant/titulares.php">Titulares</a>
+        <?php if ($canIssue): ?><a href="/tenant/emitir.php">Emissões</a><?php endif; ?>
     </nav>
     <p class="sidebar-note"><?= $context->tipo === 'subcliente' ? 'Área da unidade' : 'Área do Cliente Master da Sede' ?></p>
 </aside>

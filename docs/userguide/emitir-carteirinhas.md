@@ -2,7 +2,7 @@
 
 ## Objetivo e acesso
 
-O fluxo prepara uma emissão para um lote importado ou um titular já cadastrado. Apenas usuários autenticados com a permissão `carteirinha.gerar` podem usá-lo. A Sede pode escolher uma unidade dentro do próprio tenant; usuários de Unidade ficam limitados aos dados e designs compartilhados com ela.
+O fluxo prepara uma emissão para um lote importado ou um titular já cadastrado. Acesse **Emissões** na navegação lateral da tela de titulares; o link aparece para usuários autenticados com a permissão `carteirinha.gerar`. A Sede pode escolher uma unidade dentro do próprio tenant; usuários de Unidade ficam limitados aos dados e designs compartilhados com ela.
 
 O fluxo segue o [contrato de mapeamento e renderização](../06-design-e-mapeamento.md). Este guia descreve a operação da tela, sem repetir o schema JSON.
 
