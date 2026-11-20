@@ -13,11 +13,12 @@ function cardValidationResolve(PDO $pdo, string $token, ?string $today = null): 
 
     $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     $query = 'SELECT c.id, c.tenant_id, c.subcliente_id, c.status_carteirinha, c.data_validade, '
-        . 't.ativo AS titular_ativo, sede.status_conta AS sede_status, unidade.status_conta AS unidade_status '
+        . 't.ativo AS titular_ativo, t.subcliente_id AS titular_subcliente_id, '
+        . 'sede.status_conta AS sede_status, unidade.status_conta AS unidade_status '
         . 'FROM carteirinhas_emitidas c '
         . 'INNER JOIN titulares t ON t.id = c.titular_id AND t.tenant_id = c.tenant_id '
         . 'INNER JOIN tenants sede ON sede.id = c.tenant_id '
-        . 'LEFT JOIN tenants unidade ON unidade.id = c.subcliente_id '
+        . "LEFT JOIN tenants unidade ON unidade.id = c.subcliente_id AND unidade.parent_id = c.tenant_id AND unidade.tipo = 'subcliente' "
         . 'WHERE c.codigo_validacao_qr = :token';
     if ($driver === 'mysql') {
         $query .= ' FOR UPDATE';
@@ -77,7 +78,10 @@ function cardValidationState(array $card, string $today): array
     }
     if ($cardStatus === 'suspensa' || (int) $card['titular_ativo'] !== 1
         || $card['sede_status'] !== 'ativo'
-        || ($card['subcliente_id'] !== null && $card['unidade_status'] !== 'ativo')) {
+        || ($card['subcliente_id'] !== null && $card['unidade_status'] !== 'ativo')
+        || (($card['subcliente_id'] === null) !== ($card['titular_subcliente_id'] === null))
+        || ($card['subcliente_id'] !== null
+            && (int) $card['subcliente_id'] !== (int) $card['titular_subcliente_id'])) {
         return ['status' => 'suspensa', 'motivo_codigo' => 'suspensa'];
     }
     if ($cardStatus !== 'ativa') {

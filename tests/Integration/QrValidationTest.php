@@ -47,8 +47,21 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if ($result !== ['status' => 'ativa', 'motivo_codigo' => 'ativa']) {
             throw new RuntimeException($driver . ': an active card must return the public minimal validation result.');
         }
+        $pdo->prepare('UPDATE titulares SET subcliente_id = NULL WHERE id = :holder')->execute(['holder' => $holderId]);
+        if (cardValidationResolve($pdo, $token) !== ['status' => 'suspensa', 'motivo_codigo' => 'suspensa']) {
+            throw new RuntimeException($driver . ': a card must not validate when its holder is assigned to another unit scope.');
+        }
+        $pdo->prepare('UPDATE titulares SET subcliente_id = :unit WHERE id = :holder')
+            ->execute(['unit' => $fixture['subcliente_id'], 'holder' => $holderId]);
+        $pdo->prepare('UPDATE tenants SET parent_id = NULL WHERE id = :unit')
+            ->execute(['unit' => $fixture['subcliente_id']]);
+        if (cardValidationResolve($pdo, $token) !== ['status' => 'suspensa', 'motivo_codigo' => 'suspensa']) {
+            throw new RuntimeException($driver . ': a card unit must belong to its issuing root tenant.');
+        }
+        $pdo->prepare('UPDATE tenants SET parent_id = :tenant WHERE id = :unit')
+            ->execute(['tenant' => $fixture['tenant_id'], 'unit' => $fixture['subcliente_id']]);
         $counter = (int) $pdo->query('SELECT total_leituras_qr FROM carteirinhas_emitidas WHERE codigo_validacao_qr = ' . $pdo->quote($token))->fetchColumn();
-        if ($counter !== 1) {
+        if ($counter !== 3) {
             throw new RuntimeException($driver . ': a successful QR lookup must increment its counter atomically.');
         }
         $audit = $pdo->query("SELECT tenant_id, subcliente_id, ator_tipo, acao, entidade, entidade_id, antes_json, depois_json FROM auditoria_processos WHERE acao = 'carteirinha.qr_lida'")->fetch(PDO::FETCH_ASSOC);

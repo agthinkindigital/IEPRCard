@@ -1,6 +1,6 @@
 RewriteEngine On
-RewriteRule ^validar/?$ validar.php [QSA,END]
-RewriteRule ^validar/([^/]+)/?$ validar.php?codigo=$1 [QSA,END]
+RewriteRule ^validar/?$ validar.php [END]
+RewriteRule ^validar/([^/]+)/?$ validar.php?codigo=$1 [END]
 RewriteRule ^\.well-known/oauth-protected-resource/mcp/?$ .well-known/oauth-protected-resource-mcp.php [END]
 RewriteRule ^\.well-known/oauth-authorization-server/?$ .well-known/oauth-authorization-server.php [END]
 RewriteRule ^oauth/token/?$ oauth/token.php [END]
