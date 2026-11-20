@@ -7,6 +7,8 @@ require_once dirname(__DIR__) . '/database/schema/inspect.php';
 
 use function IEPRCard\Database\Schema\catalogoCanonico;
 use function IEPRCard\Database\Schema\catalogoVersao;
+use function IEPRCard\Database\Schema\chaveEstrangeiraNormalizada;
+use function IEPRCard\Database\Schema\chavesEstrangeirasExistentes;
 use function IEPRCard\Database\Schema\citar;
 use function IEPRCard\Database\Schema\definicaoColuna;
 use function IEPRCard\Database\Schema\identificar;
@@ -43,9 +45,21 @@ function schemaAplicarCatalogoExpandOnly(PDO $pdo, ?array $catalog = null): void
     $driver = identificar($pdo);
     $catalog ??= catalogoCanonico();
     $tables = tabelasExistentes($pdo, $driver);
+    $deferredForeignKeys = [];
     foreach ($catalog as $table => $definition) {
         if (!in_array($table, $tables, true)) {
-            $pdo->exec(sqlCriarTabela($pdo, $table, $definition));
+            $tableDefinition = $definition;
+            if ($driver === 'mysql') {
+                $tableDefinition['foreign_keys'] = [];
+                foreach ($definition['foreign_keys'] as $foreignKey) {
+                    if ($foreignKey['table'] === $table || in_array($foreignKey['table'], $tables, true)) {
+                        $tableDefinition['foreign_keys'][] = $foreignKey;
+                    } else {
+                        $deferredForeignKeys[] = ['table' => $table, 'definition' => $foreignKey];
+                    }
+                }
+            }
+            $pdo->exec(sqlCriarTabela($pdo, $table, $tableDefinition));
             $tables[] = $table;
         }
         $columns = colunasExistentes($pdo, $table, $driver);
@@ -69,5 +83,27 @@ function schemaAplicarCatalogoExpandOnly(PDO $pdo, ?array $catalog = null): void
                 $indexes[] = $index;
             }
         }
+    }
+
+    foreach ($deferredForeignKeys as $deferred) {
+        $table = $deferred['table'];
+        $foreignKey = $deferred['definition'];
+        if (!in_array($foreignKey['table'], $tables, true)) {
+            throw new RuntimeException('A tabela referenciada não existe no catálogo: ' . $foreignKey['table']);
+        }
+        $expectedKey = chaveEstrangeiraNormalizada($foreignKey);
+        if (in_array($expectedKey, chavesEstrangeirasExistentes($pdo, $table, $driver), true)) {
+            continue;
+        }
+        $constraint = 'fk_' . $table . '_' . $foreignKey['column'];
+        if (strlen($constraint) > 64) {
+            $constraint = substr($constraint, 0, 47) . '_' . substr(hash('sha256', $constraint), 0, 16);
+        }
+        $pdo->exec(
+            'ALTER TABLE ' . citar($table, $driver) . ' ADD CONSTRAINT ' . citar($constraint, $driver)
+            . ' FOREIGN KEY (' . citar($foreignKey['column'], $driver) . ') REFERENCES '
+            . citar($foreignKey['table'], $driver) . ' (' . citar($foreignKey['reference'], $driver) . ') ON DELETE '
+            . strtoupper((string) $foreignKey['on_delete'])
+        );
     }
 }
