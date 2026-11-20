@@ -16,7 +16,7 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 - Mostrar a organização/unidade emissora e a vinculação à Sede conforme os dados permitidos para o vínculo.
 - Exibir frente e verso com controle explícito de lado; não expor CPF na área de consulta.
 - Se houver mais de uma emissão ativa e acessível, permitir selecionar uma delas; caso contrário, não mostrar seletor.
-- A ação de baixar PDF só aparece quando a permissão efetiva da Sede/unidade liberar o arquivo. Quando negada, explicar que a organização não habilitou o download.
+- Não exibir ação de baixar PDF enquanto não existir contrato de permissão efetiva no schema e no backend. A função está fora da interface atual.
 - A validação QR abre uma página pública separada; nenhum dado administrativo ou identificador interno é enviado ao navegador.
 
 ## Validação pública

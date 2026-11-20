@@ -88,9 +88,6 @@
   <text x="976" y="975" class="label muted">AUTENTICIDADE</text>
   <text x="976" y="1003" class="body" fill="#166534">QR Code pronto para validação</text>
   <text x="976" y="1028" class="small muted">Aponte a câmera para conferir a situação.</text>
-  <rect x="952" y="1064" width="384" height="48" rx="8" fill="#1D4ED8"/>
-  <text x="1144" y="1094" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">Baixar PDF</text>
-  <text x="952" y="1140" class="small muted">O PDF aparece somente quando a organização libera o download.</text>
 
   <!-- Validação pública -->
   <rect x="24" y="1264" width="1392" height="520" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
@@ -143,9 +140,6 @@
   <text x="357" y="2254" text-anchor="middle" class="small">‹ Frente</text>
   <rect x="436" y="2228" width="134" height="40" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
   <text x="503" y="2254" text-anchor="middle" class="small">Verso ›</text>
-  <rect x="290" y="2284" width="280" height="48" rx="8" fill="#1D4ED8"/>
-  <text x="430" y="2314" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">Baixar PDF</text>
-  <text x="290" y="2360" class="tiny muted">Disponível quando a organização permitir.</text>
   <text x="290" y="2400" class="tiny muted">Sem rolagem horizontal; ações em sequência.</text>
 
   <rect x="830" y="1890" width="360" height="660" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>

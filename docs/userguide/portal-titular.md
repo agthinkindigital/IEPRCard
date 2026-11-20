@@ -14,7 +14,7 @@ O portal permite que o titular consulte somente as carteirinhas digitais emitida
 1. Confira o nome e a unidade emissora exibidos no cabeçalho.
 2. Use **Frente** e **Verso** para alternar os lados. No celular, os mesmos controles ficam abaixo da imagem.
 3. Se houver mais de uma emissão ativa disponível, escolha a carteirinha pelo seletor. Se houver apenas uma, o seletor não aparece.
-4. Se a organização tiver permitido o arquivo, selecione **Baixar PDF**. Se o download estiver desabilitado, contate a organização; a tela não oferece uma forma de contornar a permissão.
+4. A tela atual não oferece download de PDF. Consulte a carteirinha digital ou contate a organização se precisar de outro formato.
 5. Para confirmar a autenticidade, abra a câmera do celular e leia o QR da carteirinha. A página pública mostra o estado e os dados mínimos de validação, sem CPF.
 
 ## Estados e problemas
@@ -23,6 +23,6 @@ O portal permite que o titular consulte somente as carteirinhas digitais emitida
 - **Suspensa, vencida ou revogada:** a página informa que a carteirinha não está ativa e orienta a consultar a organização emissora.
 - **Código inválido:** a página informa que não foi possível validar o código e permite tentar outro QR. Ela não confirma se existe um titular com aqueles dados.
 - **Acesso indisponível:** se o link expirou, o acesso foi desabilitado ou a carteira não está disponível, solicite à organização um novo link ou a regularização do cadastro.
-- **PDF indisponível:** o download só é mostrado quando a organização autorizou essa opção.
+- **PDF indisponível:** o portal não oferece esse formato enquanto a regra de autorização não estiver implementada.
 
 O sistema não solicita dados de pagamento. O portal não altera dados cadastrais, não permite editar a carteirinha e não mostra informações de outras pessoas.
