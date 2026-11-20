@@ -154,8 +154,8 @@ if ($method === 'POST') {
             exit;
         }
         $error = issuanceWizardPublicError($exception->getMessage());
-    } catch (Throwable) {
-        error_log('issuance preview debug: ' . get_class($previewException) . ' ' . $previewException->getMessage());
+    } catch (Throwable $exception) {
+        error_log('Issuance request failed: ' . get_class($exception));
         if (($_POST['action'] ?? '') === 'preview') {
             http_response_code(422);
             header('Content-Type: application/json; charset=utf-8');

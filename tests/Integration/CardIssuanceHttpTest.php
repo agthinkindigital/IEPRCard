@@ -177,6 +177,19 @@ try {
     if ($status !== 422 || str_contains((string) $invalidMappingBody, 'Titular manual')) {
         throw new RuntimeException('Preview must reject a custom mapping that omits a required field without exposing sample data.');
     }
+    $faultDb = dbConnect($configuration);
+    $faultDb->prepare('UPDATE designs_carteirinha SET mapa_campos_json = :map WHERE id = :design AND tenant_id = :tenant')
+        ->execute(['map' => '{invalid-json', 'design' => $designId, 'tenant' => $tenantId]);
+    unset($faultDb);
+    [$status, $invalidDesignBody] = issuanceHttpRequest($url, $cookie, $host, 'POST', http_build_query($previewPayload));
+    if ($status !== 422 || !str_contains((string) $invalidDesignBody, 'Não foi possível validar esta prévia.')
+        || str_contains((string) $invalidDesignBody, 'Titular manual')) {
+        throw new RuntimeException('Preview must return a safe client error when stored design data is malformed; HTTP ' . $status . '.');
+    }
+    $restoreDb = dbConnect($configuration);
+    $restoreDb->prepare('UPDATE designs_carteirinha SET mapa_campos_json = :map WHERE id = :design AND tenant_id = :tenant')
+        ->execute(['map' => json_encode($designMap, JSON_THROW_ON_ERROR), 'design' => $designId, 'tenant' => $tenantId]);
+    unset($restoreDb);
     $validCustomMapping = $invalidMapping;
     $validCustomMapping['mapping_json'] = json_encode(['versao_schema' => '1.0', 'mapeamentos' => ['nome' => ['tipo' => 'valor', 'valor' => 'Prévia autorizada']]], JSON_THROW_ON_ERROR);
     [$status, $validCustomBody] = issuanceHttpRequest($url, $cookie, $host, 'POST', http_build_query($validCustomMapping));
