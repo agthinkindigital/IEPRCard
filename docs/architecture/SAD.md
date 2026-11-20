@@ -374,6 +374,7 @@ erDiagram
     DESIGNS_CARTEIRINHA ||--o{ LOTES_IMPORTACAO : usa
     TENANTS ||--o{ LOTES_IMPORTACAO : executa
     LOTES_IMPORTACAO ||--o{ CARTEIRINHAS_EMITIDAS : origina
+    TITULARES ||--o{ LOTES_IMPORTACAO : origem_individual_do_job
     DESIGNS_CARTEIRINHA ||--o{ CARTEIRINHAS_EMITIDAS : renderiza
     TITULARES ||--o{ CARTEIRINHAS_EMITIDAS : possui
     TITULARES ||--o{ PAGAMENTOS_TITULAR : paga_taxa
@@ -446,6 +447,8 @@ erDiagram
         int id PK
         int tenant_id FK
         int subcliente_id FK
+        int lote_origem_id FK "lote de entrada; exclusivo com titular_origem_id"
+        int titular_origem_id FK "origem individual opcional do job"
         varchar status_lote "aguardando_mapa|na_fila|processando|concluido|falha|cancelado|expirado"
         int total_registros
         int processados_sucesso
@@ -580,7 +583,7 @@ erDiagram
 - **Idempotência e QR da emissão:** cada pedido cria um job de lote próprio ligado à origem e ao design; a chave do pedido é persistida como hash por tenant. Semântica, limites e worker CLI/cron estão em ADR-0007 e Issue #46. Cada QR usa um token aleatório independente (32 bytes CSPRNG), persistido em `codigo_validacao_qr`; índices únicos em `(titular_id, design_id, lote_id)` e `codigo_validacao_qr` impedem duplicação de saída no retry. Implementação: Issue #53, commit `23e819a`.
 - **Transação:** reserva de cota e inserção do lote são atômicas; o worker confirma a reserva ao concluir ou libera somente a reserva do job após três falhas, compensando os artefatos parciais.
 - **Leituras de QR:** `UPDATE ... total_leituras_qr = total_leituras_qr + 1` (atômico) + linha de auditoria; sem `SELECT` seguido de `UPDATE` solto.
-- **Origem do lote:** `titulares.lote_origem_id` vincula cada titular importado ao lote que o criou, sem duplicar PII; o job de emissão deriva os membros dessa origem e valida tenant/unidade.
+- **Origem do lote:** `titulares.lote_origem_id` vincula cada titular importado ao lote que o criou, sem duplicar PII. Job de lote deriva os membros dessa origem e valida tenant/unidade; job individual usa `lotes_importacao.titular_origem_id` e revalida o mesmo escopo. As duas referências de origem do job são mutuamente exclusivas. Titulares manuais mantêm `lote_origem_id = NULL`.
 - **N+1:** carregar titulares do lote por `lote_origem_id` e escopo em uma query; designs e categorias em mapa único por requisição; nunca `dbFetchOne` dentro de `foreach` de titular.
 
 ### 5.4. Máquina de estado da conta (canônica)

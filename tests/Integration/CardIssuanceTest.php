@@ -13,6 +13,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $planId = null;
     $ownerId = null;
     $sourceLotId = null;
+    $manualHolderId = null;
+    $alternateManualHolderId = null;
+    $unitManualHolderId = null;
+    $individualJobId = null;
     $unitOwnerId = null;
     $unitSourceLotId = null;
     $designId = null;
@@ -239,6 +243,125 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $testAssetKeys[] = $issuedRow['webp_frente_url'];
             $testAssetKeys[] = $issuedRow['webp_verso_url'];
 
+            $pdo->prepare(
+                'INSERT INTO titulares (tenant_id, subcliente_id, nome_completo, ativo, criado_em) '
+                . 'VALUES (:tenant, NULL, :name, 1, :created)'
+            )->execute([
+                'tenant' => $fixture['tenant_id'],
+                'name' => 'Manual titular issuance fixture',
+                'created' => '2026-01-01 00:31:00',
+            ]);
+            $manualHolderId = (int) $pdo->lastInsertId();
+            $pdo->prepare('UPDATE titulares SET ativo = 0 WHERE id = :id')->execute(['id' => $manualHolderId]);
+            $inactiveHolderRejected = false;
+            try {
+                cardIssuanceCreateJob(
+                    $pdo, $context, $identity, $fixture['tenant_id'], null, null, $designId, 'webp',
+                    'request-key-inactive-holder', strtotime('2026-01-01 00:31:05 UTC'), null, $manualHolderId
+                );
+            } catch (DomainException $exception) {
+                $inactiveHolderRejected = $exception->getMessage() === 'ISSUANCE_SOURCE_NOT_FOUND';
+            }
+            $pdo->prepare('UPDATE titulares SET ativo = 1 WHERE id = :id')->execute(['id' => $manualHolderId]);
+            if (!$inactiveHolderRejected) {
+                throw new RuntimeException($driver . ': an inactive titular must not be accepted as an individual issuance source.');
+            }
+            $pdo->prepare(
+                'INSERT INTO titulares (tenant_id, subcliente_id, nome_completo, ativo, criado_em) '
+                . 'VALUES (:tenant, :unit, :name, 1, :created)'
+            )->execute([
+                'tenant' => $fixture['tenant_id'],
+                'unit' => $fixture['subcliente_id'],
+                'name' => 'Unit-only titular issuance fixture',
+                'created' => '2026-01-01 00:31:00',
+            ]);
+            $unitManualHolderId = (int) $pdo->lastInsertId();
+            $unitHolderDenied = false;
+            try {
+                cardIssuanceCreateJob(
+                    $pdo, $context, $identity, $fixture['tenant_id'], null, null, $designId, 'webp',
+                    'request-key-unit-holder-deny', strtotime('2026-01-01 00:31:30 UTC'), null, $unitManualHolderId
+                );
+            } catch (DomainException $exception) {
+                $unitHolderDenied = $exception->getMessage() === 'ISSUANCE_SOURCE_NOT_FOUND';
+            }
+            if (!$unitHolderDenied) {
+                throw new RuntimeException($driver . ': the Sede scope must not issue an individual holder belonging to a unit without selecting that unit.');
+            }
+            $pdo->prepare('UPDATE tenants SET limite_carteirinhas = 3, consumo_carteirinhas = 0 WHERE id = :tenant')
+                ->execute(['tenant' => $fixture['tenant_id']]);
+            $individualMapping = ['versao_schema' => '1.0', 'mapeamentos' => []];
+            $individualJob = cardIssuanceCreateJob(
+                $pdo, $context, $identity, $fixture['tenant_id'], null, null, $designId, 'webp',
+                'request-key-individual-0001', strtotime('2026-01-01 00:32:00 UTC'), $individualMapping, $manualHolderId
+            );
+            $individualJobId = $individualJob['job_id'];
+            $individualRetry = cardIssuanceCreateJob(
+                $pdo, $context, $identity, $fixture['tenant_id'], null, null, $designId, 'webp',
+                'request-key-individual-0001', strtotime('2026-01-01 00:33:00 UTC'), $individualMapping, $manualHolderId
+            );
+            $pdo->prepare(
+                'INSERT INTO titulares (tenant_id, subcliente_id, nome_completo, ativo, criado_em) '
+                . 'VALUES (:tenant, NULL, :name, 1, :created)'
+            )->execute([
+                'tenant' => $fixture['tenant_id'],
+                'name' => 'Alternate manual titular issuance fixture',
+                'created' => '2026-01-01 00:31:15',
+            ]);
+            $alternateManualHolderId = (int) $pdo->lastInsertId();
+            $individualSourceConflict = false;
+            try {
+                cardIssuanceCreateJob(
+                    $pdo, $context, $identity, $fixture['tenant_id'], null, null, $designId, 'webp',
+                    'request-key-individual-0001', strtotime('2026-01-01 00:33:30 UTC'), $individualMapping,
+                    $alternateManualHolderId
+                );
+            } catch (DomainException $exception) {
+                $individualSourceConflict = $exception->getMessage() === 'ISSUANCE_IDEMPOTENCY_CONFLICT';
+            }
+            $individualJobRowQuery = $pdo->prepare(
+                'SELECT lote_origem_id, titular_origem_id, total_registros FROM lotes_importacao WHERE id = :id'
+            );
+            $individualJobRowQuery->execute(['id' => $individualJob['job_id']]);
+            $individualJobRow = $individualJobRowQuery->fetch(PDO::FETCH_ASSOC);
+            $individualReservationQuery = $pdo->prepare(
+                'SELECT quantidade, estado FROM reservas_cota WHERE lote_id = :job'
+            );
+            $individualReservationQuery->execute(['job' => $individualJob['job_id']]);
+            $individualReservation = $individualReservationQuery->fetch(PDO::FETCH_ASSOC);
+            $individualQuotaQuery = $pdo->prepare('SELECT consumo_carteirinhas FROM tenants WHERE id = :tenant');
+            $individualQuotaQuery->execute(['tenant' => $fixture['tenant_id']]);
+            $manualOriginQuery = $pdo->prepare('SELECT lote_origem_id FROM titulares WHERE id = :id');
+            $manualOriginQuery->execute(['id' => $manualHolderId]);
+            if (($individualJob['reused'] ?? true) !== false
+                || ($individualRetry['job_id'] ?? null) !== $individualJob['job_id']
+                || ($individualRetry['reused'] ?? false) !== true
+                || !$individualSourceConflict
+                || !is_array($individualJobRow) || $individualJobRow['lote_origem_id'] !== null
+                || (int) $individualJobRow['titular_origem_id'] !== $manualHolderId
+                || (int) $individualJobRow['total_registros'] !== 1
+                || !is_array($individualReservation) || (int) $individualReservation['quantidade'] !== 1
+                || $individualReservation['estado'] !== 'reservada' || (int) $individualQuotaQuery->fetchColumn() !== 1
+                || $manualOriginQuery->fetchColumn() !== null) {
+                throw new RuntimeException($driver . ': individual issuance must bind one holder without rewriting its provenance and reuse its idempotent job.');
+            }
+            if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:34:00 UTC'))) {
+                throw new RuntimeException($driver . ': the worker must process an individual titular source.');
+            }
+            $individualCard = $pdo->prepare(
+                'SELECT titular_id, webp_frente_url, webp_verso_url FROM carteirinhas_emitidas WHERE lote_id = :job'
+            );
+            $individualCard->execute(['job' => $individualJob['job_id']]);
+            $individualCardRow = $individualCard->fetch(PDO::FETCH_ASSOC);
+            $individualCardCountQuery = $pdo->prepare('SELECT COUNT(*) FROM carteirinhas_emitidas WHERE lote_id = :job');
+            $individualCardCountQuery->execute(['job' => $individualJob['job_id']]);
+            if (!is_array($individualCardRow) || (int) $individualCardRow['titular_id'] !== $manualHolderId
+                || (int) $individualCardCountQuery->fetchColumn() !== 1) {
+                throw new RuntimeException($driver . ': individual source job must emit exactly its selected titular.');
+            }
+            $testAssetKeys[] = $individualCardRow['webp_frente_url'];
+            $testAssetKeys[] = $individualCardRow['webp_verso_url'];
+
             $pdo->prepare("UPDATE lotes_importacao SET status_lote = 'processando', worker_lease_until = :expired WHERE id = :id")
                 ->execute(['expired' => '2025-12-31 23:59:00', 'id' => $second['job_id']]);
             if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:35:00 UTC'))) {
@@ -363,6 +486,21 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'id' => $unitOwnerId, 'tenant_id' => $fixture['tenant_id'],
             'subcliente_id' => $fixture['subcliente_id'], 'papel_sistema' => 'responsavel_sub',
         ];
+        if ($manualHolderId !== null) {
+            $sedeHolderDenied = false;
+            try {
+                cardIssuanceCreateJob(
+                    $pdo, $unitContext, $unitIdentity, $fixture['tenant_id'], $fixture['subcliente_id'], null,
+                    $designId, 'webp', 'request-key-sede-holder-deny', strtotime('2026-01-01 00:48:30 UTC'), null,
+                    $manualHolderId
+                );
+            } catch (DomainException $exception) {
+                $sedeHolderDenied = $exception->getMessage() === 'ISSUANCE_SOURCE_NOT_FOUND';
+            }
+            if (!$sedeHolderDenied) {
+                throw new RuntimeException($driver . ': a unit identity must not issue an individual titular from the Sede.');
+            }
+        }
         $wrongUnitRejected = false;
         try {
             cardIssuanceCreateJob(
@@ -413,6 +551,19 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo->prepare('DELETE FROM lotes_importacao WHERE lote_origem_id = :source')->execute(['source' => $unitSourceLotId]);
             $pdo->prepare('DELETE FROM titulares WHERE lote_origem_id = :source')->execute(['source' => $unitSourceLotId]);
             $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :source')->execute(['source' => $unitSourceLotId]);
+        }
+        if ($individualJobId !== null) {
+            $pdo->prepare('DELETE FROM reservas_cota WHERE lote_id = :id')->execute(['id' => $individualJobId]);
+            $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $individualJobId]);
+        }
+        if ($manualHolderId !== null) {
+            $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $manualHolderId]);
+        }
+        if ($alternateManualHolderId !== null) {
+            $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $alternateManualHolderId]);
+        }
+        if ($unitManualHolderId !== null) {
+            $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $unitManualHolderId]);
         }
         if ($unitOwnerId !== null) {
             $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $unitOwnerId]);
