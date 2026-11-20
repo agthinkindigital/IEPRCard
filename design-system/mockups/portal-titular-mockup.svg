@@ -1,12 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1810" viewBox="0 0 1440 1810" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2630" viewBox="0 0 1440 2630" role="img" aria-labelledby="title description">
   <title id="title">Portal do titular e validação QR</title>
-  <desc id="description">Três estados com dados fictícios: acesso privado do titular, consulta da carteirinha digital e confirmação pública de validade por QR Code.</desc>
+  <desc id="description">Propostas desktop e mobile para acesso privado do titular, consulta da carteirinha digital e resultado público minimizado de validação QR.</desc>
   <defs>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
     <style>
       text { font-family: Inter, system-ui, "Segoe UI", sans-serif; }
       .muted { fill: #475569; }
       .small { font-size: 13px; }
+      .tiny { font-size: 12px; }
       .body { font-size: 15px; }
       .label { font-size: 12px; font-weight: 700; letter-spacing: .4px; }
       .title { font-size: 28px; font-weight: 700; fill: #0F172A; }
@@ -15,7 +16,7 @@
       .input { fill: #FFFFFF; stroke: #94A3B8; }
     </style>
   </defs>
-  <rect width="1440" height="1810" fill="#F6F8FB"/>
+  <rect width="1440" height="2630" fill="#F6F8FB"/>
 
   <text x="40" y="36" class="label muted">IEPRCARD · PROPOSTA DE EXPERIÊNCIA DO TITULAR · DADOS FICTÍCIOS</text>
 
@@ -29,7 +30,7 @@
   <text x="1192" y="101" class="small muted">Portal seguro da organização</text>
   <rect x="24" y="133" width="1392" height="443" fill="#F6F8FB"/>
   <text x="720" y="183" text-anchor="middle" class="label muted">1 · ACESSO PRIVADO</text>
-  <rect x="420" y="205" width="600" height="326" rx="12" class="card" filter="url(#shadow)"/>
+  <rect x="420" y="205" width="600" height="350" rx="12" class="card" filter="url(#shadow)"/>
   <text x="468" y="253" class="title">Acesse sua carteirinha</text>
   <text x="468" y="280" class="body muted">Entre com seus dados ou use o link individual enviado pela organização.</text>
   <text x="468" y="319" class="label muted">CPF</text>
@@ -40,6 +41,8 @@
   <text x="484" y="441" class="body muted">DD / MM / AAAA</text>
   <rect x="468" y="474" width="504" height="40" rx="7" fill="#1D4ED8"/>
   <text x="720" y="500" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">Acessar carteirinha</text>
+  <rect x="468" y="520" width="504" height="26" rx="6" fill="#FEF2F2" stroke="#FCA5A5"/>
+  <text x="480" y="538" class="tiny" fill="#B91C1C">Não foi possível validar. Revise os dados ou abra seu link individual.</text>
 
   <!-- Área autenticada -->
   <rect x="24" y="610" width="1392" height="620" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
@@ -103,12 +106,62 @@
   <circle cx="720" cy="1460" r="25" fill="#DCFCE7"/>
   <path d="m709 1460 8 8 15-17" fill="none" stroke="#166534" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="720" y="1510" text-anchor="middle" font-size="22" font-weight="700" fill="#166534">Carteirinha ativa</text>
-  <circle cx="720" cy="1570" r="34" fill="#DBEAFE"/>
-  <circle cx="720" cy="1563" r="11" fill="#94A3B8"/>
-  <path d="M697 1593c4-13 13-19 23-19s19 6 23 19" fill="#94A3B8"/>
-  <text x="720" y="1630" text-anchor="middle" font-size="18" font-weight="700" fill="#0F172A">Ana Costa</text>
-  <text x="720" y="1658" text-anchor="middle" class="body muted">Congregação Itaquera · Igreja Remida de Cristo</text>
-  <text x="720" y="1685" text-anchor="middle" class="small muted">Válida até 31/12/2027</text>
-  <text x="720" y="1724" text-anchor="middle" class="small muted">CPF e outros dados pessoais não são exibidos.</text>
+  <text x="720" y="1550" text-anchor="middle" class="body muted">A consulta pública mostra somente o estado.</text>
+  <text x="720" y="1580" text-anchor="middle" class="small muted">Não exibe nome, foto, CPF, unidade ou validade.</text>
+  <path d="M500 1604h440" class="line"/>
+  <text x="720" y="1635" text-anchor="middle" class="label muted">OUTROS RESULTADOS</text>
+  <rect x="538" y="1646" width="86" height="28" rx="14" fill="#FFFBEB" stroke="#FCD34D"/>
+  <text x="581" y="1665" text-anchor="middle" class="tiny" fill="#92400E">Suspensa</text>
+  <rect x="636" y="1646" width="82" height="28" rx="14" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="677" y="1665" text-anchor="middle" class="tiny muted">Vencida</text>
+  <rect x="730" y="1646" width="88" height="28" rx="14" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="774" y="1665" text-anchor="middle" class="tiny muted">Revogada</text>
+  <rect x="830" y="1646" width="90" height="28" rx="14" fill="#FEF2F2" stroke="#FCA5A5"/>
+  <text x="875" y="1665" text-anchor="middle" class="tiny" fill="#B91C1C">Inválida</text>
+  <text x="720" y="1694" text-anchor="middle" class="small muted">Cada resultado usa estado e orientação em texto.</text>
   <text x="720" y="1763" text-anchor="middle" class="small" fill="#1D4ED8">Validar outra carteirinha</text>
+
+  <!-- Adaptação mobile -->
+  <rect x="24" y="1820" width="1392" height="780" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <text x="64" y="1870" class="label muted">4 · ADAPTAÇÃO MOBILE · VIEWPORT 390 PX</text>
+  <rect x="250" y="1890" width="360" height="660" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="270" y="1910" width="320" height="620" rx="16" fill="#F6F8FB"/>
+  <rect x="270" y="1910" width="320" height="58" rx="16" fill="#FFFFFF"/>
+  <text x="290" y="1947" font-size="17" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="290" y="2000" font-size="23" font-weight="700" fill="#0F172A">Sua carteirinha</text>
+  <text x="290" y="2025" class="small muted">Igreja Remida de Cristo</text>
+  <rect x="290" y="2044" width="280" height="168" rx="12" fill="#EFF6FF" stroke="#DCE3EC"/>
+  <rect x="290" y="2044" width="82" height="168" rx="12" fill="#DBEAFE"/>
+  <circle cx="331" cy="2110" r="27" fill="#FFFFFF" stroke="#93C5FD" stroke-width="2"/>
+  <circle cx="331" cy="2105" r="9" fill="#94A3B8"/>
+  <path d="M313 2132c3-11 10-16 18-16s15 5 18 16" fill="#94A3B8"/>
+  <text x="385" y="2082" class="label" fill="#1D4ED8">TITULAR</text>
+  <text x="385" y="2113" font-size="17" font-weight="700" fill="#0F172A">Ana Costa</text>
+  <text x="385" y="2140" class="small muted">Membro</text>
+  <text x="385" y="2166" class="tiny muted">Validade 31/12/2027</text>
+  <rect x="290" y="2228" width="134" height="40" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="357" y="2254" text-anchor="middle" class="small">‹ Frente</text>
+  <rect x="436" y="2228" width="134" height="40" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="503" y="2254" text-anchor="middle" class="small">Verso ›</text>
+  <rect x="290" y="2284" width="280" height="48" rx="8" fill="#1D4ED8"/>
+  <text x="430" y="2314" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">Baixar PDF</text>
+  <text x="290" y="2360" class="tiny muted">Disponível quando a organização permitir.</text>
+  <text x="290" y="2400" class="tiny muted">Sem rolagem horizontal; ações em sequência.</text>
+
+  <rect x="830" y="1890" width="360" height="660" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="850" y="1910" width="320" height="620" rx="16" fill="#F6F8FB"/>
+  <rect x="850" y="1910" width="320" height="58" rx="16" fill="#FFFFFF"/>
+  <text x="870" y="1947" font-size="17" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="870" y="2000" font-size="23" font-weight="700" fill="#0F172A">Verificação QR</text>
+  <rect x="870" y="2030" width="280" height="212" rx="12" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <circle cx="1010" cy="2080" r="24" fill="#DCFCE7"/>
+  <path d="m999 2080 8 8 15-17" fill="none" stroke="#166534" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1010" y="2125" text-anchor="middle" font-size="18" font-weight="700" fill="#166534">Carteirinha ativa</text>
+  <text x="1010" y="2160" text-anchor="middle" class="small muted">Somente o estado é exibido.</text>
+  <text x="1010" y="2190" text-anchor="middle" class="tiny muted">Sem nome, foto, unidade ou validade.</text>
+  <text x="870" y="2280" class="label muted">OUTROS ESTADOS</text>
+  <text x="870" y="2310" class="small muted">Suspensa, vencida, revogada</text>
+  <text x="870" y="2335" class="small muted">ou código inválido.</text>
+  <rect x="870" y="2370" width="280" height="48" rx="8" fill="#FFFFFF" stroke="#1D4ED8"/>
+  <text x="1010" y="2400" text-anchor="middle" class="small" fill="#1D4ED8">Validar outra carteirinha</text>
 </svg>

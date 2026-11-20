@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1880" viewBox="0 0 1440 1880" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2710" viewBox="0 0 1440 2710" role="img" aria-labelledby="title desc">
   <title id="title">Painéis de telemetria IEPRCard</title>
   <desc id="desc">Proposta de interface para Admin, Cliente e Subcliente com métricas agregadas, previsão operacional e configuração do worker exclusiva do Admin.</desc>
   <defs>
@@ -7,7 +7,7 @@
       .muted{fill:#475569}.tiny{font-size:13px}.small{font-size:15px}.body{font-size:17px}.label{font-size:14px;font-weight:600}.section{font-size:22px;font-weight:700}.heading{font-size:27px;font-weight:700}.title{font-size:35px;font-weight:750}.card{fill:#FFFFFF;stroke:#DCE3EC;stroke-width:1.5}.bg{fill:#F6F8FB}.blue{fill:#1D4ED8}.lightblue{fill:#EFF6FF}.green{fill:#166534}.lightgreen{fill:#F0FDF4}.amber{fill:#92400E}.lightamber{fill:#FFFBEB}.line{stroke:#DCE3EC;stroke-width:1.5}.axis{stroke:#94A3B8;stroke-width:1}.stroke-blue{fill:none;stroke:#1D4ED8;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.stroke-green{fill:none;stroke:#16A34A;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
     </style>
   </defs>
-  <rect width="1440" height="1880" fill="#E8EDF4"/>
+  <rect width="1440" height="2710" fill="#E8EDF4"/>
   <text x="56" y="58" class="title">Telemetria e operação</text>
   <text x="56" y="91" class="body muted">Mockup para revisão • mesma página, conteúdo limitado pelo perfil autenticado</text>
 
@@ -66,16 +66,19 @@
 
   <rect x="84" y="768" width="1268" height="166" rx="12" class="card"/>
   <text x="108" y="805" class="section">Configuração de lotes</text>
-  <rect x="108" y="824" width="205" height="58" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
-  <text x="122" y="846" class="tiny muted">LOTE MÁXIMO</text><text x="122" y="870" class="body">300 registros</text>
-  <rect x="326" y="824" width="205" height="58" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
-  <text x="340" y="846" class="tiny muted">PICO PREVISTO</text><text x="340" y="870" class="body">420 por dia</text>
-  <rect x="544" y="824" width="205" height="58" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
-  <text x="558" y="846" class="tiny muted">JANELA DO CÁLCULO</text><text x="558" y="870" class="body">30 dias</text>
-  <rect x="776" y="824" width="552" height="58" rx="8" class="lightamber"/>
-  <text x="796" y="848" class="label amber">Alteração salva aguardando o worker</text>
-  <text x="796" y="871" class="small amber">A versão ativa permanece em uso até a próxima execução do worker.</text>
-  <text x="84" y="954" class="tiny muted">Configuração e métricas operacionais são exclusivas do Admin. Valores ilustrativos.</text>
+  <rect x="108" y="824" width="200" height="58" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="122" y="846" class="tiny muted">LOTE MÁXIMO · EDITÁVEL</text><text x="122" y="870" class="body">300 registros</text>
+  <rect x="324" y="824" width="200" height="58" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="338" y="846" class="tiny muted">PICO ESPERADO · EDITÁVEL</text><text x="338" y="870" class="body">420 por dia</text>
+  <rect x="540" y="824" width="200" height="58" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="554" y="846" class="tiny muted">JANELA · EDITÁVEL</text><text x="554" y="870" class="body">30 dias</text>
+  <rect x="756" y="824" width="180" height="58" rx="8" fill="#1D4ED8"/>
+  <text x="846" y="859" text-anchor="middle" class="small" fill="#FFFFFF">Salvar ajustes</text>
+  <rect x="952" y="824" width="376" height="58" rx="8" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
+  <text x="1140" y="859" text-anchor="middle" class="small" fill="#1D4ED8">Confirmar e reiniciar worker</text>
+  <rect x="108" y="892" width="1220" height="30" rx="8" class="lightamber"/>
+  <text x="124" y="912" class="tiny amber">Reinicia apenas o worker de lotes; não reinicia PHP-FPM. O lote atual termina com os parâmetros já carregados.</text>
+  <text x="84" y="954" class="tiny muted">P95 e lote recomendado usam dados diários completos; outros estados: sem dados, histórico insuficiente (&lt;7 dias) ou falha de leitura.</text>
 
   <!-- Cliente -->
   <rect x="48" y="1000" width="1344" height="400" rx="18" class="bg"/>
@@ -111,4 +114,33 @@
   <rect x="84" y="1696" width="1268" height="96" rx="12" class="card"/>
   <text x="108" y="1735" class="section">Resultado de importações</text><text x="108" y="1770" class="small muted">Linhas rejeitadas　 •　 38 no período selecionado</text>
   <text x="84" y="1818" class="tiny muted">Escopo da unidade fixado pelo servidor. Não há seletor de outras unidades nem dados globais.</text>
+
+  <!-- Adaptação mobile -->
+  <rect x="48" y="1870" width="1344" height="790" rx="18" class="bg"/>
+  <text x="84" y="1920" class="section">Adaptação mobile · viewport 390 px</text>
+  <text x="84" y="1948" class="small muted">Conteúdo em coluna; filtros, previsão e campos mantêm rótulos e ações visíveis.</text>
+  <rect x="520" y="1970" width="400" height="660" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="540" y="1990" width="360" height="620" rx="16" class="bg"/>
+  <rect x="540" y="1990" width="360" height="56" rx="16" fill="#FFFFFF"/>
+  <text x="560" y="2026" class="label">IEPRCard · Admin</text>
+  <text x="560" y="2082" class="heading">Visão geral</text>
+  <rect x="560" y="2100" width="320" height="42" rx="8" class="card"/>
+  <text x="576" y="2127" class="small">Todos os clientes · últimos 30 dias</text>
+  <rect x="560" y="2154" width="320" height="80" rx="10" class="card"/>
+  <text x="578" y="2182" class="tiny muted">PICO P95 · 30 DIAS COMPLETOS</text>
+  <text x="578" y="2215" class="heading">420 <tspan class="small">/ dia</tspan></text>
+  <rect x="560" y="2246" width="320" height="70" rx="10" class="lightgreen"/>
+  <text x="578" y="2274" class="tiny muted">LOTE RECOMENDADO</text>
+  <text x="578" y="2304" class="heading">420</text>
+  <text x="560" y="2350" class="label">Configuração manual</text>
+  <rect x="560" y="2362" width="320" height="48" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="574" y="2382" class="tiny muted">LOTE MÁXIMO · EDITÁVEL</text><text x="574" y="2402" class="small">300 registros</text>
+  <rect x="560" y="2418" width="320" height="48" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="574" y="2438" class="tiny muted">PICO ESPERADO · EDITÁVEL</text><text x="574" y="2458" class="small">420 por dia</text>
+  <rect x="560" y="2474" width="320" height="48" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="574" y="2494" class="tiny muted">JANELA · EDITÁVEL</text><text x="574" y="2514" class="small">30 dias</text>
+  <rect x="560" y="2530" width="320" height="40" rx="8" class="blue"/>
+  <text x="720" y="2556" text-anchor="middle" class="small" fill="#FFFFFF">Salvar ajustes</text>
+  <text x="560" y="2590" class="tiny muted">Salvar pede confirmação; reinício aplica</text>
+  <text x="560" y="2607" class="tiny muted">após o lote em andamento.</text>
 </svg>

@@ -22,7 +22,7 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 ## Validação pública
 
 - Exibir estado com rótulo e texto além da cor: ativa, suspensa, vencida, revogada ou código inválido.
-- Para cartão ativo, mostrar nome, foto quando disponível, unidade emissora e validade aplicável. Nunca mostrar CPF.
+- A consulta pública por QR mostra somente o estado da carteirinha (`ativa`, `suspensa`, `vencida`, `revogada` ou `inválida`). Não exibe nome, foto, CPF, unidade, validade nem identificadores da pessoa ou do cartão.
 - Para estados inativos ou código inválido, usar orientação genérica sem expor motivo operacional privado.
 - Disponibilizar uma ação para validar outro código, sem criar sessão nem revelar se um titular existe.
 
