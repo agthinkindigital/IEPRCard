@@ -337,7 +337,8 @@ sequenceDiagram
     Portal->>Portal: injeta {{sede.*}}, {{unidade.*}}, {{titular.categoria}}
     Portal-->>Tit: WebP frente/verso, QR dinamico, PDF se permitido
     Tit->>Val: le QR (codigo_validacao_qr)
-    Val->>DB: SELECT status_carteirinha + validade + status_conta da sede
+    Val->>DB: SELECT carteirinha + titular + tenant/unidade e conferir a mesma hierarquia
+    Note over Val,DB: Divergência de escopo ou unidade falha fechada como suspensa
     alt ativa e dentro da validade e conta adimplente
         Val-->>Tit: JSON status=ativa, motivo_codigo=ativa
     else suspensa/vencida/revogada
