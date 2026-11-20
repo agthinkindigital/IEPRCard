@@ -349,7 +349,7 @@ sequenceDiagram
     Note over DB: Sem ID de titular/carteirinha, token, IP ou User-Agent; rate limit usa hash efêmero de IP
 ```
 
-A leitura privada deriva o titular da sessão `IEPRCARDPORTAL`, revalida acesso, tenant e unidade no banco e não aceita IDs de titular enviados pelo cliente. O token individual é bearer de 32 bytes: somente seu digest SHA-256 fica em `titulares.token_unico_carteira`.
+A leitura privada deriva o titular da sessão `IEPRCARDPORTAL`, revalida acesso, tenant e unidade no banco e não aceita IDs de titular enviados pelo cliente. A entrega de frente/verso WebP usa `/portal/carteirinha/{id}/{lado}`: o ID só seleciona uma carteirinha já autorizada pela consulta da sessão e o arquivo é lido pelo resolvedor privado do tenant; respostas são `private, no-store`. O token individual é bearer de 32 bytes: somente seu digest SHA-256 fica em `titulares.token_unico_carteira`.
 
 ### 4.6. DER-alvo do produto (schema do MVP definido no ADR-0005)
 

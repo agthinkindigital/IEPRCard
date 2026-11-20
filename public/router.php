@@ -9,6 +9,13 @@ if (preg_match('~^/validar(?:/([^/]+))?/?$~D', $requestPath, $matches) === 1) {
     return true;
 }
 
+if (preg_match('~^/portal/carteirinha/([1-9][0-9]*)/([^/]+)$~D', $requestPath, $matches) === 1) {
+    $_GET['carteirinha_id'] = $matches[1];
+    $_GET['lado'] = $matches[2];
+    require __DIR__ . '/portal/carteirinha.php';
+    return true;
+}
+
 $publicFile = realpath(__DIR__ . $requestPath);
 if ($requestPath !== '/' && $publicFile !== false
     && str_starts_with($publicFile, realpath(__DIR__) . DIRECTORY_SEPARATOR) && is_file($publicFile)) {
