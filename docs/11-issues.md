@@ -182,6 +182,6 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 
 
 
-* **Nova `ISSUE-012B`: Experiência de Login Direto do Titular e Variáveis Hierárquicas (`{{sede.*}}` / `{{unidade.*}}`)** — autenticação e consulta privada em [#66](https://github.com/agthinkindigital/IEPRCard/issues/66); entrega privada das imagens frente/verso em [#67](https://github.com/agthinkindigital/IEPRCard/issues/67). A interface continua dependente da revisão e aprovação explícita do mockup e guia funcional.
+* **Nova `ISSUE-012B`: Experiência de Login Direto do Titular e Variáveis Hierárquicas (`{{sede.*}}` / `{{unidade.*}}`)** — autenticação e consulta privada em [#66](https://github.com/agthinkindigital/IEPRCard/issues/66); entrega privada das imagens frente/verso verificada na [#67](https://github.com/agthinkindigital/IEPRCard/issues/67) e no CI [44668338014](https://github.com/agthinkindigital/IEPRCard/actions/runs/44668338014). A interface continua dependente da revisão e aprovação explícita do mockup e guia funcional.
 * **Arquivos:** portal do titular em `public/` e referências privadas servidas após autenticação; `includes/motor_mapeamento.php`
 * **Descrição:** Autenticar o titular por CPF + data de nascimento ou token único e aterrissar na própria carteirinha da Sede ou do Subcliente, exibindo a referência da Sede matriz e metadados de Sede, unidade e categoria/cargo. A validação pública por QR permanece sem dados pessoais. A disponibilidade de PDF depende de contrato de permissão efetiva ainda não definido no schema.
