@@ -58,7 +58,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | # | Conflito | Onde | Resolução adotada neste SAD | ADR |
 | --- | --- | --- | --- | --- |
 | C1 | Dois ERDs com nomes diferentes para o mesmo conceito: `tenant_id` vs `cliente_sede_id`; `USUARIOS` vs `USUARIOS_EQUIPE` | `docs/03` §2.1 e §4 | Nome canônico: `tenant_id` = Cliente Sede; `subcliente_id` nullable = unidade; tabela `usuarios` com `perfil_acesso_id` | 0005 |
-| C2 | `TDD-01` espera "todas as 15 tabelas", divergindo do schema canônico | `docs/10` TDD-01 × `docs/03` §2.2 | Atualizar a asserção para o conjunto canônico de ADR-0005; não manter o número "15" como especificação | 0005 |
+| C2 | `TDD-01` esperava "todas as 15 tabelas", divergindo do schema canônico | `docs/10` TDD-01 × antigo `docs/03` | Resolvido: TDD-01 verifica as 27 tabelas do MVP e `docs/03` aponta às fontes canônicas sem duplicar ERD | 0005 |
 | C3 | Credenciais em `configuracoes_pagamento` (linha única `id=1`) vs `configuracoes_gateway` | `docs/03` §2.2 × `docs/07` | `configuracoes_gateway` é o nome canônico do modelo financeiro futuro; fora do schema MVP | 0005 |
 | C4 | Máquina de estados financeira divergente: `ativo/pendente/vencido/bloqueado` × `trial → ativo → inadimplente → suspenso → cancelado` × `cortesia` | `docs/03`, `docs/07`, `docs/01` | Estado-alvo único `status_conta` + `regime_cobranca` + `isento_pagamento`; no MVP, ativação manual. Ver §5.4 | 0008 |
 | C5 | RBAC em `includes/rbac.php` (pode()) × `includes/motor_permissoes.php` (tabelas `papeis`/`permissoes`) | `docs/04` × `docs/02` | Um único motor `motor_permissoes.php` expondo `pode()`; tabelas `perfis_acesso`/`permissoes`/`usuario_permissoes` | 0004 |
@@ -712,7 +712,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | R4 | Query fora do TenantScope | Vazamento cross-tenant | Helper obrigatório, testes negativos, code review | Alta | 0003 |
 | R5 | Ausência de CSRF/CSP/HttpOnly | ATO e XSS | NFR-20 + specs de segurança | Alta | 0008 |
 | R6 | Credenciais financeiras em texto (fase futura) | Comprometimento financeiro | Cifrar segredos e fazer secret scanning ao implementar gateways | Alta, antes da fase financeira | 0008 |
-| R7 | Divergência dos dois ERDs + teste "15 tabelas" | Retrabalho e falsa sensação de cobertura | Schema canônico e TDD-01 atualizado | Alta | 0005 |
+| R7 | Divergência dos dois ERDs + teste "15 tabelas" | Retrabalho e falsa sensação de cobertura | Mitigado: SAD e catálogo são canônicos; TDD-01 verifica 27 tabelas | Resolvida | 0005 |
 | R8 | SQLite com um escritor só | Travamento em pico de lote | WAL, worker único de escrita, migrar para MySQL em prod | Média | 0002 |
 | R9 | N+1 em telemetria e listas de titulares | Latência imprevisível | Índices + batch loading; revisar `EXPLAIN QUERY PLAN` | Média | 0005 |
 | R10 | Sem pipeline de deploy/backup | Rollback manual, perda de dados | Release atômico, backup testado, Gates 1–5 | Alta | 0012 |
