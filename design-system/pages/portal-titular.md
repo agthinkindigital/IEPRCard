@@ -35,4 +35,4 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 
 ## Dependências para implementação
 
-O mockup e o comportamento precisam de aprovação explícita antes de criar Issues de frontend ou implementar telas. Login de titular, carregamento autorizado das emissões, geração/validação de token QR e resposta pública sem CPF ainda precisam de contratos backend rastreáveis nas Issues do E04. Não adicionar esses contratos silenciosamente à camada visual.
+O mockup e o comportamento precisam de aprovação explícita antes de criar Issues de frontend ou implementar telas. A Issue [#66](https://github.com/agthinkindigital/IEPRCard/issues/66) rastreia os serviços backend de autenticação e consulta privada; a rota QR minimizada está na [#65](https://github.com/agthinkindigital/IEPRCard/issues/65). O contrato de permissão para download de PDF ainda não está implementado no schema. Não adicionar essas regras silenciosamente à camada visual.

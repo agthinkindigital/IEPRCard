@@ -332,7 +332,8 @@ sequenceDiagram
 
     Tit->>Portal: CPF + data nascimento OU token_unico_carteira
     Portal->>Scope: resolve tenant/subcliente do host ou token
-    Scope->>DB: SELECT titular + carteirinha WHERE escopo E ativo=1
+    Scope->>DB: valida tenant/unidade, acesso liberado e titular ativo
+    Scope->>DB: SELECT carteirinhas ativas e vigentes do titular no mesmo escopo
     DB-->>Portal: carteirinha(s) do titular
     Portal->>Portal: injeta {{sede.*}}, {{unidade.*}}, {{titular.categoria}}
     Portal-->>Tit: WebP frente/verso, QR dinamico, PDF se permitido
@@ -421,7 +422,7 @@ erDiagram
         int subcliente_id FK "NULL=Sede"
         int categoria_id FK
         varchar cpf
-        varchar token_unico_carteira UK
+        varchar token_unico_carteira UK "SHA-256 digest; raw token only in the holder link"
         varchar foto_url
         int acesso_app_liberado
         int ativo
@@ -639,7 +640,7 @@ Estados propagados para todos os Subclientes filhos; `carteirinha.status_carteir
 | SQLi | 100% prepared statements; nenhuma concatenação de valor do usuário em SQL |
 | XSS | escape na saída HTML, CSP restritiva, sanitização de HTML vindo de planilha/IA |
 | CSRF | token por sessão em todo POST autenticado; `SameSite=Lax` |
-| Auth | senha com `password_hash`, identidade e escopo revalidados no banco; sessões tenant e `superadmin` isoladas; token de carteira com 32+ bytes aleatórios, compare com `hash_equals` |
+| Auth | senha com `password_hash`, identidade e escopo revalidados no banco; sessões tenant, titular e `superadmin` isoladas; token de carteira com 32 bytes aleatórios, apenas digest SHA-256 persistido |
 | Credenciais | Segredos de integrações ativas fora do Git; credenciais financeiras em `configuracoes_gateway` cifradas quando pagamentos forem priorizados |
 | Escalonamento | `efetivas = (papel ∪ overrides) ∩ teto_plano ∩ teto_cliente`; negação por padrão; teste TDD-02B |
 | Upload | whitelist de formatos e conteúdo, limite de tamanho, `realpath()`, storage fora da raiz pública e chave opaca |

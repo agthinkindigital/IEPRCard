@@ -182,6 +182,6 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 
 
 
-* **Nova `ISSUE-012B`: Experiência de Login Direto do Titular e Variáveis Hierárquicas (`{{sede.*}}` / `{{unidade.*}}`)**
-* **Arquivos:** `carteira/login.php`, `carteira/minha-carteirinha.php`, `includes/motor_mapeamento.php`
-* **Descrição:** Criar a autenticação simplificada do Membro/Titular que aterrissa direto na visualização da sua carteirinha (da Sede ou do Subcliente, exibindo a referência da Sede matriz) e injetar automaticamente os metadados de Sede, Subcliente e Categoria/Cargo no motor de renderização WebP/PDF.
+* **Nova `ISSUE-012B`: Experiência de Login Direto do Titular e Variáveis Hierárquicas (`{{sede.*}}` / `{{unidade.*}}`)** — os serviços backend de autenticação e consulta privada estão na [#66](https://github.com/agthinkindigital/IEPRCard/issues/66); as telas continuam dependentes da aprovação explícita do mockup e do guia funcional.
+* **Arquivos:** portal do titular em `public/` e referências privadas servidas após autenticação; `includes/motor_mapeamento.php`
+* **Descrição:** Autenticar o titular por CPF + data de nascimento ou token único e aterrissar na própria carteirinha da Sede ou do Subcliente, exibindo a referência da Sede matriz e metadados de Sede, unidade e categoria/cargo. A validação pública por QR permanece sem dados pessoais. A disponibilidade de PDF depende de contrato de permissão efetiva ainda não definido no schema.
