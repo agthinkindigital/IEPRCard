@@ -12,7 +12,7 @@ $dbPath = $directory . DIRECTORY_SEPARATOR . 'portal.sqlite';
 $privateRoot = $directory . DIRECTORY_SEPARATOR . 'private';
 $ratePath = $directory . DIRECTORY_SEPARATOR . 'rate.json';
 $oldEnvironment = [];
-foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'IEPR_PRIVATE_STORAGE_PATH', 'IEPRCARD_PORTAL_RATE_LIMIT_PATH', 'TENANT_BASE_DOMAIN'] as $key) {
+foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD', 'IEPR_PRIVATE_STORAGE_PATH', 'IEPRCARD_PORTAL_RATE_LIMIT_PATH', 'TENANT_BASE_DOMAIN'] as $key) {
     $value = getenv($key);
     $oldEnvironment[$key] = $value === false ? null : $value;
 }
@@ -26,13 +26,28 @@ $oldPortalCookie = $_COOKIE['IEPRCARDPORTAL'] ?? null;
 if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
 session_save_path($directory);
 putenv('APP_ENV=dev');
-putenv('DB_DRIVER=sqlite');
-putenv('DB_SQLITE_PATH=' . $dbPath);
 putenv('IEPR_PRIVATE_STORAGE_PATH=' . $privateRoot);
 putenv('IEPRCARD_PORTAL_RATE_LIMIT_PATH=' . $ratePath);
 putenv('TENANT_BASE_DOMAIN=ieprcard.test');
 
-$pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $dbPath]);
+$testDbConfiguration = ['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $dbPath];
+$mysqlTestSettings = [
+    'DB_HOST' => getenv('TEST_MYSQL_HOST'),
+    'DB_PORT' => getenv('TEST_MYSQL_PORT') ?: '3306',
+    'DB_DATABASE' => getenv('TEST_MYSQL_DATABASE'),
+    'DB_USERNAME' => getenv('TEST_MYSQL_USERNAME'),
+    'DB_PASSWORD' => getenv('TEST_MYSQL_PASSWORD'),
+];
+if (in_array('mysql', PDO::getAvailableDrivers(), true)
+    && count(array_filter($mysqlTestSettings, static fn (mixed $value): bool => $value !== false)) === count($mysqlTestSettings)) {
+    $testDbConfiguration = ['DB_DRIVER' => 'mysql'] + $mysqlTestSettings;
+}
+foreach (['DB_DRIVER', 'DB_SQLITE_PATH', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD'] as $key) {
+    putenv($key);
+}
+foreach ($testDbConfiguration as $key => $value) putenv($key . '=' . $value);
+
+$pdo = dbConnect($testDbConfiguration);
 schemaGarantirEstrutura($pdo, 'test');
 schemaAplicarMigracoes($pdo, 'test');
 $fixture = tenantTestSeed($pdo);
@@ -152,13 +167,13 @@ try {
     if ($status !== 405) throw new RuntimeException('The private artifact endpoint must accept GET only.');
     [$status] = $request('/portal/carteirinha/999999999/frente', $sessionCookie);
     if ($status !== 404) throw new RuntimeException('An unknown card ID must fail closed.');
-    $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $dbPath]);
+    $pdo = dbConnect($testDbConfiguration);
     $pdo->prepare('UPDATE carteirinhas_emitidas SET webp_frente_url = :key WHERE id = :id')
         ->execute(['key' => 'private://' . $fixture['tenant_id'] . '/' . str_repeat('a', 48) . '.webp', 'id' => $cardIds[$holderId]]);
     unset($pdo);
     [$status, $body] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/frente', $sessionCookie);
     if ($status !== 503 || $body !== '') throw new RuntimeException('Missing private storage must fail generically without file details.');
-    fwrite(STDOUT, "PASS: private titular WebP artifacts are served through authenticated HTTP with no-store headers.\n");
+    fwrite(STDOUT, 'PASS: private titular WebP artifacts are served through authenticated HTTP (' . $testDbConfiguration['DB_DRIVER'] . ") with no-store headers.\n");
 } finally {
     proc_terminate($process);
     proc_close($process);
@@ -174,6 +189,14 @@ try {
         if ($value === null) putenv($key);
         else putenv($key . '=' . $value);
     }
+    $cleanupPdo = dbConnect($testDbConfiguration);
+    $cleanupPdo->prepare('DELETE FROM carteirinhas_emitidas WHERE id IN (:card_a, :card_b)')
+        ->execute(['card_a' => $cardIds[$holderId], 'card_b' => $cardIds[$foreignHolderId]]);
+    $cleanupPdo->prepare('DELETE FROM titulares WHERE id IN (:holder_a, :holder_b)')
+        ->execute(['holder_a' => $holderId, 'holder_b' => $foreignHolderId]);
+    $cleanupPdo->prepare('DELETE FROM designs_carteirinha WHERE id = :id')->execute(['id' => $designId]);
+    tenantTestCleanup($cleanupPdo, $fixture);
+    unset($cleanupPdo);
     foreach (glob($directory . DIRECTORY_SEPARATOR . '*') ?: [] as $path) {
         if (is_file($path)) @unlink($path);
         elseif (is_dir($path)) {
