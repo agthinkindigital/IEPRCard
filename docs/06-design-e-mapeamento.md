@@ -84,7 +84,7 @@ O formato executável é:
 
 O motor considera somente variáveis declaradas em `elementos`. Uma variável de texto com `obrigatorio: true` precisa de mapeamento e valor não vazio; ausências geram erro estruturado com código e caminho, sem incluir dados de titulares. Variáveis opcionais sem mapeamento ou valor resolvem para string vazia. `_sistema_url_validacao` nunca aceita origem configurada pelo cliente ou job: seu valor entra separadamente pelo contexto de sistema. Em qualquer erro, nenhum mapa parcial de valores é retornado. A chave de idempotência do job também vincula o mapa: repetir a chave com outro mapeamento resulta em conflito, e as tentativas do mesmo job reutilizam o JSON persistido.
 
-O catálogo/editor da Sede persiste mapas e mapeamentos fixos em `designs_carteirinha`. A importação persiste separadamente a relação entre colunas do arquivo e campos de titular; cada job de emissão pode persistir seu próprio mapeamento de variáveis do design em `lotes_importacao.mapa_de_para_usado_json`. A fatia backend está na [Issue #72](https://github.com/agthinkindigital/IEPRCard/issues/72); o wizard de emissão permanece sujeito a mockup e guia funcional aprovados antes da implementação. A prévia do editor usa o renderizador WebP com valores sintéticos e não consulta titulares.
+O catálogo/editor da Sede persiste mapas e mapeamentos fixos em `designs_carteirinha`. A importação persiste separadamente a relação entre colunas do arquivo e campos de titular; cada job de emissão pode persistir seu próprio mapeamento de variáveis do design em `lotes_importacao.mapa_de_para_usado_json`. A fatia backend está na [Issue #72](https://github.com/agthinkindigital/IEPRCard/issues/72); o guia funcional do wizard está em [`docs/userguide/emitir-carteirinhas.md`](userguide/emitir-carteirinhas.md). A prévia do editor usa o renderizador WebP com valores sintéticos e não consulta titulares.
 
 ### Catálogo, rascunhos e edição segura
 
@@ -99,5 +99,5 @@ Design criado ou editado pelo catálogo permanece com `ativo = 0`; publicação 
 
 **Emissão com mapeamento de campos**
 
-![Emissão com mapeamento de campos](/telas/10-emitir.png)
+![Wizard de emissão e mapeamento de carteirinhas](../design-system/mockups/emitir-carteirinhas-mockup.svg)
 

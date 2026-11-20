@@ -84,7 +84,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 * **ISSUE-010: Wizard de Mapeamento de Dados (Fixo vs Etapa da Geração - Req 17 e 17.1)**
 * **Arquivos:** `includes/motor_mapeamento.php`, `painel/mapear-gerar.php`
-* **Descrição:** Ao selecionar 1 titular ou um lote de dados, permitir usar o mapeamento fixo do layout ou abrir a etapa interativa que liga campos do titular a variáveis do design, combina campos em templates ou define valores fixos, com preview antes de confirmar. Persistência/aplicação do mapa por job e vínculo com idempotência: [GitHub #72](https://github.com/agthinkindigital/IEPRCard/issues/72). O mapa de colunas da importação permanece independente. A interface requer mockup e guia funcional aprovados.
+* **Descrição:** Ao selecionar 1 titular ou um lote de dados, permitir usar o mapeamento fixo do layout ou abrir a etapa interativa que liga campos do titular a variáveis do design, combina campos em templates ou define valores fixos, com preview antes de confirmar. Persistência/aplicação do mapa por job e vínculo com idempotência foram concluídos na [GitHub #72](https://github.com/agthinkindigital/IEPRCard/issues/72). O mapa de colunas da importação permanece independente. Mockup e guia do wizard aguardam aprovação explícita: [SVG](../design-system/mockups/emitir-carteirinhas-mockup.svg) e [guia funcional](userguide/emitir-carteirinhas.md).
 * Critério de Aceite:Um mesmo lote de dados importados deve conseguir gerar carteirinhas em 2 designs diferentes do mesmo Cliente apenas trocando o layout selecionado.
 
 

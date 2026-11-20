@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1780" height="1100" viewBox="0 0 1780 1100" role="img" aria-labelledby="title description">
+  <title id="title">Wizard de emissão e mapeamento de carteirinhas</title>
+  <desc id="description">Mockup do passo de mapeamento para emitir carteirinhas, com origem e design resumidos, edição opcional por job, preview de amostra e versão adaptada ao celular.</desc>
+  <rect width="1780" height="1100" fill="#E9EEF5"/>
+  <g font-family="Inter, Segoe UI, Arial, sans-serif">
+    <text x="28" y="38" font-size="14" font-weight="700" letter-spacing="1" fill="#475569">DESKTOP · 1440 PX</text>
+    <text x="1332" y="38" font-size="14" font-weight="700" letter-spacing="1" fill="#475569">CELULAR · 390 PX</text>
+
+    <!-- Desktop frame -->
+    <g ><rect x="22" y="55" width="1275" height="1015" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/></g>
+    <rect x="22" y="55" width="1275" height="68" rx="14" fill="#FFFFFF"/>
+    <path d="M22 123h1275" stroke="#DCE3EC"/>
+    <rect x="45" y="72" width="34" height="34" rx="8" fill="#1D4ED8"/>
+    <path d="M54 81h16v16H54zM58 77h8v4h-8z" fill="#FFFFFF"/>
+    <text x="88" y="96" font-size="18" font-weight="700" fill="#0F172A">IEPRCard</text>
+    <text x="222" y="83" font-size="12" fill="#64748B">Carteirinhas</text>
+    <text x="281" y="83" font-size="12" fill="#64748B">/</text>
+    <text x="297" y="83" font-size="12" fill="#0F172A">Nova emissão</text>
+    <text x="222" y="105" font-size="16" font-weight="700" fill="#0F172A">Emitir carteirinhas</text>
+    <rect x="1166" y="71" width="105" height="38" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1218" y="95" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Cancelar</text>
+
+    <!-- Desktop navigation -->
+    <rect x="22" y="123" width="180" height="947" fill="#FFFFFF"/>
+    <path d="M202 123v947" stroke="#DCE3EC"/>
+    <text x="45" y="160" font-size="12" font-weight="700" letter-spacing="1" fill="#64748B">ÁREA DA SEDE</text>
+    <text x="72" y="204" font-size="13" fill="#475569">Visão geral</text>
+    <text x="72" y="246" font-size="13" fill="#475569">Titulares</text>
+    <rect x="36" y="264" width="152" height="40" rx="7" fill="#EFF6FF"/>
+    <rect x="48" y="275" width="16" height="16" rx="3" fill="none" stroke="#1D4ED8" stroke-width="2"/>
+    <text x="72" y="290" font-size="13" font-weight="600" fill="#1D4ED8">Carteirinhas</text>
+    <text x="72" y="330" font-size="13" fill="#475569">Designs</text>
+    <text x="72" y="372" font-size="13" fill="#475569">Unidades</text>
+    <path d="M45 399h132" stroke="#DCE3EC"/>
+    <text x="45" y="1007" font-size="12" font-weight="600" fill="#0F172A">Sede Exemplo</text>
+    <text x="45" y="1025" font-size="12" fill="#64748B">Emissão de carteirinhas</text>
+
+    <!-- Main area -->
+    <text x="230" y="158" font-size="21" font-weight="700" fill="#0F172A">Nova emissão</text>
+    <text x="230" y="182" font-size="13" fill="#475569">Revise a origem, personalize os campos e confira a amostra antes de adicionar à fila.</text>
+
+    <!-- Stepper -->
+    <rect x="230" y="202" width="1042" height="62" rx="9" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <circle cx="262" cy="233" r="13" fill="#166534"/><text x="262" y="237" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">1</text>
+    <text x="283" y="238" font-size="12" font-weight="600" fill="#166534">Origem e design</text>
+    <path d="M402 233h44" stroke="#CBD5E1" stroke-width="2"/>
+    <circle cx="469" cy="233" r="13" fill="#1D4ED8"/><text x="469" y="237" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
+    <text x="490" y="238" font-size="12" font-weight="700" fill="#1D4ED8">Mapeamento</text>
+    <path d="M582 233h44" stroke="#CBD5E1" stroke-width="2"/>
+    <circle cx="649" cy="233" r="13" fill="#F1F5F9" stroke="#94A3B8"/><text x="649" y="237" text-anchor="middle" font-size="12" font-weight="700" fill="#64748B">3</text>
+    <text x="670" y="238" font-size="12" fill="#64748B">Revisar e adicionar à fila</text>
+
+    <!-- Source summary -->
+    <rect x="230" y="280" width="1042" height="92" rx="9" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <text x="250" y="303" font-size="12" font-weight="700" letter-spacing=".8" fill="#64748B">ORIGEM · LOTE CONCLUÍDO</text>
+    <text x="250" y="327" font-size="14" font-weight="700" fill="#0F172A">Importação de associados · 24 titulares</text>
+    <text x="250" y="350" font-size="12" fill="#475569">Unidade: Sede · arquivo de origem já processado</text>
+    <path d="M645 296v58" stroke="#DCE3EC"/>
+    <text x="670" y="303" font-size="12" font-weight="700" letter-spacing=".8" fill="#64748B">DESIGN · ATIVO</text>
+    <text x="670" y="327" font-size="14" font-weight="700" fill="#0F172A">Credencial de associado</text>
+    <text x="670" y="350" font-size="12" fill="#475569">Modo de saída: WebP digital</text>
+    <rect x="1103" y="315" width="145" height="31" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1175" y="335" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Alterar seleção</text>
+
+    <!-- Mapping panel -->
+    <rect x="230" y="388" width="605" height="600" rx="10" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="252" y="418" font-size="16" font-weight="700" fill="#0F172A">Mapeamento deste job</text>
+    <text x="252" y="440" font-size="12" fill="#475569">A personalização vale só para esta emissão; o design e a importação não mudam.</text>
+    <rect x="252" y="456" width="560" height="52" rx="7" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <rect x="260" y="464" width="177" height="36" rx="6" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="348" y="487" text-anchor="middle" font-size="12" fill="#475569">Usar mapa do design</text>
+    <rect x="442" y="464" width="208" height="36" rx="6" fill="#1D4ED8"/>
+    <text x="546" y="487" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">Personalizar neste job</text>
+    <text x="671" y="486" font-size="12" fill="#64748B">Mapeamento 1.0</text>
+
+    <text x="252" y="534" font-size="12" font-weight="700" letter-spacing=".7" fill="#64748B">VARIÁVEL DO DESIGN</text>
+    <text x="493" y="534" font-size="12" font-weight="700" letter-spacing=".7" fill="#64748B">ORIGEM OU VALOR</text>
+    <path d="M252 545h560" stroke="#DCE3EC"/>
+    <text x="252" y="571" font-size="12" font-weight="600" fill="#0F172A">Nome do titular</text>
+    <text x="252" y="590" font-size="12" fill="#64748B">`nome_completo` · obrigatório</text>
+    <rect x="493" y="556" width="296" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="507" y="582" font-size="12" fill="#334155">Campo · titular.nome_completo</text>
+    <text x="770" y="582" font-size="12" fill="#64748B">⌄</text>
+    <path d="M252 608h560" stroke="#E2E8F0"/>
+    <text x="252" y="635" font-size="12" font-weight="600" fill="#0F172A">Matrícula</text>
+    <text x="252" y="654" font-size="12" fill="#64748B">`matricula` · opcional</text>
+    <rect x="493" y="620" width="296" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="507" y="646" font-size="12" fill="#334155">Campo · titular.matricula</text>
+    <text x="770" y="646" font-size="12" fill="#64748B">⌄</text>
+    <path d="M252 672h560" stroke="#E2E8F0"/>
+    <text x="252" y="699" font-size="12" font-weight="600" fill="#0F172A">Cargo</text>
+    <text x="252" y="718" font-size="12" fill="#64748B">`cargo` · opcional</text>
+    <rect x="493" y="684" width="296" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="507" y="710" font-size="12" fill="#334155">Template · cargo + dados_extras.setor</text>
+    <text x="770" y="710" font-size="12" fill="#64748B">⌄</text>
+    <path d="M252 736h560" stroke="#E2E8F0"/>
+    <text x="252" y="763" font-size="12" font-weight="600" fill="#0F172A">Validade</text>
+    <text x="252" y="782" font-size="12" fill="#64748B">`validade` · opcional</text>
+    <rect x="493" y="748" width="296" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="507" y="774" font-size="12" fill="#334155">Valor fixo · 12/2027</text>
+    <text x="770" y="774" font-size="12" fill="#64748B">⌄</text>
+    <rect x="252" y="811" width="560" height="62" rx="7" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <circle cx="272" cy="832" r="7" fill="#DBEAFE" stroke="#1D4ED8"/>
+    <text x="289" y="835" font-size="12" font-weight="600" fill="#0F172A">Foto do titular</text>
+    <text x="289" y="853" font-size="12" fill="#475569">Usa o campo foto vinculado ao titular.</text>
+    <rect x="550" y="825" width="10" height="10" rx="2" fill="#DBEAFE" stroke="#1D4ED8"/>
+    <text x="568" y="835" font-size="12" font-weight="600" fill="#0F172A">QR de validação</text>
+    <text x="568" y="853" font-size="12" fill="#475569">Gerado pelo sistema.</text>
+    <text x="252" y="905" font-size="12" fill="#475569">Campos obrigatórios sem valor impedem a confirmação.</text>
+    <rect x="252" y="923" width="157" height="38" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="330" y="947" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Voltar: origem e design</text>
+    <rect x="610" y="923" width="202" height="38" rx="7" fill="#1D4ED8"/>
+    <text x="711" y="947" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">Validar e revisar emissão</text>
+
+    <!-- Preview panel -->
+    <rect x="850" y="388" width="422" height="600" rx="10" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="872" y="418" font-size="16" font-weight="700" fill="#0F172A">Prévia da emissão</text>
+    <text x="872" y="440" font-size="12" fill="#475569">Registro representativo · não cria job nem consome cota</text>
+    <rect x="872" y="460" width="378" height="40" rx="7" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <circle cx="890" cy="480" r="6" fill="#1D4ED8"/>
+    <text x="905" y="484" font-size="12" font-weight="600" fill="#1E40AF">Mapeamento válido · 4 variáveis revisadas</text>
+    <text x="872" y="530" font-size="12" font-weight="700" letter-spacing=".7" fill="#64748B">FRENTE</text>
+    <rect x="888" y="543" width="346" height="218" rx="12" fill="#EAF2FF" stroke="#CBD5E1"/>
+    <rect x="906" y="561" width="310" height="182" rx="7" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <circle cx="951" cy="620" r="30" fill="#DBEAFE"/>
+    <circle cx="951" cy="611" r="11" fill="#93C5FD"/>
+    <path d="M930 641c4-18 38-18 42 0" fill="#93C5FD"/>
+    <text x="997" y="605" font-size="14" font-weight="700" fill="#0F172A">Ana Martins</text>
+    <text x="997" y="628" font-size="12" fill="#475569">Matrícula · 024</text>
+    <text x="997" y="650" font-size="12" fill="#475569">Associada</text>
+    <text x="997" y="708" font-size="12" fill="#64748B">Prévia do titular selecionado · escopo autorizado</text>
+    <text x="872" y="788" font-size="12" font-weight="700" letter-spacing=".7" fill="#64748B">VERSO · QR DO SISTEMA</text>
+    <rect x="888" y="801" width="346" height="116" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <rect x="908" y="817" width="84" height="84" rx="3" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <path d="M918 827h20v20h-20zM962 827h20v20h-20zM918 871h20v20h-20zM943 827v9h8v9h10v-10h-8v-8M944 855h7v7h-7zM958 866h8v8h-8zM944 881h8v10h-8zM974 858h7v7h-7z" fill="#0F172A"/>
+    <text x="1008" y="846" font-size="12" font-weight="600" fill="#0F172A">URL de validação</text>
+    <text x="1008" y="866" font-size="12" fill="#475569">O valor final é gerado no job.</text>
+    <text x="1008" y="884" font-size="12" fill="#475569">A chave não pode ser editada.</text>
+    <rect x="872" y="931" width="178" height="38" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="961" y="955" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Trocar amostra</text>
+    <rect x="1060" y="931" width="190" height="38" rx="7" fill="#FFFFFF" stroke="#1D4ED8"/>
+    <text x="1155" y="955" text-anchor="middle" font-size="12" font-weight="600" fill="#1D4ED8">Atualizar prévia</text>
+
+    <!-- Mobile frame -->
+    <g ><rect x="1320" y="55" width="438" height="1015" rx="24" fill="#FFFFFF" stroke="#DCE3EC"/></g>
+    <rect x="1320" y="55" width="438" height="66" rx="24" fill="#FFFFFF"/>
+    <path d="M1320 121h438" stroke="#DCE3EC"/>
+    <rect x="1342" y="72" width="34" height="34" rx="8" fill="#1D4ED8"/>
+    <path d="M1351 81h16v16h-16zM1355 77h8v4h-8z" fill="#FFFFFF"/>
+    <text x="1384" y="96" font-size="17" font-weight="700" fill="#0F172A">IEPRCard</text>
+    <text x="1729" y="96" text-anchor="end" font-size="12" font-weight="600" fill="#1D4ED8">Fechar</text>
+    <text x="1342" y="151" font-size="17" font-weight="700" fill="#0F172A">Emitir carteirinhas</text>
+    <text x="1342" y="173" font-size="12" fill="#475569">Passo 2 de 3 · Mapeamento</text>
+    <rect x="1342" y="188" width="394" height="6" rx="3" fill="#E2E8F0"/>
+    <rect x="1342" y="188" width="263" height="6" rx="3" fill="#1D4ED8"/>
+
+    <rect x="1342" y="211" width="394" height="86" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+    <text x="1358" y="233" font-size="12" font-weight="700" letter-spacing=".7" fill="#64748B">ORIGEM · 24 TITULARES</text>
+    <text x="1358" y="254" font-size="12" font-weight="700" fill="#0F172A">Importação de associados</text>
+    <text x="1358" y="277" font-size="12" fill="#475569">Credencial de associado · WebP digital</text>
+
+    <text x="1342" y="327" font-size="14" font-weight="700" fill="#0F172A">Mapeamento deste job</text>
+    <text x="1342" y="347" font-size="12" fill="#475569">Não altera o design nem a importação.</text>
+    <rect x="1342" y="361" width="394" height="40" rx="7" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <rect x="1348" y="367" width="178" height="28" rx="5" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="1437" y="385" text-anchor="middle" font-size="12" fill="#475569">Usar mapa do design</text>
+    <rect x="1531" y="367" width="199" height="28" rx="5" fill="#1D4ED8"/>
+    <text x="1630" y="385" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">Personalizar neste job</text>
+
+    <rect x="1342" y="416" width="394" height="106" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="1358" y="438" font-size="12" font-weight="700" fill="#0F172A">Nome do titular <tspan font-size="12" font-weight="400" fill="#92400E">· obrigatório</tspan></text>
+    <rect x="1358" y="449" width="362" height="40" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1370" y="474" font-size="12" fill="#334155">Campo · titular.nome_completo</text>
+    <text x="1704" y="474" font-size="12" fill="#64748B">⌄</text>
+    <text x="1358" y="507" font-size="12" fill="#475569">Vem do registro do titular.</text>
+
+    <rect x="1342" y="532" width="394" height="106" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="1358" y="554" font-size="12" font-weight="700" fill="#0F172A">Matrícula <tspan font-size="12" font-weight="400" fill="#64748B">· opcional</tspan></text>
+    <rect x="1358" y="565" width="362" height="40" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1370" y="590" font-size="12" fill="#334155">Campo · titular.matricula</text>
+    <text x="1704" y="590" font-size="12" fill="#64748B">⌄</text>
+    <text x="1358" y="623" font-size="12" fill="#475569">Deixe vazio se não aparecer no cartão.</text>
+
+    <rect x="1342" y="648" width="394" height="72" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <circle cx="1362" cy="669" r="6" fill="#1D4ED8"/>
+    <text x="1377" y="673" font-size="12" font-weight="600" fill="#1E40AF">Prévia com o titular selecionado</text>
+    <text x="1358" y="696" font-size="12" fill="#475569">No seu escopo; sem job ou reserva de cota.</text>
+
+    <rect x="1342" y="733" width="394" height="181" rx="9" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <text x="1358" y="757" font-size="12" font-weight="700" fill="#0F172A">Prévia · frente</text>
+    <rect x="1360" y="771" width="358" height="123" rx="10" fill="#EAF2FF" stroke="#CBD5E1"/>
+    <rect x="1372" y="783" width="334" height="99" rx="6" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <circle cx="1410" cy="832" r="20" fill="#DBEAFE"/>
+    <circle cx="1410" cy="826" r="7" fill="#93C5FD"/>
+    <path d="M1396 845c3-12 25-12 28 0" fill="#93C5FD"/>
+    <text x="1443" y="824" font-size="12" font-weight="700" fill="#0F172A">Ana Martins</text>
+    <text x="1443" y="842" font-size="12" fill="#475569">Matrícula · 024</text>
+    <text x="1443" y="860" font-size="12" fill="#475569">Associada</text>
+
+    <rect x="1320" y="936" width="438" height="134" rx="0" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <rect x="1342" y="956" width="176" height="42" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+    <text x="1430" y="982" text-anchor="middle" font-size="12" font-weight="600" fill="#334155">Voltar</text>
+    <rect x="1526" y="956" width="210" height="42" rx="7" fill="#1D4ED8"/>
+    <text x="1631" y="982" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">Revisar emissão</text>
+    <text x="1539" y="1021" text-anchor="middle" font-size="12" fill="#64748B">Confirmar e adicionar à fila no passo 3</text>
+  </g>
+</svg>
