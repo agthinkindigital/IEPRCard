@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/config/tenant_auth.php';
 require_once dirname(__DIR__) . '/config/motor_permissoes.php';
 require_once dirname(__DIR__) . '/config/business_telemetry.php';
 require_once dirname(__DIR__) . '/config/operational_batch_metrics.php';
+require_once dirname(__DIR__) . '/config/operational_configuration.php';
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: private, no-store, max-age=0');
@@ -64,6 +65,17 @@ function telemetryPageDateLabel(string $date): string
     return $parsed ? $parsed->format('d/m') : '';
 }
 
+function telemetryPagePostedInteger(string $key): ?int
+{
+    $value = $_POST[$key] ?? null;
+    if (!is_string($value) || preg_match('/^[0-9]+$/D', $value) !== 1) return null;
+    $canonical = ltrim($value, '0');
+    $canonical = $canonical === '' ? '0' : $canonical;
+    if (strlen($canonical) > 10) return null;
+    $integer = filter_var($canonical, FILTER_VALIDATE_INT);
+    return $integer === false ? null : $integer;
+}
+
 $httpStatus = 200;
 $errorMessage = '';
 $identity = null;
@@ -74,6 +86,9 @@ $daily = [];
 $units = [];
 $tenants = [];
 $operations = null;
+$operationalConfigState = null;
+$configurationNotice = '';
+$csrfToken = '';
 $operationsEnvironment = '';
 $operationsFailed = false;
 $scopeLabel = '';
@@ -85,8 +100,9 @@ $todayUtc = new DateTimeImmutable('today', new DateTimeZone('UTC'));
 $defaultFrom = $todayUtc->modify('-29 days')->format('Y-m-d');
 $defaultTo = $todayUtc->format('Y-m-d');
 
-if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
-    header('Allow: GET');
+$method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+if (!in_array($method, ['GET', 'POST'], true)) {
+    header('Allow: GET, POST');
     http_response_code(405);
     exit;
 }
@@ -127,9 +143,63 @@ try {
         $role = (string) $identity['papel_sistema'];
     }
 
+    if ($method === 'POST') {
+        if ($role !== 'superadmin') {
+            http_response_code(403);
+            exit('Acesso restrito à administração.');
+        }
+        if (!adminAuthVerifyCsrf($_SESSION, $_POST['csrf_token'] ?? null)) {
+            http_response_code(403);
+            exit('Solicitação inválida.');
+        }
+        if (($_POST['action'] ?? null) !== 'save_operational_config') {
+            http_response_code(400);
+            exit('Não foi possível validar os ajustes.');
+        }
+        if (($_POST['confirmar_aplicacao'] ?? null) !== '1') {
+            http_response_code(400);
+            exit('Confirme que deseja salvar os ajustes.');
+        }
+        $settings = [
+            'lote_maximo_registros' => telemetryPagePostedInteger('lote_maximo_registros'),
+            'pico_previsto_diario' => telemetryPagePostedInteger('pico_previsto_diario'),
+            'janela_previsao_dias' => telemetryPagePostedInteger('janela_previsao_dias'),
+        ];
+        if (in_array(null, $settings, true)) {
+            http_response_code(400);
+            exit('Não foi possível validar os ajustes.');
+        }
+        try {
+            $validatedSettings = operationalConfigValidateSettings($settings);
+            operationalConfigSavePending($pdo, $validatedSettings, (int) $identity['id']);
+        } catch (InvalidArgumentException) {
+            http_response_code(400);
+            exit('Não foi possível validar os ajustes.');
+        } catch (Throwable) {
+            http_response_code(503);
+            exit('Não foi possível salvar os ajustes agora. Tente novamente mais tarde.');
+        }
+        $_SESSION['telemetry_config_notice'] = 'A configuração foi salva como pendente. Ela será aplicada na próxima execução agendada do worker; o lote em andamento manterá a configuração que já carregou.';
+        header('Location: /telemetria/', true, 303);
+        exit;
+    }
+
+    if ($role === 'superadmin') {
+        $csrfToken = adminAuthCsrfToken($_SESSION);
+        $operationalConfigState = operationalConfigReadState($pdo);
+        $configurationNotice = is_string($_SESSION['telemetry_config_notice'] ?? null)
+            ? $_SESSION['telemetry_config_notice'] : '';
+        unset($_SESSION['telemetry_config_notice']);
+    }
+
     $from = telemetryPageDate('de', $defaultFrom);
     $to = telemetryPageDate('ate', $defaultTo);
     telemetryBusinessValidateWindow(['from' => $from, 'to' => $to]);
+    $storedSettings = $operationalConfigState['pending']['configuracao']
+        ?? $operationalConfigState['active']['configuracao'] ?? null;
+    if (!array_key_exists('janela', $_GET) && is_array($storedSettings)) {
+        $forecastDays = $storedSettings['janela_previsao_dias'];
+    }
     if (array_key_exists('janela', $_GET)) {
         $requestedForecastDays = filter_var($_GET['janela'], FILTER_VALIDATE_INT);
         if ($requestedForecastDays === false || $requestedForecastDays < 7 || $requestedForecastDays > 365) {
@@ -273,6 +343,15 @@ $labels = [
 $hasBusinessData = false;
 foreach ($daily as $value) if ($value > 0) $hasBusinessData = true;
 $number = static fn (int $value): string => number_format($value, 0, ',', '.');
+$activeConfiguration = $operationalConfigState['active'] ?? null;
+$pendingConfiguration = $operationalConfigState['pending'] ?? null;
+$configurationFormValues = $pendingConfiguration['configuracao']
+    ?? $activeConfiguration['configuracao']
+    ?? [
+        'lote_maximo_registros' => 300,
+        'pico_previsto_diario' => $operations['recommended_lot_size'] ?? 0,
+        'janela_previsao_dias' => $forecastDays,
+    ];
 
 http_response_code(http_response_code() ?: $httpStatus);
 ?>
@@ -300,6 +379,7 @@ http_response_code(http_response_code() ?: $httpStatus);
         <?php if ($errorMessage !== ''): ?>
             <p class="notice notice-error" role="alert"><?= telemetryPageEscape($errorMessage) ?></p>
         <?php else: ?>
+            <?php if ($configurationNotice !== ''): ?><p class="notice notice-success" role="status"><?= telemetryPageEscape($configurationNotice) ?></p><?php endif; ?>
             <form class="filters" method="get" action="/telemetria/" aria-label="Filtros de telemetria">
                 <?php if ($role === 'superadmin'): ?>
                     <label>Escopo
@@ -376,6 +456,46 @@ http_response_code(http_response_code() ?: $httpStatus);
                             <article class="metric-card"><h3>Maior fila observada</h3><strong class="metric-value"><?= $number($operations['maximum_queue_depth']) ?></strong><span>Na janela operacional</span></article>
                         </div>
                     <?php endif; ?>
+                </section>
+                <section class="panel configuration-panel" aria-labelledby="configuration-title">
+                    <h2 id="configuration-title">Configuração de lotes</h2>
+                    <p>Valores operacionais são versionados e só passam a valer quando um worker inicia. A configuração carregada por um lote em andamento permanece fixa.</p>
+                    <div class="configuration-state-grid">
+                        <article class="configuration-state">
+                            <h3>Configuração ativa</h3>
+                            <?php if (is_array($activeConfiguration)): ?>
+                                <p><strong>Versão ativa <?= (int) $activeConfiguration['versao'] ?></strong></p>
+                                <p>Lote máximo: <?= $number($activeConfiguration['configuracao']['lote_maximo_registros']) ?> registros<br>Pico esperado: <?= $number($activeConfiguration['configuracao']['pico_previsto_diario']) ?> por dia<br>Janela: <?= $activeConfiguration['configuracao']['janela_previsao_dias'] ?> dias</p>
+                            <?php else: ?>
+                                <p>Nenhuma versão ativa. Esta instalação ainda não carregou uma configuração pelo worker.</p>
+                            <?php endif; ?>
+                        </article>
+                        <article class="configuration-state pending-state">
+                            <h3>Alteração pendente</h3>
+                            <?php if (is_array($pendingConfiguration)): ?>
+                                <p><strong>Versão pendente <?= (int) $pendingConfiguration['versao'] ?></strong></p>
+                                <p><?= $number($pendingConfiguration['configuracao']['lote_maximo_registros']) ?> registros · <?= $number($pendingConfiguration['configuracao']['pico_previsto_diario']) ?> por dia · <?= $pendingConfiguration['configuracao']['janela_previsao_dias'] ?> dias</p>
+                                <p>Em hospedagem compartilhada, será ativada na próxima execução agendada do worker.</p>
+                            <?php else: ?>
+                                <p>Não há alterações aguardando o worker.</p>
+                            <?php endif; ?>
+                        </article>
+                    </div>
+                    <form class="configuration-form" method="post" action="/telemetria/">
+                        <input type="hidden" name="action" value="save_operational_config">
+                        <input type="hidden" name="csrf_token" value="<?= telemetryPageEscape($csrfToken) ?>">
+                        <div class="configuration-fields">
+                            <label for="lote-maximo">Lote máximo · registros (1 a 500)</label>
+                            <input id="lote-maximo" name="lote_maximo_registros" type="number" min="1" max="500" step="1" value="<?= (int) $configurationFormValues['lote_maximo_registros'] ?>" required>
+                            <label for="pico-esperado">Pico esperado · registros por dia</label>
+                            <input id="pico-esperado" name="pico_previsto_diario" type="number" min="0" max="1000000000" step="1" value="<?= (int) $configurationFormValues['pico_previsto_diario'] ?>" required>
+                            <label for="janela-config">Janela da previsão · dias (7 a 365)</label>
+                            <input id="janela-config" name="janela_previsao_dias" type="number" min="7" max="365" step="1" value="<?= (int) $configurationFormValues['janela_previsao_dias'] ?>" required>
+                        </div>
+                        <label class="confirmation-check"><input type="checkbox" name="confirmar_aplicacao" value="1" required> Confirmo que desejo salvar estes ajustes como pendentes.</label>
+                        <p class="configuration-guidance">Salvar não reinicia PHP-FPM nem altera um lote atual. O worker carrega esta versão na próxima inicialização; em hospedagem compartilhada, isso ocorre na próxima execução agendada.</p>
+                        <button class="primary-button" type="submit">Salvar ajustes</button>
+                    </form>
                 </section>
             <?php endif; ?>
             <p class="privacy-note">Este painel apresenta apenas contagens agregadas e não exibe dados pessoais nem identificadores de titulares.</p>

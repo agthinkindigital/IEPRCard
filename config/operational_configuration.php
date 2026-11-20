@@ -108,6 +108,38 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
 }
 
 /**
+ * Read the active snapshot and newest pending version for the current runtime environment.
+ * @return array{environment:string,active:?array{id:int,versao:int,configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int}},pending:?array{id:int,versao:int,configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int}}}
+ */
+function operationalConfigReadState(PDO $pdo): array
+{
+    $environment = operationalBatchMetricsEnvironment();
+    $read = static function (string $state) use ($pdo, $environment): ?array {
+        $query = $pdo->prepare(
+            'SELECT id, versao, configuracao_json FROM configuracoes_operacionais '
+            . 'WHERE ambiente = :environment AND estado = :state ORDER BY versao DESC, id DESC LIMIT 1'
+        );
+        $query->execute(['environment' => $environment, 'state' => $state]);
+        $row = $query->fetch(PDO::FETCH_ASSOC);
+        $query->closeCursor();
+        if (!is_array($row)) return null;
+
+        $decoded = json_decode((string) $row['configuracao_json'], true, 512, JSON_THROW_ON_ERROR);
+        return [
+            'id' => (int) $row['id'],
+            'versao' => (int) $row['versao'],
+            'configuracao' => operationalConfigValidateSettings(is_array($decoded) ? $decoded : []),
+        ];
+    };
+
+    return [
+        'environment' => $environment,
+        'active' => $read('ativa'),
+        'pending' => $read('pendente'),
+    ];
+}
+
+/**
  * Applies the newest pending snapshot at the beginning of one worker invocation.
  *
  * @return array{id:int,versao:int,ambiente:string,estado:'ativa',configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int},ativou_pendente:bool}|null

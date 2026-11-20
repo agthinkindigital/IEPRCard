@@ -75,9 +75,9 @@
   <rect x="756" y="824" width="180" height="58" rx="8" fill="#1D4ED8"/>
   <text x="846" y="859" text-anchor="middle" class="small" fill="#FFFFFF">Salvar ajustes</text>
   <rect x="952" y="824" width="376" height="58" rx="8" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
-  <text x="1140" y="859" text-anchor="middle" class="small" fill="#1D4ED8">Confirmar e reiniciar worker</text>
+  <text x="1140" y="859" text-anchor="middle" class="small" fill="#1D4ED8">Ativa no próximo início do worker</text>
   <rect x="108" y="892" width="1220" height="30" rx="8" class="lightamber"/>
-  <text x="124" y="912" class="tiny amber">Reinicia apenas o worker de lotes; não reinicia PHP-FPM. O lote atual termina com os parâmetros já carregados.</text>
+  <text x="124" y="912" class="tiny amber">Salvar cria uma versão pendente. Ela entra em vigor no próximo início do worker; o lote atual conserva os parâmetros carregados.</text>
   <text x="84" y="954" class="tiny muted">P95 e lote recomendado usam dados diários completos; outros estados: sem dados, histórico insuficiente (&lt;7 dias) ou falha de leitura.</text>
 
   <!-- Cliente -->
@@ -141,6 +141,6 @@
   <text x="574" y="2494" class="tiny muted">JANELA · EDITÁVEL</text><text x="574" y="2514" class="small">30 dias</text>
   <rect x="560" y="2530" width="320" height="40" rx="8" class="blue"/>
   <text x="720" y="2556" text-anchor="middle" class="small" fill="#FFFFFF">Salvar ajustes</text>
-  <text x="560" y="2590" class="tiny muted">Salvar pede confirmação; reinício aplica</text>
-  <text x="560" y="2607" class="tiny muted">após o lote em andamento.</text>
+  <text x="560" y="2590" class="tiny muted">Salvar pede confirmação; o worker carrega</text>
+  <text x="560" y="2607" class="tiny muted">a versão pendente no próximo início.</text>
 </svg>

@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/config/admin_auth.php';
 require_once dirname(__DIR__, 2) . '/config/tenant_auth.php';
 require_once dirname(__DIR__, 2) . '/config/business_telemetry.php';
 require_once dirname(__DIR__, 2) . '/config/operational_batch_metrics.php';
+require_once dirname(__DIR__, 2) . '/config/operational_configuration.php';
 require_once dirname(__DIR__, 2) . '/config/motor_permissoes.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 
@@ -138,7 +139,8 @@ $createSession = static function (string $name, array $values) use ($directory):
     session_write_close();
     return $cookie;
 };
-$adminCookie = $createSession('IEPRCARDADMIN', ['admin_user_id' => $adminId, 'last_activity_at' => time()]);
+$adminCsrf = bin2hex(random_bytes(32));
+$adminCookie = $createSession('IEPRCARDADMIN', ['admin_user_id' => $adminId, 'last_activity_at' => time(), 'csrf_token' => $adminCsrf]);
 $clientCookie = $createSession('IEPRCARDTENANT', [
     'tenant_user_id' => $clientId, 'tenant_id' => $fixture['tenant_id'], 'subcliente_id' => null,
     'papel_sistema' => 'titular_cliente', 'last_activity_at' => time(),
@@ -149,6 +151,7 @@ $unitCookie = $createSession('IEPRCARDTENANT', [
 ]);
 $rootHost = $fixture['slug'] . '.ieprcard.test';
 $unitHost = 'unit-' . substr($fixture['slug'], 7) . '.' . $fixture['slug'] . '.ieprcard.test';
+$newPendingConfigId = null;
 
 $probe = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
 if (!is_resource($probe)) throw new RuntimeException('Could not reserve a telemetry dashboard test port.');
@@ -178,6 +181,17 @@ try {
         preg_match('/\s(\d{3})\s/', $responseHeaders[0] ?? '', $match);
         return [(int) ($match[1] ?? 0), is_string($body) ? $body : '', $responseHeaders];
     };
+    $postRequest = static function (string $path, string $host, string $cookie, array $values) use ($baseUrl): array {
+        $context = stream_context_create(['http' => [
+            'method' => 'POST',
+            'header' => "Host: " . $host . "\r\nCookie: " . $cookie . "\r\nContent-Type: application/x-www-form-urlencoded",
+            'content' => http_build_query($values), 'ignore_errors' => true, 'timeout' => 4, 'follow_location' => 0,
+        ]]);
+        $body = @file_get_contents($baseUrl . $path, false, $context);
+        $responseHeaders = $http_response_header ?? [];
+        preg_match('/\s(\d{3})\s/', $responseHeaders[0] ?? '', $match);
+        return [(int) ($match[1] ?? 0), is_string($body) ? $body : '', $responseHeaders];
+    };
     $ready = false;
     for ($attempt = 0; $attempt < 40; $attempt++) {
         $socket = @fsockopen('127.0.0.1', $port, $probeCode, $probeMessage, 0.1);
@@ -191,6 +205,7 @@ try {
         || !str_contains($body, '<strong class="metric-value">105</strong>')
         || !str_contains($body, 'Histórico insuficiente') || !str_contains($body, 'Fila atual')
         || !str_contains($body, 'Escopo global') || str_contains($body, 'holder.email@example.test')
+        || !str_contains($body, 'Configuração de lotes') || !str_contains($body, 'Nenhuma versão ativa')
         || str_contains($body, 'Unidade alheia')
         || !str_contains(implode("\n", $headers), 'no-store')) {
         throw new RuntimeException('Admin dashboard assertion failed: status=' . $status . ', body=' . substr(trim(preg_replace('/\s+/', ' ', strip_tags($body))), 0, 1800) . ', cache=' . (telemetryDashboardHeaderValue($headers, 'Cache-Control') ?? 'missing'));
@@ -199,6 +214,71 @@ try {
     if ($status !== 200 || !str_contains($body, 'últimos 7 dias UTC completos')
         || !str_contains($body, 'Histórico insuficiente')) {
         throw new RuntimeException('Admin forecast window accepts the supported minimum and reports insufficient observed history.');
+    }
+
+    [$status, $body] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
+        'action' => 'save_operational_config',
+        'lote_maximo_registros' => '200', 'pico_previsto_diario' => '450', 'janela_previsao_dias' => '21',
+        'confirmar_aplicacao' => '1',
+    ]);
+    if ($status !== 403 || !str_contains($body, 'Solicitação inválida')) {
+        throw new RuntimeException('Operational configuration changes must reject missing CSRF tokens.');
+    }
+    [$status, $body, $headers] = $postRequest('/telemetria/', 'admin.ieprcard.test', '', [
+        'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200',
+        'pico_previsto_diario' => '450', 'janela_previsao_dias' => '21', 'confirmar_aplicacao' => '1',
+    ]);
+    if ($status !== 303 || telemetryDashboardHeaderValue($headers, 'Location') !== '/admin/login.php') {
+        throw new RuntimeException('An unauthenticated Admin cannot save operational settings.');
+    }
+    [$status, $body] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
+        'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '0', 'pico_previsto_diario' => '450',
+        'janela_previsao_dias' => '21', 'confirmar_aplicacao' => '1',
+    ]);
+    if ($status !== 400 || !str_contains($body, 'Não foi possível validar os ajustes')) {
+        throw new RuntimeException('Operational configuration writes must reject out-of-range values generically.');
+    }
+    [$status, $body] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
+        'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200', 'pico_previsto_diario' => '450',
+        'janela_previsao_dias' => '21',
+    ]);
+    if ($status !== 400 || !str_contains($body, 'Confirme que deseja salvar')) {
+        throw new RuntimeException('Operational configuration writes require explicit confirmation before saving.');
+    }
+    foreach ([[$rootHost, $clientCookie], [$unitHost, $unitCookie]] as [$tenantHost, $tenantCookie]) {
+        [$status] = $postRequest('/telemetria/', $tenantHost, $tenantCookie, [
+            'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200', 'pico_previsto_diario' => '450',
+            'janela_previsao_dias' => '21', 'confirmar_aplicacao' => '1',
+        ]);
+        if ($status !== 403) throw new RuntimeException('Client and Subclient cannot write Admin operational configuration.');
+    }
+    [$status, $body, $headers] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
+        'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200', 'pico_previsto_diario' => '450',
+        'janela_previsao_dias' => '21', 'confirmar_aplicacao' => '1',
+    ]);
+    if ($status !== 303 || telemetryDashboardHeaderValue($headers, 'Location') !== '/telemetria/') {
+        throw new RuntimeException('A confirmed Admin configuration must save as pending and redirect before displaying the result.');
+    }
+    [$status, $body] = $request('/telemetria/', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($body, 'Versão pendente 1')
+        || !str_contains($body, '200 registros') || !str_contains($body, '450 por dia')
+        || !str_contains($body, '21 dias') || !str_contains($body, 'próxima execução agendada do worker')) {
+        throw new RuntimeException('The Admin dashboard must show the saved pending version and shared-hosting activation timing.');
+    }
+    $configPdo = dbConnect($database);
+    $configRows = $configPdo->query("SELECT id, estado FROM configuracoes_operacionais WHERE ambiente = 'test' ORDER BY versao DESC LIMIT 2")->fetchAll(PDO::FETCH_ASSOC);
+    if (count($configRows) !== 1 || $configRows[0]['estado'] !== 'pendente') {
+        throw new RuntimeException('Saving from the dashboard must preserve the active worker configuration and create only a pending version.');
+    }
+    $newPendingConfigId = (int) $configRows[0]['id'];
+    $activatedConfig = operationalConfigWorkerStart($configPdo);
+    if (($activatedConfig['id'] ?? null) !== $newPendingConfigId || ($activatedConfig['ativou_pendente'] ?? null) !== true) {
+        throw new RuntimeException('A pending dashboard configuration must activate only when the test invokes the worker-start hook.');
+    }
+    unset($configPdo);
+    [$status, $body] = $request('/telemetria/', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($body, 'Versão ativa 1') || str_contains($body, 'Versão pendente 1')) {
+        throw new RuntimeException('The Admin dashboard must distinguish the worker-activated version from pending settings.');
     }
     [$status, $body] = $request('/telemetria/?janela=6', 'admin.ieprcard.test', $adminCookie);
     if ($status !== 400 || !str_contains($body, 'Não foi possível aplicar os filtros') || str_contains($body, 'janela=6')) {
@@ -223,7 +303,8 @@ try {
     [$status, $body] = $request('/telemetria/', $rootHost, $clientCookie);
     if ($status !== 200 || !str_contains($body, 'Visão da rede')
         || !str_contains($body, '<strong class="metric-value">6</strong>')
-        || str_contains($body, 'Fila atual') || str_contains($body, 'telemetria.rede')) {
+        || str_contains($body, 'Fila atual') || str_contains($body, 'telemetria.rede')
+        || str_contains($body, 'Configuração de lotes') || str_contains($body, 'name="lote_maximo_registros"')) {
         throw new RuntimeException('Client dashboard must show only its own network and omit all operational metrics.');
     }
     [$status, $body] = $request('/telemetria/?escopo=unit&subcliente_id=' . $fixture['subcliente_id'], $rootHost, $clientCookie);
@@ -245,7 +326,8 @@ try {
     if ($status !== 200 || !str_contains($body, 'Visão da unidade')
         || !str_contains($body, '<strong class="metric-value">2</strong>')
         || str_contains($body, 'Visão da rede') || str_contains($body, 'Unidade Leste')
-        || str_contains($body, 'Selecionar unidade') || str_contains($body, 'Fila atual')) {
+        || str_contains($body, 'Selecionar unidade') || str_contains($body, 'Fila atual')
+        || str_contains($body, 'Configuração de lotes') || str_contains($body, 'name="lote_maximo_registros"')) {
         throw new RuntimeException('Subclient dashboard must remain fixed to its own unit without operational metrics or unit filters.');
     }
     [$status, $body] = $request('/telemetria/?escopo=network', $unitHost, $unitCookie);
@@ -296,7 +378,7 @@ try {
     if ($status !== 401 || !str_contains($body, 'Acesso restrito à sessão da instituição')) {
         throw new RuntimeException('The tenant dashboard must reject unauthenticated sessions without redirecting into the titular portal.');
     }
-    fwrite(STDOUT, 'PASS: role-scoped telemetry dashboard, scope denial, privacy, date validation and empty/history states (' . $database['DB_DRIVER'] . ").\n");
+    fwrite(STDOUT, 'PASS: role-scoped telemetry dashboard, scope/privacy checks, operational configuration confirmation and worker activation (' . $database['DB_DRIVER'] . ").\n");
 } finally {
     proc_terminate($process);
     proc_close($process);
@@ -311,6 +393,9 @@ try {
         else putenv($key . '=' . $value);
     }
     $cleanup = dbConnect($database);
+    if ($newPendingConfigId !== null) {
+        $cleanup->prepare('DELETE FROM configuracoes_operacionais WHERE id = :id')->execute(['id' => $newPendingConfigId]);
+    }
     $metricDelete->execute(['environment' => 'test', 'start' => $metricStart, 'end' => $metricEnd]);
     $cleanup->prepare('DELETE FROM telemetria_diaria WHERE tenant_id IN (:tenant, :foreign)')
         ->execute(['tenant' => $fixture['tenant_id'], 'foreign' => $foreignTenantId]);

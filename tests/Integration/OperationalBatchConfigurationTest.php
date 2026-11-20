@@ -37,8 +37,19 @@ try {
         if (operationalConfigWorkerStart($pdo, $now) !== null) {
             throw new RuntimeException($driver . ': a fresh environment must have no active operational snapshot.');
         }
+        $initialState = operationalConfigReadState($pdo);
+        if (($initialState['environment'] ?? null) !== 'staging' || $initialState['active'] !== null || $initialState['pending'] !== null) {
+            throw new RuntimeException($driver . ': a fresh environment must report no active or pending configuration.');
+        }
 
         $pending = operationalConfigSavePending($pdo, $settings, null, $now);
+        $pendingState = operationalConfigReadState($pdo);
+        if (($pendingState['pending']['id'] ?? null) !== $pending['id']
+            || ($pendingState['pending']['versao'] ?? null) !== 1
+            || ($pendingState['pending']['configuracao'] ?? null) !== $settings
+            || $pendingState['active'] !== null) {
+            throw new RuntimeException($driver . ': Admin state reads must distinguish pending settings from the active worker snapshot.');
+        }
         $storedConfiguration = $pdo->prepare('SELECT configuracao_json FROM configuracoes_operacionais WHERE id = :id');
         $storedConfiguration->execute(['id' => $pending['id']]);
         $storedSettings = json_decode((string) $storedConfiguration->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
@@ -74,10 +85,19 @@ try {
             || ($states['ativa'] ?? null) !== 1 || isset($states['pendente'])) {
             throw new RuntimeException($driver . ': worker startup must atomically activate pending settings once and return a stable active snapshot.');
         }
+        $activeState = operationalConfigReadState($pdo);
+        if (($activeState['active']['id'] ?? null) !== $pending['id'] || $activeState['pending'] !== null) {
+            throw new RuntimeException($driver . ': the read state must report the worker-activated version as active.');
+        }
 
         $updatedSettings = $settings;
         $updatedSettings['lote_maximo_registros'] = 50;
         $updated = operationalConfigSavePending($pdo, $updatedSettings, null, $now + 15);
+        $replacementState = operationalConfigReadState($pdo);
+        if (($replacementState['active']['id'] ?? null) !== $pending['id']
+            || ($replacementState['pending']['id'] ?? null) !== $updated['id']) {
+            throw new RuntimeException($driver . ': a newly saved version must remain visibly pending beside the active snapshot.');
+        }
         $stillActive = $pdo->query("SELECT id FROM configuracoes_operacionais WHERE ambiente = 'staging' AND estado = 'ativa'")->fetchColumn();
         $nextSnapshot = operationalConfigWorkerStart($pdo, $now + 20);
         $replacementStates = $pdo->query("SELECT estado, COUNT(*) AS total FROM configuracoes_operacionais WHERE ambiente = 'staging' GROUP BY estado")
@@ -89,7 +109,6 @@ try {
             || ($replacementStates['ativa'] ?? null) !== 1 || ($replacementStates['substituida'] ?? null) !== 1) {
             throw new RuntimeException($driver . ': a new manual version must replace active settings only at the next worker startup.');
         }
-
         if (in_array($driver, ['SQLite', 'MySQL/MariaDB'], true)) {
             $racePdo = $pdo;
             $raceDriver = $driver === 'SQLite' ? 'sqlite' : 'mysql';
