@@ -48,7 +48,7 @@
   <path d="M132 686H828M132 626H828M132 566H828M132 526V686" class="axis"/>
   <text x="98" y="691" class="tiny muted">0</text><text x="92" y="631" class="tiny muted">200</text><text x="92" y="571" class="tiny muted">400</text>
   <path d="M145 660 L205 638 L265 649 L325 601 L385 619 L445 578 L505 594 L565 552 L625 567 L685 532 L745 551 L815 520" class="stroke-blue"/>
-  <path d="M145 622 L205 622 L265 622 L325 622 L385 622 L445 622 L505 622 L565 622 L625 622 L685 622 L745 622 L815 622" class="stroke-green" stroke-dasharray="8 7"/>
+  <path d="M145 560 L205 560 L265 560 L325 560 L385 560 L445 560 L505 560 L565 560 L625 560 L685 560 L745 560 L815 560" class="stroke-green" stroke-dasharray="8 7"/>
   <text x="646" y="718" class="tiny muted">— Solicitações   - - Pico P95 previsto</text>
   <rect x="896" y="424" width="456" height="320" rx="12" class="card"/>
   <text x="920" y="463" class="section">Previsão operacional</text>
