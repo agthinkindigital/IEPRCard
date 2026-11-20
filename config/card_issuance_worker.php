@@ -89,7 +89,8 @@ function cardIssuanceWorkerRunBatch(PDO $pdo, int $maxJobs = 1): array
 function cardIssuanceWorkerProcess(PDO $pdo, int $jobId, int $now): void
 {
     $query = $pdo->prepare(
-        'SELECT tenant_id, subcliente_id, design_id, lote_origem_id, chave_idempotencia_hash, modo_saida, total_registros, worker_attempts '
+        'SELECT tenant_id, subcliente_id, design_id, lote_origem_id, mapa_de_para_usado_json, '
+        . 'chave_idempotencia_hash, modo_saida, total_registros, worker_attempts '
         . 'FROM lotes_importacao WHERE id = :id AND origem_tipo = \'emissao\' AND status_lote = \'processando\' LIMIT 1'
     );
     $query->execute(['id' => $jobId]);
@@ -109,7 +110,10 @@ function cardIssuanceWorkerProcess(PDO $pdo, int $jobId, int $now): void
         throw new RuntimeException('ISSUANCE_DESIGN_UNAVAILABLE');
     }
     $design = json_decode((string) $designRow['mapa_campos_json'], true, 512, JSON_THROW_ON_ERROR);
-    $mapping = json_decode((string) $designRow['mapeamento_fixo_json'], true, 512, JSON_THROW_ON_ERROR);
+    $mappingJson = $job['mapa_de_para_usado_json'] === null
+        ? (string) $designRow['mapeamento_fixo_json']
+        : (string) $job['mapa_de_para_usado_json'];
+    $mapping = json_decode($mappingJson, true, 512, JSON_THROW_ON_ERROR);
     $backgrounds = [
         'frente' => cardIssuanceWorkerReadAsset($tenantId, (string) $designRow['bg_frente_url']),
         'verso' => cardIssuanceWorkerReadAsset($tenantId, (string) $designRow['bg_verso_url']),

@@ -65,7 +65,7 @@ Propriedades não listadas na tabela ou nos campos obrigatórios de cada tipo s�
 O núcleo puro `config/design_mapping.php` resolve os valores de um registro contra as variáveis presentes no design; ele não consulta banco, filesystem, tenant ou interpreta código. Os dois modos abaixo usam a mesma configuração versionada (`versao_schema: "1.0"`, objeto `mapeamentos` indexado por `chave_variavel`):
 
 * **Modo A — Mapeamento Fixo por Layout (`mapeamento_fixo_json`):** o cliente salva no layout os campos padrão. Usa o tipo `campo` para ligar a variável a um campo do titular, como `nome_completo → nome` ou `cargo → dados_extras.cargo`. Ao selecionar titulares já presentes no banco, a emissão poderá reutilizar esse mapeamento sem uma etapa interativa.
-* **Modo B — Mapeamento como Etapa da Geração (`mapa_de_para_usado_json`):** para um lote ou importação, o operador escolhe o campo de origem, combina campos em um template ou informa um valor fixo para todo o lote.
+* **Modo B — Mapeamento por job de emissão (`mapa_de_para_usado_json`):** ao gerar carteirinhas, o operador pode escolher campos do titular, combiná-los em um template ou informar um valor fixo para as variáveis do design. O JSON é salvo no job de emissão; não substitui nem altera o mapa de colunas usado na importação que criou os titulares. Sem mapa específico no job, aplica-se o mapeamento fixo do design.
 
 O formato executável é:
 
@@ -82,9 +82,9 @@ O formato executável é:
 
 `campo` aceita caminhos de objeto separados por ponto (até 16 segmentos); segmentos são identificadores, não índices, expressões ou código. `template` aceita uma lista ordenada de strings literais e objetos `{"campo": "caminho"}`; `valor` é texto literal. O Modo A usa `campo`; o Modo B pode usar os três tipos. Os limites são 256 KiB por configuração, 100 partes por template e 8 KiB por valor resolvido. Apenas strings, números finitos e booleanos vindos do registro são convertidos em texto; arrays, objetos e `null` não são valores imprimíveis.
 
-O motor considera somente variáveis declaradas em `elementos`. Uma variável de texto com `obrigatorio: true` precisa de mapeamento e valor não vazio; ausências geram erro estruturado com código e caminho, sem incluir dados de titulares. Variáveis opcionais sem mapeamento ou valor resolvem para string vazia. `_sistema_url_validacao` nunca aceita origem configurada pelo cliente ou lote: seu valor entra separadamente pelo contexto de sistema. Em qualquer erro, nenhum mapa parcial de valores é retornado.
+O motor considera somente variáveis declaradas em `elementos`. Uma variável de texto com `obrigatorio: true` precisa de mapeamento e valor não vazio; ausências geram erro estruturado com código e caminho, sem incluir dados de titulares. Variáveis opcionais sem mapeamento ou valor resolvem para string vazia. `_sistema_url_validacao` nunca aceita origem configurada pelo cliente ou job: seu valor entra separadamente pelo contexto de sistema. Em qualquer erro, nenhum mapa parcial de valores é retornado. A chave de idempotência do job também vincula o mapa: repetir a chave com outro mapeamento resulta em conflito, e as tentativas do mesmo job reutilizam o JSON persistido.
 
-O catálogo/editor da Sede persiste mapas e mapeamentos fixos em `designs_carteirinha`; a importação pode fornecer o mapeamento variável do lote. A prévia do editor usa o renderizador WebP com valores sintéticos e não consulta titulares.
+O catálogo/editor da Sede persiste mapas e mapeamentos fixos em `designs_carteirinha`. A importação persiste separadamente a relação entre colunas do arquivo e campos de titular; cada job de emissão pode persistir seu próprio mapeamento de variáveis do design em `lotes_importacao.mapa_de_para_usado_json`. A fatia backend está na [Issue #72](https://github.com/agthinkindigital/IEPRCard/issues/72); o wizard de emissão permanece sujeito a mockup e guia funcional aprovados antes da implementação. A prévia do editor usa o renderizador WebP com valores sintéticos e não consulta titulares.
 
 ### Catálogo, rascunhos e edição segura
 
