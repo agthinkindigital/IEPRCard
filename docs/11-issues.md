@@ -88,7 +88,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 * Critério de Aceite:Um mesmo lote de dados importados deve conseguir gerar carteirinhas em 2 designs diferentes do mesmo Cliente apenas trocando o layout selecionado.
 
 
-* **ISSUE-011: Renderizador de Carteirinhas em WebP (Online) e PDF (Impressão CR80 / Folha A4)** — contratos/renderizadores puros concluídos em [#33](https://github.com/agthinkindigital/IEPRCard/issues/33)–[#38](https://github.com/agthinkindigital/IEPRCard/issues/38); persistência da emissão, reserva de cota e worker CLI/cron concluídos em [#46](https://github.com/agthinkindigital/IEPRCard/issues/46). Códigos QR imprevisíveis implementados na [#53](https://github.com/agthinkindigital/IEPRCard/issues/53), commit `23e819a`, CI aprovada. Rota pública e serviço de validação minimizada implementados em `DEV` na [#65](https://github.com/agthinkindigital/IEPRCard/issues/65); o estado e os artefatos do portal do titular estão no [roadmap E04](14-roadmap.md#epics-rastreaveis-no-github).
+* **ISSUE-011: Renderizador de Carteirinhas em WebP (Online) e PDF (Impressão CR80 / Folha A4)** — contratos/renderizadores puros concluídos em [#33](https://github.com/agthinkindigital/IEPRCard/issues/33)–[#38](https://github.com/agthinkindigital/IEPRCard/issues/38); persistência da emissão, reserva de cota e worker CLI/cron concluídos em [#46](https://github.com/agthinkindigital/IEPRCard/issues/46). Códigos QR imprevisíveis implementados na [#53](https://github.com/agthinkindigital/IEPRCard/issues/53). Serviço QR em [#65](https://github.com/agthinkindigital/IEPRCard/issues/65); interface pública de validação e portal autenticado nas [#68](https://github.com/agthinkindigital/IEPRCard/issues/68) e [#69](https://github.com/agthinkindigital/IEPRCard/issues/69).
 * **Arquivos:** `includes/motor_carteirinha_webp.php`, `includes/motor_carteirinha_pdf.php`, `painel/lotes.php`, `cron.php`
 * **Descrição:** Gerar as imagens `.webp` de frente e verso otimizadas para web/WhatsApp e o arquivo `.pdf` em 300 DPI (modo página individual CR80 para impressora térmica PVC e modo folha A4 com 8/10 carteirinhas, marcas de corte e sangria). Inclui fila assíncrona em lotes para grandes volumes.
 * **Critério de Aceite:** Passar no `TDD-04`.
@@ -134,17 +134,12 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 ### ÉPICO 6: Telemetria Multi-Nível (Req 14, 14.1, 14.2)
 
-* **ISSUE-016: Motor de Coleta e Painéis de Telemetria em 3 Camadas**
-* **Arquivos:** `includes/motor_telemetria.php`, `admin/index.php`, `painel/index.php`
-* **Descrição:** Implementar a coleta em tempo real e os painéis visuais de telemetria respeitando a visibilidade de cada nível:
-* **Admin (Req 14):** Uso de disco/banco, consumo de cota/IA, conversas totais, carteirinhas geradas (PDF/WebP), usuários criados, titulares totais no banco, performance de lotes e saúde de webhooks.
-* **Cliente (Req 14.1):** Carteirinhas geradas por ele e por cada Subcliente, consumo do seu limite mensal, titulares na sua base, lotes importados, conversas de suas instâncias e leituras de QR Code.
-* **Subcliente (Req 14.2):** Carteirinhas emitidas na sua unidade, saldo da sua cota alocada, seus lotes importados e seus titulares cadastrados.
+* **ISSUE-016: Motor de Coleta e Painéis de Telemetria em 3 Camadas** — coleta, previsão e leituras com escopo concluídas nas [#40](https://github.com/agthinkindigital/IEPRCard/issues/40)–[#43](https://github.com/agthinkindigital/IEPRCard/issues/43) e [#63](https://github.com/agthinkindigital/IEPRCard/issues/63). O mockup e guia foram aprovados; a interface e handlers HTTP estão fatiados nas [#70](https://github.com/agthinkindigital/IEPRCard/issues/70) e [#71](https://github.com/agthinkindigital/IEPRCard/issues/71). As métricas permitidas e os limites por perfil são definidos em [`docs/08-telemetria.md`](08-telemetria.md).
 
 
 * **Critério de Aceite:** Passar no `TDD-06`.
 
-* O contrato backend de gravação agregada, leitura com escopo e concorrência nas tabelas canônicas foi concluído na [GitHub #43](https://github.com/agthinkindigital/IEPRCard/issues/43); telas aguardam mockup/guia aprovados. A exposição via MCP está fatiada na [#44](https://github.com/agthinkindigital/IEPRCard/issues/44).
+* A exposição via MCP está fatiada na [#44](https://github.com/agthinkindigital/IEPRCard/issues/44). O painel e seus controles administrativos estão nas Issues [#70](https://github.com/agthinkindigital/IEPRCard/issues/70) e [#71](https://github.com/agthinkindigital/IEPRCard/issues/71).
 
 
 
@@ -182,6 +177,6 @@ Estes adendos atualizam diretamente o plano de execução do agente construtor p
 
 
 
-* **Nova `ISSUE-012B`: Experiência de Login Direto do Titular e Variáveis Hierárquicas (`{{sede.*}}` / `{{unidade.*}}`)** — autenticação e consulta privada em [#66](https://github.com/agthinkindigital/IEPRCard/issues/66); entrega privada das imagens frente/verso verificada na [#67](https://github.com/agthinkindigital/IEPRCard/issues/67) e no CI [44669813134](https://github.com/agthinkindigital/IEPRCard/actions/runs/44669813134), incluindo execução HTTP em MySQL 8.4 e MariaDB 10.11. A interface continua dependente da revisão e aprovação explícita do mockup e guia funcional.
+* **Nova `ISSUE-012B`: Experiência de Login Direto do Titular e Variáveis Hierárquicas (`{{sede.*}}` / `{{unidade.*}}`)** — autenticação e consulta privada em [#66](https://github.com/agthinkindigital/IEPRCard/issues/66), entrega privada em [#67](https://github.com/agthinkindigital/IEPRCard/issues/67). Mockup e guia aprovados; a página QR pública e o portal autenticado seguem nas [#68](https://github.com/agthinkindigital/IEPRCard/issues/68) e [#69](https://github.com/agthinkindigital/IEPRCard/issues/69). PDF permanece fora até existir contrato de permissão efetiva no schema.
 * **Arquivos:** portal do titular em `public/` e referências privadas servidas após autenticação; `includes/motor_mapeamento.php`
 * **Descrição:** Autenticar o titular por CPF + data de nascimento ou token único e aterrissar na própria carteirinha da Sede ou do Subcliente, exibindo a referência da Sede matriz e metadados de Sede, unidade e categoria/cargo. A validação pública por QR permanece sem dados pessoais. A disponibilidade de PDF depende de contrato de permissão efetiva ainda não definido no schema.

@@ -35,6 +35,18 @@ $pdo->prepare(
     'tenant' => $fixture['tenant_id'], 'unit' => $fixture['subcliente_id'], 'holder' => $holderId,
     'design' => $designId, 'token' => $token, 'status' => 'ativa', 'created' => gmdate('Y-m-d H:i:s'),
 ]);
+$statusTokens = [];
+foreach (['suspensa', 'vencida', 'revogada'] as $cardStatus) {
+    $statusToken = bin2hex(random_bytes(32));
+    $pdo->prepare(
+        'INSERT INTO carteirinhas_emitidas (tenant_id, subcliente_id, titular_id, design_id, codigo_validacao_qr, status_carteirinha, emitida_em) '
+        . 'VALUES (:tenant, :unit, :holder, :design, :token, :status, :created)'
+    )->execute([
+        'tenant' => $fixture['tenant_id'], 'unit' => $fixture['subcliente_id'], 'holder' => $holderId,
+        'design' => $designId, 'token' => $statusToken, 'status' => $cardStatus, 'created' => gmdate('Y-m-d H:i:s'),
+    ]);
+    $statusTokens[$cardStatus] = $statusToken;
+}
 unset($pdo);
 
 $socket = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
@@ -53,8 +65,8 @@ if (!is_resource($process)) {
 
 try {
     $baseUrl = 'http://127.0.0.1:' . $port;
-    $request = static function (string $path) use ($baseUrl): array {
-        $context = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 3]]);
+    $request = static function (string $path, string $method = 'GET') use ($baseUrl): array {
+        $context = stream_context_create(['http' => ['method' => $method, 'ignore_errors' => true, 'timeout' => 3]]);
         $body = @file_get_contents($baseUrl . $path, false, $context);
         $headers = $http_response_header ?? [];
         $statusLine = $headers[0] ?? '';
@@ -73,24 +85,62 @@ try {
     }
     if (!$ready) throw new RuntimeException('The QR HTTP test server did not become ready.');
     [$status, $body, $headers] = $request('/validar/not-a-token');
-    $invalid = json_decode($body, true);
-    if ($status !== 200 || $invalid !== ['status' => 'invalida', 'motivo_codigo' => 'invalida']
-        || !str_contains(implode("\n", $headers), 'application/json')
-        || !str_contains(implode("\n", $headers), 'no-store') || str_contains($body, '<html')) {
-        throw new RuntimeException('The public route must return the generic no-store JSON contract, not the local diagnostic page.');
+    if ($status !== 200 || !str_contains($body, 'Código inválido')
+        || !str_contains(implode("\n", $headers), 'text/html')
+        || !str_contains(implode("\n", $headers), 'no-store')
+        || !str_contains(implode("\n", $headers), 'Referrer-Policy: no-referrer')
+        || !str_contains(implode("\n", $headers), 'X-Robots-Tag: noindex, nofollow')
+        || !str_contains(implode("\n", $headers), 'X-Content-Type-Options: nosniff')
+        || !str_contains(implode("\n", $headers), "script-src 'none'")
+        || !str_contains(implode("\n", $headers), 'X-Frame-Options: DENY')
+        || stripos(implode("\n", $headers), 'Set-Cookie:') !== false
+        || !str_contains($body, 'Validar outra carteirinha')) {
+        throw new RuntimeException('The public route must render the generic HTML status and a path to validate another code.');
+    }
+    $xssProbe = '<script>alert(1)</script>';
+    [$status, $body] = $request('/validar/' . rawurlencode($xssProbe));
+    if ($status !== 200 || !str_contains($body, 'Código inválido')
+        || str_contains($body, $xssProbe) || str_contains($body, '<script>')) {
+        throw new RuntimeException('Untrusted QR input must remain unreflected in the public HTML page.');
     }
     [$status, $body] = $request('/validar/' . $token);
-    if ($status !== 200 || json_decode($body, true) !== ['status' => 'ativa', 'motivo_codigo' => 'ativa']) {
-        throw new RuntimeException('The routed QR URL must resolve and return only the approved public card state.');
+    if ($status !== 200 || !str_contains($body, 'Carteirinha ativa')
+        || str_contains($body, 'HTTP QR Holder') || str_contains($body, $token)) {
+        throw new RuntimeException('The routed QR URL must render only the approved public card state.');
     }
-    for ($attempt = 0; $attempt < 58; $attempt++) {
+    [$status, $body, $headers] = $request('/validar/' . $token, 'POST');
+    if ($status !== 405 || !str_contains(implode("\n", $headers), 'Allow: GET')
+        || str_contains($body, $token) || str_contains($body, 'HTTP QR Holder')) {
+        throw new RuntimeException('The public validator must accept only stateless GET requests.');
+    }
+    [$status, $body] = $request('/validar/?codigo=' . $token);
+    if ($status !== 200 || !str_contains($body, 'Carteirinha ativa')) {
+        throw new RuntimeException('The public form must accept another code through the canonical route.');
+    }
+    foreach ([
+        'suspensa' => 'Carteirinha suspensa',
+        'vencida' => 'Carteirinha vencida',
+        'revogada' => 'Carteirinha revogada',
+    ] as $cardStatus => $expectedTitle) {
+        [$status, $body] = $request('/validar/' . $statusTokens[$cardStatus]);
+        if ($status !== 200 || !str_contains($body, $expectedTitle)
+            || str_contains($body, 'HTTP QR Holder') || str_contains($body, $statusTokens[$cardStatus])) {
+            throw new RuntimeException('The public page must render the generic ' . $cardStatus . ' state without holder data.');
+        }
+    }
+    file_put_contents($rateLimitPath, '{}', LOCK_EX);
+    $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
+    $auditBeforeRateLimit = (int) $pdo->query("SELECT COUNT(*) FROM auditoria_processos WHERE acao = 'carteirinha.qr_lida'")->fetchColumn();
+    unset($pdo);
+    for ($attempt = 0; $attempt < 60; $attempt++) {
         [$status] = $request('/validar/' . $token);
         if ($status !== 200) {
             throw new RuntimeException('The per-IP rate limit must permit the first 60 requests in one minute.');
         }
     }
     [$status, $body] = $request('/validar/' . $token);
-    if ($status !== 429 || json_decode($body, true) !== ['erro' => 'limite_de_leituras']) {
+    if ($status !== 429 || !str_contains($body, 'Muitas consultas')
+        || str_contains($body, $token) || str_contains($body, 'HTTP QR Holder')) {
         throw new RuntimeException('The 61st request in a minute must be rate limited.');
     }
     $rateData = (string) file_get_contents($rateLimitPath);
@@ -99,7 +149,7 @@ try {
     }
     $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
     $audit = $pdo->query("SELECT COUNT(*) FROM auditoria_processos WHERE acao = 'carteirinha.qr_lida'")->fetchColumn();
-    if ((int) $audit !== 59) {
+    if ((int) $audit !== $auditBeforeRateLimit + 60) {
         throw new RuntimeException('Rate-limited attempts must not increment card reads or write audit rows.');
     }
     unset($pdo);
@@ -108,11 +158,12 @@ try {
         throw new RuntimeException('Could not prepare the controlled database failure case.');
     }
     [$status, $body] = $request('/validar/' . $token);
-    if ($status !== 503 || json_decode($body, true) !== ['erro' => 'validacao_indisponivel']
-        || str_contains($body, 'sqlite') || str_contains($body, $databasePath)) {
+    if ($status !== 503 || !str_contains($body, 'Validação indisponível')
+        || str_contains($body, 'sqlite') || str_contains($body, $databasePath)
+        || str_contains($body, $token) || str_contains($body, 'HTTP QR Holder')) {
         throw new RuntimeException('Database failures must return a generic service error without storage details.');
     }
-    fwrite(STDOUT, "PASS: QR validation routes through local PHP with generic JSON, no-store headers and ephemeral-IP rate limiting.\n");
+    fwrite(STDOUT, "PASS: QR validation routes through local PHP with minimized HTML, no-store headers and ephemeral-IP rate limiting.\n");
 } finally {
     proc_terminate($process);
     proc_close($process);
