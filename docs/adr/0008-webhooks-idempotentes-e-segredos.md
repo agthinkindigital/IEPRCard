@@ -13,7 +13,7 @@ O produto dispõe de código de referência para webhooks Asaas e Mercado Pago, 
 
 ## Decisão
 
-1. **Autenticidade:** ao implementar integrações, validar Asaas com token comparado por `hash_equals()` e Mercado Pago via HMAC conforme contrato vigente do provedor; validar assinatura de WhatsApp se esse webhook estiver no escopo. Aplicar janela de tolerância quando o protocolo fornecer timestamp assinado.
+1. **Autenticidade:** validar Asaas com token comparado por `hash_equals()` e Mercado Pago via HMAC conforme contrato vigente do provedor; ambos permanecem fora do MVP. Para WhatsApp, preferir assinatura do provedor. O GOWA VIP de referência permite configurar `webhook_url`, mas não assina nem autentica os POSTs recebidos. Para esse caso, usar um segredo bearer aleatório de 256 bits por instância, incluído na URL do webhook: persistir somente o hash no IEPRCard, comparar em tempo constante, nunca registrar a URL/token, e permitir rotação que invalide o anterior. Esse token autentica a posse da URL, não a origem criptográfica do payload; reduzir a superfície com TLS, rate limit, validação de schema e idempotência por ID externo da mensagem. Se o gateway passar a oferecer assinatura verificável, preferi-la em uma revisão deste ADR.
 2. **Idempotência:** para webhooks ativos, registrar evento antes de mutações e tornar repetição no-op. O vínculo com `pagamentos_saas` é exclusivamente futuro.
 3. **Resposta rápida:** validar, registrar e responder `2xx`; efeitos não críticos vão para a outbox (ADR-0006).
 4. **Estado financeiro:** transições automatizadas de conta por eventos de pagamento ficam adiadas junto com billing; no MVP, o Admin controla ativação manualmente.
