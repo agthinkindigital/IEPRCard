@@ -68,6 +68,8 @@ try {
         'INSERT INTO titulares (tenant_id, nome_completo, ativo, criado_em) VALUES (:tenant, :name, 0, :created)'
     )->execute(['tenant' => $tenantId, 'name' => 'Legacy holder', 'created' => '2025-01-02 03:04:05']);
     $legacyHolderId = (int) $pdo->lastInsertId();
+    $pdo->exec("INSERT INTO tenants (tipo, nome_organizacao, status_conta, criado_em) VALUES ('cliente', 'Synthetic tenant without contact', 'ativo', '2025-03-04 05:06:07')");
+    $tenantWithoutContactId = (int) $pdo->lastInsertId();
     foreach (array_slice($migrationFiles, 13) as $migrationFile) {
         $migration = require $migrationFile;
         $migration($pdo, 'test');
@@ -117,6 +119,7 @@ try {
     }
     $ownerSubject = privacySubjectFindForRecord($pdo, 'usuario', $legacyOwnerId);
     $contactSubject = privacySubjectFindForRecord($pdo, 'tenant_contato', $tenantId);
+    $tenantWithoutContactSubject = privacySubjectFindForRecord($pdo, 'tenant_contato', $tenantWithoutContactId);
     $supportSubject = privacySubjectFindForRecord($pdo, 'acesso_suporte', $legacyAccessId);
     $apiKeySubject = privacySubjectFindForRecord($pdo, 'mcp_api_key', $legacyApiKeyId);
     $messageSubject = privacySubjectFindForRecord($pdo, 'mensagem_whatsapp', $legacyMessageId);
@@ -139,7 +142,7 @@ try {
         'type' => 'mensagem_whatsapp', 'record' => $legacyMessageId,
     ]);
     if (!is_array($ownerSubject) || !is_array($contactSubject) || !is_array($supportSubject)
-        || !is_array($apiKeySubject) || !is_array($messageSubject)
+        || !is_array($tenantWithoutContactSubject) || !is_array($apiKeySubject) || !is_array($messageSubject)
         || $ownerSubject['id'] !== $contactSubject['id'] || $ownerSubject['id'] !== $supportSubject['id']
         || $ownerSubject['id'] !== $apiKeySubject['id'] || $messageSubject['type'] !== 'contato') {
         throw new RuntimeException('Privacy subject migration must group account, tenant contact, support and API key data while scoping legacy WhatsApp PII.');

@@ -34,7 +34,7 @@ try {
 
     $report = adminMigrationPreflight();
     $serialized = json_encode($report, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-    if (($report['ready'] ?? true) !== false || ($report['source_records'] ?? null) !== 2 + $permissionCount
+    if (($report['ready'] ?? true) !== false || ($report['source_records'] ?? null) !== 4 + $permissionCount
         || ($report['destination_records'] ?? null) !== 0
         || ($report['source_name'] ?? null) !== 'source.sqlite'
         || str_contains($serialized, $path) || str_contains($serialized, 'Titular Confidencial')

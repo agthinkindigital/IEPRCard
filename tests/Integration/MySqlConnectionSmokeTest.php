@@ -84,9 +84,34 @@ if ($actualSchemaTables !== $expectedSchemaTables) {
 }
 
 $migrations = schemaAplicarMigracoes($connection, 'test');
-    if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile', '0017_privacy_subjects', '0018_privacy_subject_requests', '0019_backup_snapshot_retention', '0020_backup_snapshot_resume'] || array_filter(schemaInspecionar($connection)) !== []) {
+    if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile', '0017_privacy_subjects', '0018_privacy_subject_requests', '0019_backup_snapshot_retention', '0020_backup_snapshot_resume', '0021_privacy_tenant_subject_backfill'] || array_filter(schemaInspecionar($connection)) !== []) {
     throw new RuntimeException('MySQL/MariaDB versioned migrations must be repeatable and leave no schema drift.');
 }
+
+$backfillName = 'Synthetic tenant privacy backfill ' . bin2hex(random_bytes(4));
+$connection->prepare(
+    "INSERT INTO tenants (tipo, nome_organizacao, status_conta, criado_em) VALUES ('cliente', :name, 'ativo', :created)"
+)->execute(['name' => $backfillName, 'created' => gmdate('Y-m-d H:i:s')]);
+$backfillTenantId = (int) $connection->lastInsertId();
+$tenantSubjectMigration = require dirname(__DIR__, 2) . '/database/migrations/0021_privacy_tenant_subject_backfill.php';
+$tenantSubjectMigration($connection, 'test');
+$tenantSubjectMigration($connection, 'test');
+$tenantSubjectQuery = $connection->prepare(
+    "SELECT s.id, s.tipo, s.tenant_id, COUNT(r.registro_id) AS linked_records FROM privacy_subjects s "
+    . "JOIN privacy_subject_records r ON r.privacy_subject_id = s.id AND r.tipo_registro = 'tenant_contato' "
+    . 'WHERE r.registro_id = :tenant GROUP BY s.id, s.tipo, s.tenant_id'
+);
+$tenantSubjectQuery->execute(['tenant' => $backfillTenantId]);
+$tenantSubject = $tenantSubjectQuery->fetch(PDO::FETCH_ASSOC);
+if (!is_array($tenantSubject) || $tenantSubject['tipo'] !== 'pessoa'
+    || (int) $tenantSubject['tenant_id'] !== $backfillTenantId || (int) $tenantSubject['linked_records'] !== 1) {
+    throw new RuntimeException('Tenant backfill must idempotently bind organization PII to one tenant-scoped privacy subject.');
+}
+$connection->prepare(
+    "DELETE FROM privacy_subject_records WHERE tipo_registro = 'tenant_contato' AND registro_id = :tenant"
+)->execute(['tenant' => $backfillTenantId]);
+$connection->prepare('DELETE FROM privacy_subjects WHERE id = :id')->execute(['id' => $tenantSubject['id']]);
+$connection->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $backfillTenantId]);
 
 $financialTables = $connection->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('pagamentos_saas', 'pagamentos_titular', 'contas_recebedoras', 'repasses_titular', 'configuracoes_gateway')")->fetchAll(PDO::FETCH_COLUMN);
 if ($financialTables !== []) {
