@@ -38,7 +38,12 @@ $process = proc_open([PHP_BINARY, '-S', '127.0.0.1:' . $port, '-t', $root . DIRE
 if (!is_resource($process)) throw new RuntimeException('Could not start AI admin HTTP server.');
 try {
     $base = 'http://127.0.0.1:' . $port;
-    [$status] = aiAdminHttpRequest($base . '/admin/atendimento-ia.php');
+    $status = 0;
+    for ($attempt = 0; $attempt < 40; $attempt++) {
+        [$status] = aiAdminHttpRequest($base . '/admin/atendimento-ia.php');
+        if ($status !== 0) break;
+        usleep(100_000);
+    }
     if ($status !== 303) throw new RuntimeException('AI settings must require an authenticated superadmin session.');
     [, , $headers] = aiAdminHttpRequest($base . '/admin/login.php');
     $cookie = aiAdminCookie($headers);
