@@ -19,7 +19,51 @@ function privacySubjectLifecycleProcessDue(
     }
     $now ??= time();
     $nowText = gmdate('Y-m-d H:i:s', $now);
-    privacySubjectLifecycleSyncInactiveUsers($pdo, $nowText, $limit);
+    $requests = $pdo->prepare(
+        "SELECT id, privacy_subject_id FROM solicitacoes_anonimizacao WHERE privacy_subject_id IS NOT NULL "
+        . "AND estado IN ('pendente', 'falha') AND prazo_em <= :now ORDER BY solicitado_em, id LIMIT " . $limit
+    );
+    $requests->execute(['now' => $nowText]);
+    $requestRows = $requests->fetchAll(PDO::FETCH_ASSOC);
+    $requestIds = array_map('intval', array_column($requestRows, 'id'));
+    $processed = 0;
+    $failed = 0;
+    $errors = [];
+    foreach ($requestRows as $request) {
+        $requestId = (int) $request['id'];
+        $subjectId = (int) $request['privacy_subject_id'];
+        $errorCode = null;
+        if (privacySubjectLifecycleProcessOne($pdo, $subjectId, $nowText, $errorCode, $clientFactory, true)) {
+            $complete = $pdo->prepare(
+                "UPDATE solicitacoes_anonimizacao SET estado = 'concluida', privacy_subject_id = NULL, "
+                . "referencia_titular_cifrada = '', concluido_em = :completed, tentativas = tentativas + 1, erro_codigo = NULL "
+                . "WHERE id = :id AND privacy_subject_id = :subject AND estado IN ('pendente', 'falha')"
+            );
+            $complete->execute(['completed' => $nowText, 'id' => $requestId, 'subject' => $subjectId]);
+            if ($complete->rowCount() === 1) {
+                ++$processed;
+            }
+            continue;
+        }
+        $errorCode ??= 'PRIVACY_SUBJECT_ANONYMIZATION_FAILED';
+        $fail = $pdo->prepare(
+            "UPDATE solicitacoes_anonimizacao SET estado = 'falha', tentativas = tentativas + 1, erro_codigo = :error, "
+            . 'correlation_id = COALESCE(correlation_id, :correlation) WHERE id = :id AND privacy_subject_id = :subject '
+            . "AND estado IN ('pendente', 'falha')"
+        );
+        $fail->execute([
+            'error' => $errorCode, 'correlation' => bin2hex(random_bytes(16)), 'id' => $requestId, 'subject' => $subjectId,
+        ]);
+        if ($fail->rowCount() === 1) {
+            ++$failed;
+            $errors[$errorCode] = ($errors[$errorCode] ?? 0) + 1;
+        }
+    }
+    $remainingLimit = max(0, $limit - count($requestIds));
+    if ($remainingLimit === 0) {
+        return ['processed' => $processed, 'failed' => $failed, 'errors' => $errors];
+    }
+    privacySubjectLifecycleSyncInactiveUsers($pdo, $nowText, $remainingLimit);
     $cutoff = titularAnonymizationTwelveMonthCutoff($now);
     $query = $pdo->prepare(
         'SELECT s.id FROM privacy_subjects s WHERE s.anonimizado_em IS NULL '
@@ -28,13 +72,10 @@ function privacySubjectLifecycleProcessDue(
         . "WHERE r.privacy_subject_id = s.id AND r.tipo_registro = 'whatsapp_conversa' "
         . 'AND c.titular_id IS NULL AND c.expira_em <= :now)) '
         . "AND NOT EXISTS (SELECT 1 FROM privacy_subject_records r WHERE r.privacy_subject_id = s.id AND r.tipo_registro = 'titular') "
-        . 'ORDER BY COALESCE(s.inativado_em, s.criado_em), s.id LIMIT ' . $limit
+        . 'ORDER BY COALESCE(s.inativado_em, s.criado_em), s.id LIMIT ' . $remainingLimit
     );
     $query->execute(['cutoff' => $cutoff, 'now' => $nowText]);
     $subjectIds = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
-    $processed = 0;
-    $failed = 0;
-    $errors = [];
     foreach ($subjectIds as $subjectId) {
         $errorCode = null;
         if (privacySubjectLifecycleProcessOne($pdo, $subjectId, $nowText, $errorCode, $clientFactory)) {
@@ -71,7 +112,8 @@ function privacySubjectLifecycleProcessOne(
     int $subjectId,
     string $nowText,
     ?string &$errorCode = null,
-    ?callable $clientFactory = null
+    ?callable $clientFactory = null,
+    bool $force = false
 ): bool {
     $lock = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
     $pdo->beginTransaction();
@@ -94,7 +136,7 @@ function privacySubjectLifecycleProcessOne(
             throw new RuntimeException('PRIVACY_SUBJECT_RECORDS_MISSING');
         }
         $now = strtotime($nowText . ' UTC');
-        if (!is_int($now) || !privacySubjectLifecycleIsDue($pdo, $subjectId, $now)) {
+        if (!is_int($now) || (!$force && !privacySubjectLifecycleIsDue($pdo, $subjectId, $now))) {
             $pdo->commit();
             return true;
         }
@@ -135,6 +177,81 @@ function privacySubjectLifecycleProcessOne(
             ? $message
             : 'PRIVACY_SUBJECT_ANONYMIZATION_FAILED';
         return false;
+    }
+}
+
+/** @return array{solicitacao_id:string,estado:string,solicitado_em:string,prazo_em:string} */
+function privacySubjectAnonymizationRequest(
+    PDO $pdo,
+    int $subjectId,
+    string $requestId,
+    ?int $now = null
+): array {
+    if ($subjectId < 1 || preg_match('/^[a-f0-9]{32,100}$/D', $requestId) !== 1) {
+        throw new DomainException('PRIVACY_SUBJECT_REQUEST_INVALID');
+    }
+    $now ??= time();
+    $requestedAt = gmdate('Y-m-d H:i:s', $now);
+    $dueAt = gmdate('Y-m-d H:i:s', $now + 72 * 60 * 60);
+    $pdo->beginTransaction();
+    try {
+        $lock = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
+        $existing = $pdo->prepare(
+            'SELECT privacy_subject_id, estado, solicitado_em, prazo_em FROM solicitacoes_anonimizacao '
+            . 'WHERE solicitacao_id = :request_id LIMIT 1' . $lock
+        );
+        $existing->execute(['request_id' => $requestId]);
+        $prior = $existing->fetch(PDO::FETCH_ASSOC);
+        if (is_array($prior)) {
+            if ($prior['estado'] !== 'concluida' && (int) $prior['privacy_subject_id'] !== $subjectId) {
+                throw new DomainException('PRIVACY_SUBJECT_REQUEST_ID_CONFLICT');
+            }
+            $pdo->commit();
+            return [
+                'solicitacao_id' => $requestId,
+                'estado' => (string) $prior['estado'],
+                'solicitado_em' => (string) $prior['solicitado_em'],
+                'prazo_em' => (string) $prior['prazo_em'],
+            ];
+        }
+        $subject = $pdo->prepare('SELECT id, estado FROM privacy_subjects WHERE id = :id LIMIT 1' . $lock);
+        $subject->execute(['id' => $subjectId]);
+        $subjectRow = $subject->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($subjectRow) || $subjectRow['estado'] === 'anonimizado') {
+            throw new DomainException('PRIVACY_SUBJECT_NOT_FOUND');
+        }
+        $records = $pdo->prepare(
+            'SELECT tipo_registro FROM privacy_subject_records WHERE privacy_subject_id = :id LIMIT 1'
+        );
+        $records->execute(['id' => $subjectId]);
+        if ($records->fetchColumn() === false) {
+            throw new DomainException('PRIVACY_SUBJECT_RECORDS_MISSING');
+        }
+        $holder = $pdo->prepare(
+            "SELECT 1 FROM privacy_subject_records WHERE privacy_subject_id = :id AND tipo_registro = 'titular' LIMIT 1"
+        );
+        $holder->execute(['id' => $subjectId]);
+        if ($holder->fetchColumn() !== false) {
+            throw new DomainException('PRIVACY_SUBJECT_REQUEST_USE_TITULAR_FLOW');
+        }
+        $insert = $pdo->prepare(
+            "INSERT INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, privacy_subject_id, estado, solicitado_em, prazo_em) "
+            . "VALUES (:request_id, '', :subject, 'pendente', :requested, :deadline)"
+        );
+        $insert->execute([
+            'request_id' => $requestId, 'subject' => $subjectId, 'requested' => $requestedAt, 'deadline' => $dueAt,
+        ]);
+        $pdo->prepare(
+            "UPDATE privacy_subjects SET estado = 'inativo', inativado_em = COALESCE(inativado_em, :at) "
+            . "WHERE id = :id AND estado <> 'anonimizado'"
+        )->execute(['at' => $requestedAt, 'id' => $subjectId]);
+        $pdo->commit();
+        return ['solicitacao_id' => $requestId, 'estado' => 'pendente', 'solicitado_em' => $requestedAt, 'prazo_em' => $dueAt];
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
     }
 }
 

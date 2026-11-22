@@ -119,7 +119,7 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
     ksort($envelopes, SORT_STRING);
     $manifest = [
         'format' => 'ieprcard-snapshot-v1',
-        'schema_version' => '0017',
+        'schema_version' => '0018',
         'snapshot_id' => bin2hex(random_bytes(16)),
         'created_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($createdAt)),
         'table_count' => count($tableData),

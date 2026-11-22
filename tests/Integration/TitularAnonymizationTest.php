@@ -292,6 +292,66 @@ try {
                 . json_encode([$genericResult, $genericUser, $genericSubjectState, $genericContact, $genericSupport, $genericMcp]));
         }
 
+        $requestUserEmail = 'privacy-request-' . $suffix . '@example.test';
+        $pdo->prepare(
+            'INSERT INTO usuarios (tenant_id, papel_sistema, nome, email, senha_hash, ativo, criado_em) '
+            . "VALUES (:tenant, 'titular_cliente', :name, :email, :password, 1, :created)"
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'name' => 'Deletion request user ' . $suffix,
+            'email' => $requestUserEmail, 'password' => password_hash('synthetic-request-secret', PASSWORD_DEFAULT),
+            'created' => gmdate('Y-m-d H:i:s', $genericNow),
+        ]);
+        $requestUserId = (int) $pdo->lastInsertId();
+        $requestSubject = privacySubjectCreate($pdo, 'pessoa', $fixture['tenant_id'], gmdate('Y-m-d H:i:s', $genericNow));
+        privacySubjectLinkRecord($pdo, $requestSubject['id'], 'usuario', $requestUserId);
+        $genericRequestId = bin2hex(random_bytes(16));
+        $genericRequestAt = $genericNow + 100;
+        $genericRequest = privacySubjectAnonymizationRequest(
+            $pdo,
+            $requestSubject['id'],
+            $genericRequestId,
+            $genericRequestAt
+        );
+        $genericRequestReplay = privacySubjectAnonymizationRequest(
+            $pdo,
+            $requestSubject['id'],
+            $genericRequestId,
+            $genericRequestAt + 10
+        );
+        $beforeGenericRequestDeadline = privacySubjectLifecycleProcessDue(
+            $pdo,
+            $genericRequestAt + 72 * 60 * 60 - 1,
+            10
+        );
+        $requestUser = $pdo->prepare('SELECT nome, email FROM usuarios WHERE id = :id');
+        $requestUser->execute(['id' => $requestUserId]);
+        $requestUserBeforeDeadline = $requestUser->fetch(PDO::FETCH_ASSOC);
+        $atGenericRequestDeadline = privacySubjectLifecycleProcessDue(
+            $pdo,
+            $genericRequestAt + 72 * 60 * 60,
+            10
+        );
+        $requestUser->execute(['id' => $requestUserId]);
+        $requestUserAfterDeadline = $requestUser->fetch(PDO::FETCH_ASSOC);
+        $genericRequestRow = $pdo->prepare(
+            'SELECT estado, privacy_subject_id, referencia_titular_cifrada FROM solicitacoes_anonimizacao WHERE solicitacao_id = :id'
+        );
+        $genericRequestRow->execute(['id' => $genericRequestId]);
+        $genericRequestState = $genericRequestRow->fetch(PDO::FETCH_ASSOC);
+        if (($genericRequest['estado'] ?? null) !== 'pendente'
+            || ($genericRequestReplay['estado'] ?? null) !== 'pendente'
+            || ($beforeGenericRequestDeadline['processed'] ?? null) !== 0
+            || !is_array($requestUserBeforeDeadline) || $requestUserBeforeDeadline['email'] !== $requestUserEmail
+            || ($atGenericRequestDeadline['processed'] ?? null) !== 1
+            || !is_array($requestUserAfterDeadline) || $requestUserAfterDeadline['nome'] !== 'Usuário anonimizado'
+            || $requestUserAfterDeadline['email'] !== 'anonimizado-' . $requestUserId . '@invalid.example'
+            || !is_array($genericRequestState) || $genericRequestState['estado'] !== 'concluida'
+            || $genericRequestState['privacy_subject_id'] !== null
+            || $genericRequestState['referencia_titular_cifrada'] !== '') {
+            throw new RuntimeException($driver . ': generic deletion requests must honor 72 hours and remove subject linkage on completion: '
+                . json_encode([$genericRequest, $beforeGenericRequestDeadline, $atGenericRequestDeadline, $requestUserBeforeDeadline, $requestUserAfterDeadline, $genericRequestState]));
+        }
+
         $retentionInsert = $pdo->prepare(
             'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) '
             . 'VALUES (:tenant, :name, :cpf, 1, :created)'
@@ -334,6 +394,9 @@ try {
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $titularId]);
         $pdo->prepare('DELETE FROM solicitacoes_anonimizacao WHERE id > :baseline')->execute(['baseline' => $queueBaseline]);
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $retentionId]);
+        $pdo->prepare('DELETE FROM solicitacoes_anonimizacao WHERE solicitacao_id = :id')->execute(['id' => $genericRequestId]);
+        $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $requestUserId]);
+        $pdo->prepare('DELETE FROM privacy_subjects WHERE id = :id')->execute(['id' => $requestSubject['id']]);
         $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $genericUserId]);
         $pdo->prepare('DELETE FROM privacy_subjects WHERE id = :id')->execute(['id' => $genericSubject['id']]);
         tenantTestCleanup($pdo, $fixture);
