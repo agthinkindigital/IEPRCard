@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/database/schema/catalog.php';
+require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/titular_privacy_keys.php';
 
@@ -23,6 +24,17 @@ function privacySnapshotPersonalFields(): array
         'carteirinhas_emitidas' => [
             'codigo_validacao_qr', 'snapshot_dados_json', 'webp_frente_url', 'webp_verso_url', 'pdf_individual_url',
         ],
+    ];
+}
+
+/** @return array<string,list<string>> */
+function privacySnapshotArtifactFields(): array
+{
+    return [
+        'titulares' => ['foto_url'],
+        'tenants' => ['assinatura_responsavel_url'],
+        'mensagens_whatsapp' => ['arquivo_url'],
+        'carteirinhas_emitidas' => ['webp_frente_url', 'webp_verso_url', 'pdf_individual_url'],
     ];
 }
 
@@ -63,13 +75,23 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
                 $row['pdf_consolidado_url'] = null;
             }
             $fields = $policies[$table] ?? [];
+            $artifactFields = privacySnapshotArtifactFields()[$table] ?? [];
             $values = [];
             foreach ($fields as $field) {
-                if (array_key_exists($field, $row) && $row[$field] !== null && $row[$field] !== '') {
+                if (!in_array($field, $artifactFields, true)
+                    && array_key_exists($field, $row) && $row[$field] !== null && $row[$field] !== '') {
                     $values[$field] = $row[$field];
                 }
             }
-            if ($values !== []) {
+            $personalFieldsToScrub = array_keys($values);
+            $hasArtifacts = false;
+            foreach ($artifactFields as $artifactField) {
+                if (isset($row[$artifactField]) && trim((string) $row[$artifactField]) !== '') {
+                    $personalFieldsToScrub[] = $artifactField;
+                    $hasArtifacts = true;
+                }
+            }
+            if ($values !== [] || $hasArtifacts) {
                 $recordType = privacySnapshotRecordType($table);
                 $rowId = filter_var($row['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
                 $subjectId = $rowId === false ? false : ($recordsByKey[$recordType . ':' . $rowId] ?? false);
@@ -83,17 +105,19 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
                     throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_INVALID');
                 }
                 if (($subjectRow['estado'] ?? null) === 'anonimizado') {
-                    privacySnapshotReplacePersonalValues($table, (int) $rowId, $row, array_keys($values));
+                    privacySnapshotReplacePersonalValues($table, (int) $rowId, $row, $personalFieldsToScrub);
                     continue;
                 }
+                $artifacts = privacySnapshotLoadSubjectArtifacts($table, $row);
                 $reference = (string) $subjectRow['referencia'];
                 $subjectData[$subjectId]['reference'] = $reference;
                 $subjectData[$subjectId]['records'][] = [
                     'table' => $table,
                     'record_id' => (int) $rowId,
                     'fields' => $values,
+                    'artifacts' => $artifacts,
                 ];
-                privacySnapshotReplacePersonalValues($table, (int) $rowId, $row, array_keys($values));
+                privacySnapshotReplacePersonalValues($table, (int) $rowId, $row, $personalFieldsToScrub);
             }
         }
         unset($row);
@@ -118,7 +142,7 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
     }
     ksort($envelopes, SORT_STRING);
     $manifest = [
-        'format' => 'ieprcard-snapshot-v1',
+        'format' => 'ieprcard-snapshot-v2',
         'schema_version' => '0018',
         'snapshot_id' => bin2hex(random_bytes(16)),
         'created_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($createdAt)),
@@ -170,7 +194,7 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
     }
     $checksum = hash('sha256', $compressed);
     $created = new DateTimeImmutable((string) $snapshot['manifest']['created_at']);
-    $objectKey = 'ieprcard-snapshots/v1/' . $created->format('Y/m/d') . '/'
+    $objectKey = 'ieprcard-snapshots/v2/' . $created->format('Y/m/d') . '/'
         . $snapshot['manifest']['snapshot_id'] . '.json.gz';
     $processed = 0;
     $failed = 0;
@@ -188,7 +212,7 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
                 'Key' => $objectKey,
                 'Body' => $compressed,
                 'ContentType' => 'application/gzip',
-                'Metadata' => ['sha256' => $checksum, 'format' => 'ieprcard-snapshot-v1'],
+                'Metadata' => ['sha256' => $checksum, 'format' => 'ieprcard-snapshot-v2'],
                 'ServerSideEncryption' => 'AES256',
             ]);
             $update = $pdo->prepare(
@@ -288,6 +312,7 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
 {
     $fields = match ($table) {
         'destinos_backup' => ['ultimo_erro_codigo'],
+        'ia_config' => ['chave_cifrada'],
         'ia_config_global' => ['chave_cifrada'],
         'whatsapp_config_global' => ['api_token_cifrado'],
         default => [],
@@ -295,7 +320,7 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
     foreach ($fields as $field) {
         if (array_key_exists($field, $row)) {
             $row[$field] = in_array($table . '.' . $field, [
-                'ia_config_global.chave_cifrada', 'whatsapp_config_global.api_token_cifrado',
+                'ia_config.chave_cifrada', 'ia_config_global.chave_cifrada', 'whatsapp_config_global.api_token_cifrado',
             ], true) ? '' : null;
         }
     }
@@ -312,6 +337,9 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
     if ($table === 'ia_config_global' && array_key_exists('ativo', $row)) {
         $row['ativo'] = 0;
     }
+    if ($table === 'ia_config' && array_key_exists('ativo', $row)) {
+        $row['ativo'] = 0;
+    }
     if ($table === 'whatsapp_instancias') {
         $row['webhook_token_hash'] = hash('sha256', 'snapshot-disabled-whatsapp-' . (string) ($row['id'] ?? ''));
         $row['device_id'] = null;
@@ -319,12 +347,13 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
     }
 }
 
-/** Fail closed until private file bytes can be included in a subject's encrypted envelope. */
+/** Fail closed for artifacts without an envelope format tied to a privacy subject. */
 function privacySnapshotAssertSupportedArtifacts(string $table, array $row): void
 {
     $privateArtifacts = match ($table) {
         'titulares' => ['foto_url'],
         'tenants' => ['assinatura_responsavel_url'],
+        'designs_carteirinha' => ['bg_frente_url', 'bg_verso_url'],
         'lotes_importacao' => ['arquivo_original_url', 'pdf_consolidado_url'],
         'mensagens_whatsapp' => ['arquivo_url'],
         'carteirinhas_emitidas' => ['webp_frente_url', 'webp_verso_url', 'pdf_individual_url'],
@@ -332,9 +361,77 @@ function privacySnapshotAssertSupportedArtifacts(string $table, array $row): voi
     };
     foreach ($privateArtifacts as $field) {
         if (isset($row[$field]) && trim((string) $row[$field]) !== '') {
-            throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_ENCRYPTION_REQUIRED');
+            if (!in_array($field, privacySnapshotArtifactFields()[$table] ?? [], true)) {
+                throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_ENCRYPTION_REQUIRED');
+            }
+            privacySnapshotArtifactKey((int) ($row['tenant_id'] ?? 0), (string) $row[$field]);
         }
     }
+}
+
+/** @return array{key:string,extension:string} */
+function privacySnapshotArtifactKey(int $tenantId, string $storedKey): array
+{
+    if (preg_match('/^private:\/\/([1-9][0-9]*)\/([a-f0-9]{48})\.(jpg|jpeg|png|webp|pdf)$/D', $storedKey, $matches) !== 1
+        || $tenantId < 1 || (int) $matches[1] !== $tenantId) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_ENCRYPTION_REQUIRED');
+    }
+    return ['key' => $matches[2], 'extension' => $matches[3]];
+}
+
+/** @param array<string,mixed> $row @return list<array{field:string,media_type:string,sha256:string,contents_base64:string}> */
+function privacySnapshotLoadSubjectArtifacts(string $table, array $row): array
+{
+    $fields = privacySnapshotArtifactFields()[$table] ?? [];
+    if ($fields === []) {
+        return [];
+    }
+    $tenantId = (int) ($row['tenant_id'] ?? 0);
+    $artifacts = [];
+    foreach ($fields as $field) {
+        $storedKey = $row[$field] ?? null;
+        if (!is_string($storedKey) || trim($storedKey) === '') {
+            continue;
+        }
+        $identifier = privacySnapshotArtifactKey($tenantId, $storedKey);
+        $root = batchImportStagingPrivateRoot();
+        $tenantDirectory = $root . DIRECTORY_SEPARATOR . (string) $tenantId;
+        if (is_link($tenantDirectory)) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_UNAVAILABLE');
+        }
+        $realTenantDirectory = realpath($tenantDirectory);
+        if (!is_string($realTenantDirectory) || !batchImportStagingPathWithin($realTenantDirectory, $root)) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_UNAVAILABLE');
+        }
+        $path = $realTenantDirectory . DIRECTORY_SEPARATOR . $identifier['key'] . '.' . $identifier['extension'];
+        if (is_link($path)) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_UNAVAILABLE');
+        }
+        $realPath = realpath($path);
+        $size = is_string($realPath) ? filesize($realPath) : false;
+        if (!is_string($realPath) || !is_file($realPath) || !batchImportStagingPathWithin($realPath, $root)
+            || !is_int($size) || $size < 1 || $size > 25_000_000) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_UNAVAILABLE');
+        }
+        $contents = file_get_contents($realPath);
+        if (!is_string($contents) || $contents === '') {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_UNAVAILABLE');
+        }
+        $mediaType = match ($identifier['extension']) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'pdf' => 'application/pdf',
+        };
+        $artifacts[] = [
+            'field' => $field,
+            'media_type' => $mediaType,
+            'sha256' => hash('sha256', $contents),
+            'contents_base64' => base64_encode($contents),
+        ];
+        sodium_memzero($contents);
+    }
+    return $artifacts;
 }
 
 /** Keep operational history useful without preserving actor, target, or free-form personal data. */

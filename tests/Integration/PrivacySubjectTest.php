@@ -11,6 +11,9 @@ $temporary = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-privacy-subjec
 if (!mkdir($temporary, 0700, true)) {
     throw new RuntimeException('Could not create temporary privacy subject storage.');
 }
+$oldPrivateStorage = getenv('IEPR_PRIVATE_STORAGE_PATH');
+$privateStorage = $temporary . DIRECTORY_SEPARATOR . 'private';
+putenv('IEPR_PRIVATE_STORAGE_PATH=' . $privateStorage);
 $database = $temporary . DIRECTORY_SEPARATOR . 'subjects.sqlite';
 $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $database]);
 
@@ -92,6 +95,17 @@ try {
         }
     }
     $pdo->prepare('UPDATE titulares SET foto_url = NULL WHERE id = :id')->execute(['id' => $legacyHolderId]);
+    $artifactDirectory = $privateStorage . DIRECTORY_SEPARATOR . (string) $tenantId;
+    if (!mkdir($artifactDirectory, 0700, true)) {
+        throw new RuntimeException('Could not create private artifact fixture.');
+    }
+    $artifactBytes = 'synthetic-private-photo-bytes';
+    $artifactName = str_repeat('a', 48) . '.webp';
+    file_put_contents($artifactDirectory . DIRECTORY_SEPARATOR . $artifactName, $artifactBytes);
+    $artifactKey = 'private://' . $tenantId . '/' . $artifactName;
+    $pdo->prepare('UPDATE titulares SET foto_url = :url WHERE id = :id')->execute([
+        'url' => $artifactKey, 'id' => $legacyHolderId,
+    ]);
     $pdo->prepare(
         'INSERT INTO auditoria_processos (tenant_id, ator_usuario_id, ator_tipo, acao, entidade_id, antes_json, criado_em) '
         . 'VALUES (:tenant, :actor, :actor_type, :action, :entity_id, :before, :created)'
@@ -113,21 +127,48 @@ try {
         'event' => 'synthetic-outbox', 'type' => 'synthetic.event', 'payload' => '{"email":"outbox-private@example.test"}',
         'status' => 'pending', 'created' => '2026-11-22 12:00:00',
     ]);
-    $snapshot = privacySnapshotBuildPayload($pdo, static function (int $subjectId, string $plaintext): string {
+    $pdo->prepare(
+        'INSERT INTO ia_config (tenant_id, provedor, chave_cifrada, modelo, ativo, criado_em, atualizado_em) '
+        . 'VALUES (:tenant, :provider, :secret, :model, 1, :created, :updated)'
+    )->execute([
+        'tenant' => $tenantId, 'provider' => 'openai', 'secret' => 'synthetic-tenant-ai-ciphertext',
+        'model' => 'synthetic-model', 'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
+    ]);
+    $subjectPlaintexts = [];
+    $snapshot = privacySnapshotBuildPayload($pdo, static function (int $subjectId, string $plaintext) use (&$subjectPlaintexts): string {
+        $subjectPlaintexts[$subjectId] = $plaintext;
         return 'v1:test-cipher:' . hash('sha256', $subjectId . ':' . $plaintext);
     }, '2026-11-22T12:00:00Z');
     $snapshotJson = json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     foreach ([
         'Legacy owner', 'legacy-owner@example.test', 'synthetic message', '+5511999990000', 'Legacy holder',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
+        $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
     ] as $pii) {
         if (str_contains($snapshotJson, $pii)) {
             throw new RuntimeException('Snapshot payload must not contain personal data in plaintext.');
         }
     }
-    if (($snapshot['manifest']['format'] ?? null) !== 'ieprcard-snapshot-v1'
+    if (($snapshot['manifest']['format'] ?? null) !== 'ieprcard-snapshot-v2'
         || !is_array($snapshot['subject_envelopes'] ?? null) || count($snapshot['subject_envelopes']) < 3) {
         throw new RuntimeException('Snapshot must separate PII into versioned per-subject envelopes.');
+    }
+    $holderSubjectId = (int) $legacyRow['privacy_subject_id'];
+    $holderEnvelope = json_decode((string) ($subjectPlaintexts[$holderSubjectId] ?? ''), true);
+    $artifactRecord = null;
+    foreach ($holderEnvelope['records'] ?? [] as $record) {
+        if (($record['table'] ?? null) === 'titulares' && ($record['record_id'] ?? null) === $legacyHolderId) {
+            $artifactRecord = $record;
+            break;
+        }
+    }
+    $artifact = is_array($artifactRecord) ? ($artifactRecord['artifacts'][0] ?? null) : null;
+    if (!is_array($artifact) || ($artifact['field'] ?? null) !== 'foto_url'
+        || ($artifact['media_type'] ?? null) !== 'image/webp'
+        || !hash_equals(hash('sha256', $artifactBytes), (string) ($artifact['sha256'] ?? ''))
+        || base64_decode((string) ($artifact['contents_base64'] ?? ''), true) !== $artifactBytes
+        || str_contains((string) ($snapshot['tables']['titulares'][0]['foto_url'] ?? ''), $artifactName)) {
+        throw new RuntimeException('Private artifact bytes must be encrypted inside the linked subject envelope, without retaining storage paths.');
     }
 
     $subject = privacySubjectCreate($pdo, 'pessoa', $tenantId, '2026-11-22 12:00:00');
@@ -171,6 +212,20 @@ try {
 
     fwrite(STDOUT, "PASS: opaque privacy subjects group PII records without persisting PII.\n");
 } finally {
+    if (isset($artifactDirectory, $artifactName) && is_file($artifactDirectory . DIRECTORY_SEPARATOR . $artifactName)) {
+        unlink($artifactDirectory . DIRECTORY_SEPARATOR . $artifactName);
+    }
+    if (isset($artifactDirectory) && is_dir($artifactDirectory)) {
+        @rmdir($artifactDirectory);
+    }
+    if (is_dir($privateStorage)) {
+        @rmdir($privateStorage);
+    }
+    if ($oldPrivateStorage === false) {
+        putenv('IEPR_PRIVATE_STORAGE_PATH');
+    } else {
+        putenv('IEPR_PRIVATE_STORAGE_PATH=' . $oldPrivateStorage);
+    }
     unset($records);
     unset($legacy);
     if ($pdo instanceof PDO) {

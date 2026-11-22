@@ -287,7 +287,7 @@ try {
         $snapshotBody = $privacySnapshotClient?->uploads[0]['Body'] ?? null;
         $snapshotBytes = is_string($snapshotBody) ? gzdecode($snapshotBody) : false;
         if (($snapshotUpload['processed'] ?? 0) !== 1 || ($snapshotUpload['failed'] ?? 0) !== 0
-            || !is_string($snapshotBytes) || !str_contains($snapshotBytes, 'ieprcard-snapshot-v1')
+            || !is_string($snapshotBytes) || !str_contains($snapshotBytes, 'ieprcard-snapshot-v2')
             || str_contains($snapshotBytes, 'Synthetic S3 privacy holder')
             || str_contains($snapshotBytes, $superadminEmail)) {
             throw new RuntimeException($driver . ': S3 snapshot upload must store a checksummed gzip payload without plaintext PII.');
