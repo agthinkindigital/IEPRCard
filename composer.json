@@ -1,0 +1,14 @@
+{
+    "name": "agthinkindigital/ieprcard",
+    "description": "Monolito PHP multi-tenant para emissão e validação de carteirinhas.",
+    "require": {
+        "php": ">=8.1",
+        "aws/aws-sdk-php": "^3.350"
+    },
+    "config": {
+        "platform": {
+            "php": "8.1.0"
+        },
+        "sort-packages": true
+    }
+}

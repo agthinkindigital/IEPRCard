@@ -6,6 +6,8 @@ Projeto de sistema multi-tenant para emissão e validação de carteirinhas digi
 
 Configure `APP_ENV` e as variáveis do banco no ambiente do processo PHP; `.env.example` lista os nomes, mas o projeto não carrega arquivos `.env`. SQLite é o padrão local. `APP_ENV=dev|test` habilita self-healing; o padrão seguro é `production`, que somente inspeciona drift. Migrações versionadas são aplicadas explicitamente por `schemaAplicarMigracoes(PDO $pdo, 'production')` em `database/migrations/runner.php`. O catálogo executável de tabelas, colunas, índices e FKs fica em `database/schema/0001/`, referenciado pelo [ADR-0005](docs/adr/0005-schema-canonico-unificado.md) e pelo SAD §4.6.
 
+O adaptador S3 usa `aws/aws-sdk-php`; execute `composer install --no-dev --prefer-dist --optimize-autoloader` no build e inclua `vendor/` no pacote implantado. PHP 8.1 ou superior, `ext-simplexml`, `ext-sodium`, TLS/OpenSSL e acesso de saída HTTPS são necessários para configurar e testar destinos externos.
+
 Habilite `pdo_sqlite` para rodar `php tests/Integration/DualDatabaseSelfHealingTest.php`. A suíte completa `php tests/run_all.php` também exige `pdo_mysql` e `TEST_MYSQL_HOST`, `TEST_MYSQL_DATABASE` e `TEST_MYSQL_USERNAME`; se o smoke test MySQL for ignorado, o runner retorna código diferente de zero. O CI usa serviços descartáveis MySQL 8.4 e MariaDB 10.11.
 
 Para transferir dados pelo CLI, prepare um destino MySQL vazio com o schema canônico, configure `DB_DRIVER=mysql` e defina `MIGRATION_SOURCE_SQLITE_PATH`; execute `php database/migrate-sqlite-to-mysql.php`. A atualização do schema é um fluxo separado, restrito às migrations versionadas da release. Os pré-requisitos, worker de Cron e recuperação estão no [guia da interface de migração](docs/userguide/migracao-banco.md).

@@ -1,5 +1,6 @@
 .env
 .env.*.local
+/vendor/
 /var/*.sqlite
 /var/*.sqlite-*
 /var/private/
