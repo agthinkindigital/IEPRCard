@@ -121,14 +121,10 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 * **Critério futuro:** Conciliar indicadores com transações confirmadas pelo provedor.
 
 
-* **ISSUE-015: Automação WhatsApp sem cobrança**
-* **Arquivos:** `webhook_whatsapp.php`, `api/openai.php`, `api/gemini.php`, `admin/ia-config.php`
-
-
-* **Descrição:** Integrar o bot de WhatsApp (numérico, enquete ou IA multimodal OpenAI/Gemini) para permitir que o titular envie sua foto/dados pelo WhatsApp e receba a carteirinha pronta em WebP direto na conversa, sem cobrança ou checkout.
-
-
-* **Critério de Aceite:** Fluxo ponta a ponta no webhook simulado envia o WebP após validação dos dados e autorização de emissão, sem depender de pagamento.
+* **ISSUE-015: Automação WhatsApp sem cobrança** — escopo confirmado: menu determinístico e atendimento com IA para o titular individual; o bot envia WebP após validação e autorização de emissão. A referência EditaCódigo/GOWA VIP define o contrato atual do gateway. As referências de IA mostram OpenAI e Gemini; recomendação para o MVP é deixá-los selecionáveis, com um provedor ativo por fluxo e sem fallback automático entre provedores por padrão. A IA interpreta texto e extrai campos; o fluxo determinístico e o backend controlam estado, consentimento, autorização e emissão. Nenhuma parte de Asaas/Mercado Pago, cobrança ou repasse entra no escopo.
+* **Arquivos-alvo:** `webhook_whatsapp.php`, `api/whatsapp.php`, adaptadores de IA sob `api/`, fluxo de conversa em `config/` e configuração administrativa existente/futura. A referência legada em `G:` é material de consulta, não código-fonte para copiar/versionar.
+* **Consentimento e minimização:** antes de pedir ou processar dados/fotos, informar finalidade e quais provedores externos podem recebê-los e obter consentimento explícito. Se a mensagem chegar antes do consentimento, não persistir mídia/payload nem encaminhá-la à IA; responder apenas com a etapa de consentimento. Registrar somente a evidência mínima do aceite, vinculada à versão do aviso, ao titular e à finalidade; seguir os prazos de `docs/01-regras-de-negocio.md`.
+* **Critério de aceite:** fluxo ponta a ponta com menu e IA, webhook autenticado e idempotente; consentimento verificado antes de persistir ou encaminhar conteúdo; dados validados e emissão autorizada no backend; envio do WebP sem depender de pagamento. Testes cobrem falta/revogação do consentimento, replay, isolamento de tenant, provedor indisponível e ausência de PII/segredos em logs.
 
 
 
