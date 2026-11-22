@@ -13,20 +13,21 @@ function privacySnapshotPersonalFields(): array
         'titulares' => [
             'nome_completo', 'cpf', 'rg', 'cargo_funcao', 'matricula', 'data_nascimento',
             'data_batismo_ou_admissao', 'whatsapp', 'email_login', 'senha_portal_hash',
-            'token_unico_carteira', 'foto_url', 'dados_extras_json',
+            'token_unico_carteira', 'foto_url', 'dados_extras_json', 'ultima_interacao_em',
         ],
         'usuarios' => ['nome', 'email', 'senha_hash', 'ultimo_login_em'],
         'tenants' => [
             'nome_organizacao', 'slug_subdominio', 'nome_responsavel', 'cargo_responsavel', 'assinatura_responsavel_url',
         ],
         'whatsapp_conversas' => [
-            'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'dados_cifrados',
+            'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'titular_id', 'job_id', 'dados_cifrados',
         ],
-        'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url'],
-        'acessos_suporte' => ['token_hash', 'ip_usado'],
-        'mcp_api_keys' => ['nome', 'chave_hash'],
+        'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url', 'criado_em'],
+        'acessos_suporte' => ['token_hash', 'ip_usado', 'usado_em'],
+        'mcp_api_keys' => ['nome', 'chave_hash', 'ultimo_uso_em'],
         'carteirinhas_emitidas' => [
             'codigo_validacao_qr', 'snapshot_dados_json', 'webp_frente_url', 'webp_verso_url', 'pdf_individual_url',
+            'data_validade', 'total_leituras_qr', 'emitida_em',
         ],
     ];
 }
@@ -327,6 +328,7 @@ function privacySnapshotReplacePersonalValues(string $table, int $id, array &$ro
     } elseif ($table === 'carteirinhas_emitidas') {
         $row['codigo_validacao_qr'] = 'snapshot-disabled-' . $id;
         $row['status_carteirinha'] = 'revogada';
+        $row['total_leituras_qr'] = 0;
     } elseif ($table === 'whatsapp_conversas') {
         $row['contato_hmac'] = null;
     }

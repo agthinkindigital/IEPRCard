@@ -46,9 +46,12 @@ try {
     )->execute(['tenant' => $tenantId, 'created' => '2025-01-02 03:04:05']);
     $legacyMessageId = (int) $pdo->lastInsertId();
     $pdo->prepare(
-        "INSERT INTO acessos_suporte (tenant_id, usuario_id, token_hash, tipo, criado_em, expira_em) "
-        . "VALUES (:tenant, :user, 'synthetic-token-hash', 'suporte', :created, :expires)"
-    )->execute(['tenant' => $tenantId, 'user' => $legacyOwnerId, 'created' => '2025-01-02 03:04:05', 'expires' => '2025-01-02 04:04:05']);
+        "INSERT INTO acessos_suporte (tenant_id, usuario_id, token_hash, tipo, criado_em, expira_em, usado_em) "
+        . "VALUES (:tenant, :user, 'synthetic-token-hash', 'suporte', :created, :expires, :used)"
+    )->execute([
+        'tenant' => $tenantId, 'user' => $legacyOwnerId, 'created' => '2025-01-02 03:04:05',
+        'expires' => '2025-01-02 04:04:05', 'used' => '2026-11-22 11:43:10',
+    ]);
     $legacyAccessId = (int) $pdo->lastInsertId();
     $pdo->prepare(
         'INSERT INTO mcp_api_keys (tenant_id, usuario_id, nome, chave_hash, escopos_json, criado_em) '
@@ -58,6 +61,9 @@ try {
         'hash' => 'synthetic-key-hash', 'scopes' => '[]', 'created' => '2025-01-02 03:04:05',
     ]);
     $legacyApiKeyId = (int) $pdo->lastInsertId();
+    $pdo->prepare('UPDATE mcp_api_keys SET ultimo_uso_em = :used WHERE id = :id')->execute([
+        'used' => '2026-11-22 11:44:11', 'id' => $legacyApiKeyId,
+    ]);
     $pdo->prepare(
         'INSERT INTO titulares (tenant_id, nome_completo, ativo, criado_em) VALUES (:tenant, :name, 0, :created)'
     )->execute(['tenant' => $tenantId, 'name' => 'Legacy holder', 'created' => '2025-01-02 03:04:05']);
@@ -67,6 +73,37 @@ try {
         $migration($pdo, 'test');
     }
     schemaGarantirEstrutura($pdo, 'test');
+    $pdo->prepare('UPDATE mensagens_whatsapp SET criado_em = :created WHERE id = :id')->execute([
+        'created' => '2026-11-22 11:42:09', 'id' => $legacyMessageId,
+    ]);
+    $pdo->prepare('UPDATE titulares SET ultima_interacao_em = :last_seen WHERE id = :id')->execute([
+        'last_seen' => '2026-11-22 11:47:14', 'id' => $legacyHolderId,
+    ]);
+    $pdo->prepare(
+        'INSERT INTO designs_carteirinha (tenant_id, nome_layout, orientacao, criado_em) '
+        . 'VALUES (:tenant, :name, :orientation, :created)'
+    )->execute([
+        'tenant' => $tenantId, 'name' => 'Synthetic privacy design', 'orientation' => 'horizontal',
+        'created' => '2026-11-22 11:48:15',
+    ]);
+    $designId = (int) $pdo->lastInsertId();
+    $pdo->prepare(
+        'INSERT INTO carteirinhas_emitidas (tenant_id, titular_id, design_id, codigo_validacao_qr, '
+        . 'status_carteirinha, data_validade, snapshot_dados_json, total_leituras_qr, emitida_em) '
+        . 'VALUES (:tenant, :holder, :design, :code, :status, :valid, :snapshot, :reads, :issued)'
+    )->execute([
+        'tenant' => $tenantId, 'holder' => $legacyHolderId, 'design' => $designId,
+        'code' => 'synthetic-card-code', 'status' => 'ativa', 'valid' => '2027-11-22',
+        'snapshot' => '{"name":"Legacy holder"}', 'reads' => 7, 'issued' => '2026-11-22 11:49:16',
+    ]);
+    $legacyCardId = (int) $pdo->lastInsertId();
+    $holderPrivacySubject = privacySubjectEnsureTitular($pdo, $legacyHolderId, $tenantId);
+    privacySubjectLinkRecord($pdo, (int) $holderPrivacySubject['id'], 'carteirinha_emitida', $legacyCardId);
+    $pdo->prepare(
+        "INSERT INTO lotes_importacao (tenant_id, origem_tipo, status_lote, criado_em) "
+        . "VALUES (:tenant, 'manual', 'concluido', :created)"
+    )->execute(['tenant' => $tenantId, 'created' => '2026-11-22 11:50:17']);
+    $linkedJobId = (int) $pdo->lastInsertId();
 
     $legacy = $pdo->prepare(
         'SELECT s.referencia, r.privacy_subject_id FROM titulares t '
@@ -83,6 +120,15 @@ try {
     $supportSubject = privacySubjectFindForRecord($pdo, 'acesso_suporte', $legacyAccessId);
     $apiKeySubject = privacySubjectFindForRecord($pdo, 'mcp_api_key', $legacyApiKeyId);
     $messageSubject = privacySubjectFindForRecord($pdo, 'mensagem_whatsapp', $legacyMessageId);
+    $pdo->prepare('UPDATE privacy_subjects SET criado_em = :created WHERE id = :id')->execute([
+        'created' => '2026-11-22 11:45:12', 'id' => $messageSubject['id'],
+    ]);
+    $pdo->prepare(
+        'UPDATE privacy_subject_records SET criado_em = :created WHERE privacy_subject_id = :subject AND tipo_registro = :type AND registro_id = :record'
+    )->execute([
+        'created' => '2026-11-22 11:46:13', 'subject' => $messageSubject['id'],
+        'type' => 'mensagem_whatsapp', 'record' => $legacyMessageId,
+    ]);
     if (!is_array($ownerSubject) || !is_array($contactSubject) || !is_array($supportSubject)
         || !is_array($apiKeySubject) || !is_array($messageSubject)
         || $ownerSubject['id'] !== $contactSubject['id'] || $ownerSubject['id'] !== $supportSubject['id']
@@ -100,11 +146,12 @@ try {
     $instanceId = (int) $pdo->lastInsertId();
     $pdo->prepare(
         'INSERT INTO whatsapp_conversas (instancia_id, tenant_id, contato_hmac, estado, consentimento_finalidade, '
-        . 'consentimento_em, revogado_em, expira_em, criado_em, atualizado_em) '
-        . 'VALUES (:instance, :tenant, :contact, :state, :purpose, :consented, :revoked, :expires, :created, :updated)'
+        . 'consentimento_em, revogado_em, titular_id, job_id, expira_em, criado_em, atualizado_em) '
+        . 'VALUES (:instance, :tenant, :contact, :state, :purpose, :consented, :revoked, :holder, :job, :expires, :created, :updated)'
     )->execute([
         'instance' => $instanceId, 'tenant' => $tenantId, 'contact' => hash('sha256', 'synthetic-contact'),
-        'state' => 'concluida', 'purpose' => 'synthetic-consent-purpose',
+        'state' => 'concluida', 'purpose' => 'synthetic-consent-purpose', 'holder' => $legacyHolderId,
+        'job' => $linkedJobId,
         'consented' => '2026-11-22 11:13:14', 'revoked' => '2026-11-22 11:23:45',
         'expires' => '2026-11-22 13:00:00', 'created' => '2026-11-22 10:00:00', 'updated' => '2026-11-22 11:30:00',
     ]);
@@ -179,13 +226,22 @@ try {
     foreach ([
         'Legacy owner', 'legacy-owner@example.test', 'synthetic message', '+5511999990000', 'Legacy holder',
         'external-private-message-id', '2026-11-22 11:59:00',
+        '2026-11-22 11:42:09', '2026-11-22 11:43:10', '2026-11-22 11:44:11',
+        '2026-11-22 11:47:14', '2027-11-22', '2026-11-22 11:49:16',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
         'Synthetic privacy organization', 'synthetic-private-subdomain',
         'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
         $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
     ] as $pii) {
         if (str_contains($snapshotJson, $pii)) {
-            throw new RuntimeException('Snapshot payload must not contain personal data in plaintext: ' . $pii);
+            $containingTables = [];
+            foreach ($snapshot['tables'] as $snapshotTable => $snapshotRows) {
+                if (str_contains(json_encode($snapshotRows, JSON_THROW_ON_ERROR), $pii)) {
+                    $containingTables[] = $snapshotTable;
+                }
+            }
+            throw new RuntimeException('Snapshot payload must not contain personal data in plaintext: ' . $pii
+                . ' (tables=' . implode(',', $containingTables) . ').');
         }
     }
     if (($snapshot['manifest']['format'] ?? null) !== 'ieprcard-snapshot-v2'
@@ -195,16 +251,37 @@ try {
     $conversationSubjectPlaintext = $subjectPlaintexts[(int) $conversationSubject['id']] ?? '';
     if (!str_contains($conversationSubjectPlaintext, 'synthetic-consent-purpose')
         || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:13:14')
-        || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:23:45')) {
-        throw new RuntimeException('WhatsApp consent and revocation data must be encrypted in its removable subject envelope.');
+        || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:23:45')
+        || !str_contains($conversationSubjectPlaintext, '"titular_id":' . $legacyHolderId)
+        || !str_contains($conversationSubjectPlaintext, '"job_id":' . $linkedJobId)
+        || ($snapshot['tables']['whatsapp_conversas'][0]['titular_id'] ?? null) !== null
+        || ($snapshot['tables']['whatsapp_conversas'][0]['job_id'] ?? null) !== null) {
+        throw new RuntimeException('WhatsApp consent, revocation and holder linkage must be encrypted in its removable subject envelope.');
     }
     $ownerSubjectPlaintext = $subjectPlaintexts[(int) $ownerSubject['id']] ?? '';
     if (!str_contains($ownerSubjectPlaintext, 'Synthetic privacy organization')
         || !str_contains($ownerSubjectPlaintext, 'synthetic-private-subdomain')) {
         throw new RuntimeException('Tenant organization identity must remain recoverable only from its removable subject envelope.');
     }
+    foreach (['2026-11-22 11:43:10', '2026-11-22 11:44:11'] as $activityTimestamp) {
+        if (!str_contains($ownerSubjectPlaintext, $activityTimestamp)) {
+            throw new RuntimeException('Support and MCP access timestamps must remain recoverable only from the removable subject envelope.');
+        }
+    }
+    $messageSubjectPlaintext = $subjectPlaintexts[(int) $messageSubject['id']] ?? '';
+    if (!str_contains($messageSubjectPlaintext, '2026-11-22 11:42:09')) {
+        throw new RuntimeException('WhatsApp message timestamps must remain recoverable only from the removable subject envelope.');
+    }
     $holderSubjectId = (int) $legacyRow['privacy_subject_id'];
     $holderEnvelope = json_decode((string) ($subjectPlaintexts[$holderSubjectId] ?? ''), true);
+    $holderEnvelopeJson = json_encode($holderEnvelope, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    if (!str_contains($holderEnvelopeJson, '2026-11-22 11:47:14')
+        || !str_contains($holderEnvelopeJson, '2027-11-22')
+        || !str_contains($holderEnvelopeJson, '2026-11-22 11:49:16')
+        || !str_contains($holderEnvelopeJson, '"total_leituras_qr":7')
+        || ($snapshot['tables']['carteirinhas_emitidas'][0]['total_leituras_qr'] ?? null) !== 0) {
+        throw new RuntimeException('Titular interaction and card lifecycle metrics must be recoverable only from the removable subject envelope.');
+    }
     $artifactRecord = null;
     foreach ($holderEnvelope['records'] ?? [] as $record) {
         if (($record['table'] ?? null) === 'titulares' && ($record['record_id'] ?? null) === $legacyHolderId) {
