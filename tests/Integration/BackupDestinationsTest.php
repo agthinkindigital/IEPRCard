@@ -237,6 +237,9 @@ try {
         backupDestinationSave($pdo, $identity, array_merge($input, [
             'id' => (int) $saved['id'], 'endpoint' => 'http://127.0.0.1:1', 'access_key' => '', 'secret_key' => '',
         ]));
+        $lastSuccessfulAtBeforeFailure = $pdo->query(
+            'SELECT ultimo_sucesso_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetchColumn();
         $failedTest = backupDestinationTest($pdo, $identity, (int) $saved['id']);
         $afterFailure = $pdo->query(
             'SELECT ultimo_teste_status, ultimo_sucesso_em, ativo FROM destinos_backup WHERE id = ' . (int) $saved['id']
@@ -244,7 +247,7 @@ try {
         if (($failedTest['status'] ?? null) !== 'failed' || !is_array($afterFailure)
             || $afterFailure['ultimo_teste_status'] !== 'failed'
             || (int) $afterFailure['ativo'] !== 0
-            || $afterFailure['ultimo_sucesso_em'] !== $persisted['ultimo_sucesso_em']) {
+            || $afterFailure['ultimo_sucesso_em'] !== $lastSuccessfulAtBeforeFailure) {
             throw new RuntimeException($driver . ': failed tests must preserve the previous successful timestamp.');
         }
         try {
