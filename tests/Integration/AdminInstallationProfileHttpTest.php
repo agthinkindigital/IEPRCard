@@ -120,9 +120,64 @@ try {
     [$status] = installationProfileHttpRequest($base . '/admin/migracao-banco.php', 'GET', null, $cookie);
     if ($status !== 200) throw new RuntimeException('Saving an installation profile must release the protected superadmin routes.');
 
+    [$status, $page] = installationProfileHttpRequest($base . '/admin/instalacao.php', 'GET', null, $cookie);
+    if ($status !== 200 || !preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', (string) $page, $hostedToken)) {
+        throw new RuntimeException('The saved profile must remain editable by the authenticated superadmin.');
+    }
+    [$status, , $confirmationHeaders] = installationProfileHttpRequest($base . '/admin/instalacao.php', 'POST', http_build_query([
+        'action' => 'save', 'csrf_token' => $hostedToken[1], 'modo' => 'hospedado',
+        'hostname_plataforma' => 'admin.ieprcard.example', 'dominio_base' => 'ieprcard.example',
+    ]), $cookie);
+    if ($status !== 303 || installationProfileHttpHeader($confirmationHeaders, 'Location') !== '/admin/instalacao.php?erro=1') {
+        throw new RuntimeException('Changing installation mode must require explicit impact confirmation.');
+    }
+    [$status, $page] = installationProfileHttpRequest($base . '/admin/instalacao.php?erro=1', 'GET', null, $cookie);
+    if ($status !== 200 || !str_contains((string) $page, 'Confirme que compreendeu')
+        || !preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', (string) $page, $retryToken)) {
+        throw new RuntimeException('A missing impact confirmation must be announced and remain retryable.');
+    }
+    [$status, , $invalidUpdateHeaders] = installationProfileHttpRequest($base . '/admin/instalacao.php', 'POST', http_build_query([
+        'action' => 'save', 'csrf_token' => $retryToken[1], 'modo' => 'hospedado',
+        'hostname_plataforma' => 'bad"><script>alert(1)</script>', 'dominio_base' => 'ieprcard.example', 'confirm_impact' => '1',
+    ]), $cookie);
+    if ($status !== 303 || installationProfileHttpHeader($invalidUpdateHeaders, 'Location') !== '/admin/instalacao.php?erro=1') {
+        throw new RuntimeException('An invalid reconfiguration must return to the form without replacing the active profile.');
+    }
+    [$status, $page] = installationProfileHttpRequest($base . '/admin/instalacao.php?erro=1', 'GET', null, $cookie);
+    if ($status !== 200 || !str_contains((string) $page, '&lt;script&gt;alert(1)&lt;/script&gt;')
+        || str_contains((string) $page, '<script>alert(1)</script>')
+        || !preg_match('/name="csrf_token" value="([a-f0-9]{64})"/', (string) $page, $invalidRetryToken)) {
+        throw new RuntimeException('An invalid reconfiguration must preserve its value and remain retryable.');
+    }
+    $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
+    $currentProfile = $pdo->query('SELECT modo, tenant_local_id FROM configuracoes_instalacao ORDER BY id DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($currentProfile) || $currentProfile['modo'] !== 'local_host' || (int) $currentProfile['tenant_local_id'] !== $tenantId
+        || (int) $pdo->query('SELECT COUNT(*) FROM configuracoes_instalacao')->fetchColumn() !== 1) {
+        throw new RuntimeException('A failed reconfiguration must preserve the previously active Local Host profile.');
+    }
+    unset($pdo);
+
+    [$status, , $hostedHeaders] = installationProfileHttpRequest($base . '/admin/instalacao.php', 'POST', http_build_query([
+        'action' => 'save', 'csrf_token' => $invalidRetryToken[1], 'modo' => 'hospedado',
+        'hostname_plataforma' => 'admin.ieprcard.example', 'dominio_base' => 'ieprcard.example', 'confirm_impact' => '1',
+    ]), $cookie);
+    if ($status !== 303 || installationProfileHttpHeader($hostedHeaders, 'Location') !== '/admin/instalacao.php?salvo=1') {
+        throw new RuntimeException('A valid Hosted profile must be saveable through the HTTP form.');
+    }
+    [$status] = installationProfileHttpRequest($base . '/admin/instalacao.php?salvo=1', 'GET', null, $cookie);
+    if ($status !== 404) throw new RuntimeException('The Hosted profile must stop serving the administrative pages on an unconfigured Host.');
+    [$status, $page] = installationProfileHttpRequest($base . '/admin/instalacao.php?salvo=1', 'GET', null, $cookie, 'admin.ieprcard.example');
+    if ($status !== 200 || !str_contains((string) $page, 'Hospedado ativo')
+        || !str_contains((string) $page, 'value="admin.ieprcard.example"')
+        || !str_contains((string) $page, 'value="ieprcard.example"')) {
+        throw new RuntimeException('A saved Hosted profile must show its normalized platform and base hostnames on the configured Host.');
+    }
+    [$status] = installationProfileHttpRequest($base . '/admin/migracao-banco.php', 'GET', null, $cookie, 'admin.ieprcard.example');
+    if ($status !== 200) throw new RuntimeException('Hosted mode must release protected admin routes on the configured platform Host.');
+
     $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
     $record = $pdo->query('SELECT modo, tenant_local_id, ator_usuario_id FROM configuracoes_instalacao ORDER BY id DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
-    if (!is_array($record) || $record['modo'] !== 'local_host' || (int) $record['tenant_local_id'] !== $tenantId
+    if (!is_array($record) || $record['modo'] !== 'hospedado' || $record['tenant_local_id'] !== null
         || (int) $record['ator_usuario_id'] !== $adminId) {
         throw new RuntimeException('The HTTP form must persist the authenticated actor and the validated profile.');
     }
@@ -143,9 +198,10 @@ fwrite(STDOUT, "PASS: installation mode setup is authenticated, CSRF-protected, 
 return 'pass';
 
 /** @return array{int,string|null,list<string>} */
-function installationProfileHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null): array
+function installationProfileHttpRequest(string $url, string $method = 'GET', ?string $body = null, ?string $cookie = null, ?string $host = null): array
 {
     $headers = ['Accept: text/html'];
+    if ($host !== null) $headers[] = 'Host: ' . $host;
     if ($body !== null) $headers[] = 'Content-Type: application/x-www-form-urlencoded';
     if ($cookie !== null) $headers[] = 'Cookie: ' . $cookie;
     $context = stream_context_create(['http' => [
