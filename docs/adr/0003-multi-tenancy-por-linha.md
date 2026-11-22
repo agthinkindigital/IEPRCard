@@ -9,7 +9,7 @@
 
 ## Contexto
 
-A hierarquia é de 4 camadas lógicas (Admin → Cliente Sede → Subcliente → Titular), com subdomínios e domínios próprios resolvidos por `HTTP_HOST`. Domínios próprios são requisito do lançamento. O requisito de isolamento do GATE 2 é explícito: um Subcliente não pode ler nem editar dados de outro Subcliente mesmo manipulando IDs via GET/POST.
+A hierarquia é de 4 camadas lógicas (Admin → Cliente Sede → Subcliente → Titular). No perfil Hospedado, subdomínios e domínios próprios são resolvidos por `HTTP_HOST`; domínios próprios são requisito do lançamento. O requisito de isolamento do GATE 2 é explícito: um Subcliente não pode ler nem editar dados de outro Subcliente mesmo manipulando IDs via GET/POST. O produto também oferece perfil Local Host para uma instalação que atende uma única empresa e suas unidades.
 
 ## Decisão
 
@@ -17,6 +17,11 @@ A hierarquia é de 4 camadas lógicas (Admin → Cliente Sede → Subcliente →
 - O registro canônico `dominios_tenant` mantém o hostname normalizado, tenant, estado de verificação e estado do TLS. Ciclo de vida: `pendente_verificacao → verificado → tls_pendente → ativo`, com revogação explícita. Hostnames são únicos globalmente; só hosts ativos e verificados resolvem tenants.
 - Verificar posse por desafio DNS antes de ativar. Rejeitar hosts desconhecidos, duplicados ou não verificados; validar o host contra a lista cadastrada e a sessão, sem confiar diretamente em `HTTP_HOST` para autorização. Credenciais/códigos do desafio não são tokens de sessão.
 - A hospedagem precisa aceitar vários hostnames na mesma aplicação e emitir/renovar TLS para cada um. A compatibilidade deve ser demonstrada no plano contratado; suporte a domínio único ou múltiplos sites não prova, por si só, suporte a aliases ilimitados.
+- O superadmin escolhe um perfil global da instalação, persistido e auditado: **Hospedado** ou **Local Host**. Sem perfil inicial, somente o setup autenticado do superadmin fica disponível.
+- Em **Hospedado**, os hostnames da plataforma e o domínio-base dos subdomínios são configurados na instalação. O roteamento continua exigindo hostname normalizado/permitido e identidade autenticada compatível; domínios próprios de clientes mantêm prova DNS e TLS.
+- Em **Local Host**, o superadmin configura uma única Sede ativa. Páginas de cliente e portal resolvem essa Sede e suas unidades, com a sessão autenticada fixando o tenant/unidade do usuário; nenhum ID de tenant enviado pelo navegador altera o escopo. Não há domínio próprio por cliente nesse perfil.
+- Acesso Local Host só é reconhecido quando o host da requisição é loopback (`localhost`, `127.0.0.1` ou `::1`) e a conexão chega por interface loopback. Não confiar em `X-Forwarded-Host` nem aceitar `Host` de rede para ativar o perfil local.
+- A troca de perfil não move dados. Mudanças são restritas ao superadmin, protegidas por CSRF, auditadas e passam a valer nas requisições seguintes. A configuração Local Host limita os fluxos de cliente à Sede escolhida, sem remover outros registros administrativos.
 - `config/tenant_scope.php` constrói a cláusula obrigatória de escopo em toda query de negócio:
   - Admin: filtro explícito por tela, nunca ausência de `WHERE`;
   - Cliente: `tenant_id = :tid`;
@@ -42,7 +47,8 @@ A hierarquia é de 4 camadas lógicas (Admin → Cliente Sede → Subcliente →
 
 ## Como validar
 
-- `TDD-02`: `painel.saas.com` → admin; `escolaX.com.br` → cliente 10; `polo1.escolaX.com.br` → subcliente 25 com `parent_id=10`.
+- `TDD-02`: no perfil Hospedado, `painel.saas.com` → admin; `escolaX.com.br` → cliente 10; `polo1.escolaX.com.br` → subcliente 25 com `parent_id=10`. No perfil Local Host, `localhost` → somente a Sede configurada e suas unidades, com a identidade da sessão fixando o escopo.
 - Domínio não verificado, TLS pendente, hostname duplicado ou `Host` desconhecido não ativa contexto de tenant; tentativa de host injection não contorna a sessão nem o TenantScope.
+- Host `localhost` vindo de conexão não-loopback não ativa a instalação local; um perfil Local Host não disponibiliza a aplicação pela rede pública.
 - GATE 2: tentativa de ler/editar design, lote ou titular de outro tenant retorna 403/404 sem vazar existência.
 - Auditória de queries: nenhuma `SELECT` em tabelas com `tenant_id` fora do TenantScope.

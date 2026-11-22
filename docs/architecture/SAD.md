@@ -88,7 +88,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-10 | Testabilidade | Nenhum módulo de negócio pronto sem passar em `tests/run_all.php` (SQLite efêmero + MySQL) | `docs/10` |
 | NFR-11 | Quality gates | Avanço de fase condicionado a `PASS` nos Gates 1–5 | `docs/12` |
 | NFR-12 | Restrição de stack | PHP 8.1+/8.2 puro, PDO, GD, MySQL, cron agendável e storage privado; proibido depender de daemon, Docker ou acesso root no perfil compartilhado | `docs/13`, `docs/14`; alinhamento de hospedagem |
-| NFR-13 | White-label | Domínio próprio/subdomínio com branding por `HTTP_HOST` | `docs/00`, `docs/16` |
+| NFR-13 | White-label | Em Hospedado, domínio próprio/subdomínio com branding por host validado; Local Host opera uma Sede configurada sem hostname público | `docs/00`, `docs/16`, ADR-0003 |
 
 ### 2.2. NFRs propostos para production-readiness **[PROPOSTO]**
 
@@ -106,6 +106,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-23 | Auditoria | Toda mudança de permissão, cota, plano e acesso de suporte gera linha em `auditoria_processos` | `docs/01` §6 e `docs/04` |
 | NFR-24 | Operação de lotes | Exibir lote recomendado e pico previsto; permitir ajuste manual aplicado após reinício do worker | Alinhamento do produto; ADR-0011 |
 | NFR-25 | Compatibilidade de hospedagem | Aplicação operável em hospedagem compartilhada PHP/MySQL com tarefas agendadas; processamento retomável e idempotente | Alinhamento do produto; §7.1 e ADR-0012 |
+| NFR-26 | Perfis de instalação | Superadmin escolhe Hospedado (múltiplos tenants por hostname validado) ou Local Host (uma Sede e suas unidades, sem hostname público); ambos preservam TenantScope e sessão | Alinhamento do produto; ADR-0003 |
 
 ### 2.3. Alinhamentos confirmados e decisões ainda abertas
 
@@ -118,11 +119,12 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 5. **Região:** uma única região atende ao lançamento; multirregião não é requisito.
 6. **Domínios:** domínios próprios dos Clientes são requisito do lançamento. Cada domínio deve ser verificado, vinculado unicamente a um tenant e servido com TLS; a hospedagem precisa aceitar múltiplos nomes apontando para a mesma aplicação.
 7. **Pagamentos:** cobranças SaaS, cobranças de titulares e repasses estão fora do MVP. O fluxo plataforma→Cliente por marketplace/split é apenas uma direção futura, descrita em `docs/07` e ADR-0008; o código de webhook existente será referência para avaliação, sem integração no lançamento.
+8. **Perfil da instalação:** superadmin seleciona Hospedado ou Local Host. O perfil local atende somente uma Sede ativa e suas unidades, não exige hostname público e não aceita resolução por host vindo de fora do loopback. O perfil hospedado conserva o roteamento validado por `HTTP_HOST`. Ver ADR-0003.
 
 **Decisões ainda abertas antes dos respectivos módulos:**
 
 1. **Fotos:** qual o tamanho médio e o pico de upload por lote ZIP? Define limites de upload, storage e limpeza.
-2. **Domínios e hospedagem:** selecionar o mecanismo de verificação/renovação TLS e confirmar aliases, quantidade de domínios, cron, limites PHP e armazenamento privado no plano real. Em 2026-11-19, a documentação da Hostinger lista Web Single com 1 site e 2 domínios estacionados; domínios estacionados mostram o mesmo site mantendo o host na barra de endereço, e o SSL é instalado automaticamente quando são adicionados e apontados. Isso torna plausível servir até dois domínios próprios no mesmo monólito via `HTTP_HOST`, mas não comprova o plano contratado nem a escala necessária; validar aliases e TLS ponta a ponta no painel antes do lançamento. Consulte [limites atuais dos planos](https://www.hostinger.com/support/6976044-parameters-and-limits-of-hosting-plans-in-hostinger/), [domínios estacionados](https://www.hostinger.com/support/1583404-how-to-park-a-domain-at-hostinger/) e [instalação SSL](https://www.hostinger.com/support/5613445-how-to-fix-a-failed-lifetime-ssl-installation-in-hostinger/).
+2. **Validação do perfil Hospedado:** demonstrar DNS, aliases e TLS em um ambiente de teste sob controle do mantenedor; validar também limites PHP, cron, storage privado e uploads no host real. A configuração de instalação permite testar Local Host sem hostname, mas isso não comprova DNS/TLS do perfil Hospedado; a evidência permanece na [#51](https://github.com/agthinkindigital/IEPRCard/issues/51).
 3. **Financeiro (fase futura):** selecionar e habilitar produto de marketplace, definir comissão, periodicidade do repasse e responsabilidades por estornos/chargebacks antes de implementar pagamentos.
 
 ---

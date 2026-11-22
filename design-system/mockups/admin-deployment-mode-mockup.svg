@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1770" viewBox="0 0 1440 1770" role="img" aria-labelledby="title description">
+  <title id="title">Modo de hospedagem — configuração do superadmin</title>
+  <desc id="description">Configuração global com modos Hospedado e Local Host. O modo Local Host restringe o deployment a uma empresa Sede e suas unidades.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, system-ui, "Segoe UI", sans-serif; }
+      .muted { fill: #475569; } .small { font-size: 13px; } .tiny { font-size: 11px; }
+      .body { font-size: 15px; } .label { font-size: 12px; font-weight: 700; letter-spacing: .35px; }
+      .title { font-size: 26px; font-weight: 700; fill: #0F172A; }
+      .panel { fill: #FFFFFF; stroke: #DCE3EC; } .field { fill: #FFFFFF; stroke: #94A3B8; }
+    </style>
+  </defs>
+  <rect width="1440" height="1030" fill="#F6F8FB"/>
+  <text x="32" y="30" class="label muted">IEPRCARD · MOCKUP SUPERADMIN · INFORMAÇÕES EXEMPLO · AGUARDANDO APROVAÇÃO</text>
+  <rect x="24" y="48" width="1392" height="952" rx="14" class="panel"/>
+  <rect x="24" y="48" width="220" height="952" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <rect x="48" y="68" width="32" height="32" rx="8" fill="#1D4ED8"/>
+  <path d="M56 77h16v14H56zM60 73h8v4h-8z" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <text x="90" y="90" font-size="17" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="48" y="145" class="tiny muted">ADMINISTRAÇÃO</text>
+  <text x="64" y="184" class="small muted">Visão geral</text>
+  <text x="64" y="224" class="small muted">Clientes</text>
+  <text x="64" y="264" class="small muted">Domínios</text>
+  <text x="64" y="304" class="small muted">Operação</text>
+  <rect x="36" y="326" width="196" height="42" rx="7" fill="#EFF6FF"/>
+  <rect x="36" y="326" width="3" height="42" rx="1.5" fill="#1D4ED8"/>
+  <text x="64" y="352" class="small" font-weight="700" fill="#1D4ED8">Instalação</text>
+  <text x="64" y="408" class="small muted">Backup externo</text>
+  <text x="64" y="448" class="small muted">IA e integrações</text>
+  <circle cx="62" cy="956" r="16" fill="#DBEAFE"/>
+  <text x="62" y="961" text-anchor="middle" class="tiny" font-weight="700" fill="#1D4ED8">LN</text>
+  <text x="88" y="953" class="small" font-weight="700" fill="#0F172A">Leonardo</text>
+  <text x="88" y="972" class="tiny muted">Superadmin</text>
+
+  <text x="272" y="96" class="small muted">Administração  /  Instalação</text>
+  <text x="272" y="143" class="title">Modo de hospedagem</text>
+  <text x="272" y="171" class="body muted">Escolha como esta instalação identifica a empresa e os endereços do sistema.</text>
+  <rect x="272" y="194" width="1112" height="70" rx="9" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="294" y="222" class="small" font-weight="700" fill="#1E3A8A">Configuração global da instalação</text>
+  <text x="294" y="246" class="small" fill="#1E3A8A">A alteração não move dados. Ela muda quais hostnames e empresas esta aplicação pode atender.</text>
+
+  <rect x="272" y="284" width="534" height="128" rx="10" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5"/>
+  <circle cx="300" cy="314" r="9" fill="#FFFFFF" stroke="#64748B" stroke-width="1.5"/>
+  <text x="324" y="319" font-size="17" font-weight="700" fill="#0F172A">Hospedado</text>
+  <text x="296" y="352" class="small muted">Atende vários clientes por subdomínios e domínios próprios.</text>
+  <text x="296" y="377" class="small muted">O tenant é resolvido por host validado e sessão autenticada.</text>
+  <text x="296" y="398" class="tiny muted">Use em hospedagem compartilhada ou VPS publicada na internet.</text>
+
+  <rect x="822" y="284" width="562" height="128" rx="10" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="2"/>
+  <circle cx="850" cy="314" r="9" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="1.5"/>
+  <circle cx="850" cy="314" r="4.5" fill="#1D4ED8"/>
+  <text x="874" y="319" font-size="17" font-weight="700" fill="#1D4ED8">Local Host</text>
+  <text x="846" y="352" class="small" fill="#1E3A8A">Esta instalação atende uma empresa Sede e as unidades dela.</text>
+  <text x="846" y="377" class="small" fill="#1E3A8A">Não usa hostname de plataforma, subdomínio ou domínio próprio.</text>
+  <text x="846" y="398" class="tiny" fill="#1E3A8A">A empresa é selecionada pelo superadmin; usuários continuam no próprio escopo.</text>
+
+  <rect x="272" y="432" width="1112" height="392" rx="10" class="panel"/>
+  <text x="296" y="470" font-size="17" font-weight="700" fill="#0F172A">Empresa disponível nesta instalação</text>
+  <text x="296" y="495" class="small muted">Selecione uma única Sede ativa. As unidades descendentes continuam acessíveis conforme o perfil do usuário.</text>
+  <text x="296" y="535" class="label" fill="#0F172A">EMPRESA SEDE</text>
+  <rect x="296" y="548" width="710" height="46" rx="7" class="field"/>
+  <text x="314" y="577" class="body" fill="#0F172A">Instituto Exemplo</text>
+  <text x="980" y="577" class="body muted">▾</text>
+  <text x="1028" y="535" class="label" fill="#0F172A">UNIDADES VINCULADAS</text>
+  <rect x="1028" y="548" width="332" height="46" rx="7" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="1048" y="577" class="body" fill="#0F172A">3 unidades ativas</text>
+  <rect x="296" y="616" width="1064" height="92" rx="8" fill="#FFFBEB" stroke="#FCD34D"/>
+  <text x="318" y="645" class="small" font-weight="700" fill="#78350F">Limites do modo Local Host</text>
+  <text x="318" y="670" class="small" fill="#78350F">Uma única Sede pode operar nesta instalação. Domínios próprios ficam desativados; URLs usam</text>
+  <text x="318" y="692" class="small" fill="#78350F">localhost e só são acessíveis nesta máquina. O acesso respeita usuário e empresa configurados.</text>
+  <text x="296" y="748" class="label muted">ESTADO DA CONFIGURAÇÃO</text>
+  <rect x="296" y="762" width="126" height="26" rx="13" fill="#DCFCE7"/>
+  <text x="359" y="780" text-anchor="middle" class="tiny" font-weight="700" fill="#166534">Local Host ativo</text>
+  <text x="440" y="780" class="small muted">Salvo por Leonardo · alteração registrada na auditoria</text>
+  <rect x="1180" y="852" width="180" height="46" rx="7" fill="#1D4ED8"/>
+  <text x="1270" y="881" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Salvar configuração</text>
+  <text x="296" y="880" class="tiny muted">Somente superadmin pode alterar este modo. A alteração vale para as próximas requisições.</text>
+
+  <rect x="24" y="1030" width="1392" height="710" rx="14" class="panel"/>
+  <text x="64" y="1080" class="label muted">VARIAÇÃO · PERFIL HOSPEDADO ATIVO</text>
+  <text x="64" y="1124" class="title">Configurar hostnames</text>
+  <text x="64" y="1152" class="body muted">Preencha os endereços públicos usados pela instalação hospedada.</text>
+  <rect x="64" y="1178" width="1276" height="64" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="84" y="1205" class="small" font-weight="700" fill="#1E3A8A">Hospedado ativo</text>
+  <text x="84" y="1228" class="tiny" fill="#1E3A8A">O host identifica tenant candidato; a sessão e o TenantScope continuam autorizando os dados.</text>
+  <text x="64" y="1286" class="label" fill="#0F172A">HOSTNAME DA PLATAFORMA</text>
+  <rect x="64" y="1299" width="610" height="46" rx="7" class="field"/>
+  <text x="82" y="1328" class="body" fill="#0F172A">admin.ieprcard.example</text>
+  <text x="720" y="1286" class="label" fill="#0F172A">DOMÍNIO BASE DOS CLIENTES</text>
+  <rect x="720" y="1299" width="620" height="46" rx="7" class="field"/>
+  <text x="738" y="1328" class="body" fill="#0F172A">ieprcard.example</text>
+  <rect x="64" y="1370" width="1276" height="92" rx="8" fill="#FFFBEB" stroke="#FCD34D"/>
+  <text x="86" y="1399" class="small" font-weight="700" fill="#78350F">Antes de ativar os domínios</text>
+  <text x="86" y="1424" class="small" fill="#78350F">O DNS deve apontar para esta aplicação e o HTTPS precisa estar ativo. Domínios próprios dos clientes</text>
+  <text x="86" y="1447" class="small" fill="#78350F">são verificados separadamente na tela da Sede e só resolvem após validação.</text>
+  <rect x="1144" y="1490" width="196" height="46" rx="7" fill="#1D4ED8"/>
+  <text x="1242" y="1519" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Salvar hostnames</text>
+  <text x="64" y="1520" class="tiny muted">Endereços de exemplo; não representam domínios reais.</text>
+
+  <text x="64" y="1590" class="label muted">ADAPTAÇÃO MOBILE · FORMULÁRIOS EM COLUNA ÚNICA</text>
+  <rect x="64" y="1610" width="390" height="116" rx="12" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="84" y="1640" class="small" font-weight="700" fill="#0F172A">Local Host</text>
+  <text x="84" y="1664" class="tiny muted">Selecione uma Sede; sem campos de hostname.</text>
+  <text x="84" y="1687" class="tiny muted">Acesso limitado a esta máquina.</text>
+  <rect x="472" y="1610" width="390" height="116" rx="12" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="492" y="1640" class="small" font-weight="700" fill="#0F172A">Hospedado</text>
+  <text x="492" y="1664" class="tiny muted">Hostname e domínio base empilhados.</text>
+  <text x="492" y="1687" class="tiny muted">Aviso e ação ficam visíveis sem rolagem lateral.</text>
+</svg>
