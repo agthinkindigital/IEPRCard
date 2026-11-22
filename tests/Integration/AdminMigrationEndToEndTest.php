@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/config/admin_migration.php';
+require_once __DIR__ . '/AdminHttpProfileFixture.php';
 
 $expectedTableCount = count(\IEPRCard\Database\Schema\catalogoCanonico());
 
@@ -46,6 +47,8 @@ $insertAdmin->execute([
     'email' => 'migration-e2e@example.test',
     'password_hash' => password_hash('integration-test-password', PASSWORD_DEFAULT),
 ]);
+$adminId = (int) $auth->lastInsertId();
+adminHttpSeedHostedProfile($auth, $adminId);
 unset($insertAdmin, $auth);
 $target = dbConnect($mysqlConfiguration);
 schemaGarantirEstrutura($target, 'test');
