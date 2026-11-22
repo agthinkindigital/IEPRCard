@@ -99,6 +99,15 @@ function titularAnonymizationProcessOne(
         $holderQuery->execute(['id' => $reference['titular_id'], 'tenant' => $reference['tenant_id']]);
         $holder = $holderQuery->fetch(PDO::FETCH_ASSOC);
         if (is_array($holder)) {
+            $conversationPrivacy = $pdo->prepare(
+                "UPDATE whatsapp_conversas SET estado = 'anonimizada', contato_hmac = NULL, titular_id = NULL, "
+                . 'job_id = NULL, dados_cifrados = NULL '
+                . 'WHERE tenant_id = :tenant AND titular_id = :titular'
+            );
+            $conversationPrivacy->execute([
+                'tenant' => $reference['tenant_id'],
+                'titular' => $reference['titular_id'],
+            ]);
             $privacyReference = titularPrivacyEnsureReference($pdo, $reference['tenant_id'], $reference['titular_id']);
             titularPrivacyEraseKeys($pdo, $privacyReference, $clientFactory);
             titularAnonymizationDeleteHolderArtifacts($pdo, $reference['tenant_id'], $reference['titular_id'], $holder);

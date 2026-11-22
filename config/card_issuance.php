@@ -39,7 +39,7 @@ function cardIssuanceCreateJob(
         || ($context->tipo === 'subcliente' && $context->subclienteId !== $subclienteId)) {
         throw new DomainException('ISSUANCE_DENIED');
     }
-    if (!pode($pdo, $context, $identity, 'carteirinha.gerar', $subclienteId)) {
+    if (!cardIssuanceCanGenerate($pdo, $context, $identity, $tenantId, $subclienteId)) {
         throw new DomainException('ISSUANCE_DENIED');
     }
 
@@ -62,7 +62,7 @@ function cardIssuanceCreateJob(
             &$result
         ): void {
             motorPermissoesCacheLimpar($pdo);
-            if (!pode($pdo, $context, $identity, 'carteirinha.gerar', $subclienteId)) {
+            if (!cardIssuanceCanGenerate($pdo, $context, $identity, $tenantId, $subclienteId)) {
                 throw new DomainException('ISSUANCE_DENIED');
             }
 
@@ -120,7 +120,7 @@ function cardIssuanceCreateJob(
             $insertJob->execute([
                 'tenant' => $tenantId,
                 'subclient' => $subclienteId,
-                'user' => (int) $identity['id'],
+                'user' => ($identity['id'] ?? null) === null ? null : (int) $identity['id'],
                 'design' => $designId,
                 'source' => $sourceLotId,
                 'holder' => $titularId,
@@ -188,4 +188,14 @@ function cardIssuanceCreateJob(
     }
 
     return $result;
+}
+
+/** @param array<string,mixed> $identity */
+function cardIssuanceCanGenerate(PDO $pdo, TenantContext $context, array $identity, int $tenantId, ?int $subclientId): bool
+{
+    if (($identity['papel_sistema'] ?? null) === 'integracao_whatsapp') {
+        require_once __DIR__ . '/whatsapp_gateway_webhook.php';
+        return whatsappGatewayServicePrincipalCan($pdo, $context, $identity, $tenantId, $subclientId, 'carteirinha.gerar');
+    }
+    return pode($pdo, $context, $identity, 'carteirinha.gerar', $subclientId);
 }

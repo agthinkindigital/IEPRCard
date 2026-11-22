@@ -18,10 +18,10 @@ Se o teste falhar, revise a chave, o modelo permitido e a conectividade externa.
 
 ## Consentimento do titular
 
-1. Antes de pedir dados ou foto, o bot informa a finalidade e nomeia o provedor de IA ativo, que poderá processar o texto e a imagem enviados.
+1. O fluxo só começa quando o superadmin o habilita explicitamente na instância GOWA. Antes de pedir dados ou foto, o bot informa a finalidade e nomeia o provedor de IA ativo.
 2. **Concordo e continuar** registra o aceite para a finalidade e a versão do aviso mostradas e inicia o menu determinístico.
-3. A IA pode interpretar texto e extrair os campos solicitados. A aplicação valida os dados e a autorização antes de emitir; o modelo não aprova a emissão.
+3. Após o aceite, o menu de cadastro é determinístico. No MVP, a IA interpreta somente o texto do nome; CPF é validado pela aplicação e categoria, design e confirmação não dependem da IA. A foto é opcional, processada localmente para remover metadados e não é enviada ao provedor de IA. A aplicação valida os dados e a autorização antes de emitir; o modelo não aprova a emissão.
 4. **Não concordo** encerra o fluxo. Mensagens ou mídias que tenham chegado antes do aceite não são salvas nem enviadas à IA.
-5. O titular pode pedir para encerrar/revogar o consentimento. O sistema interrompe novas etapas e aplica as regras de exclusão/anonimização de [`docs/01-regras-de-negocio.md`](../01-regras-de-negocio.md).
+5. O titular pode pedir para encerrar/revogar o consentimento. O sistema interrompe novas etapas, pausa a IA para um titular já vinculado e aplica as regras de exclusão/anonimização de [`docs/01-regras-de-negocio.md`](../01-regras-de-negocio.md). Conversas sem titular são removidas após a expiração; a anonimização do titular também remove o vínculo e o HMAC do contato.
 
 O atendimento e a emissão não envolvem pagamento, checkout ou repasse no MVP. O tratamento de mensagens deve evitar registrar conteúdo, foto, telefone, chaves ou respostas brutas da IA em logs.

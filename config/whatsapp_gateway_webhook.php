@@ -31,14 +31,14 @@ function whatsappGatewayValidateCronPing(PDO $pdo, array $payload): void
     }
 }
 
-/** @return array{id:int,tenant_id:int,subcliente_id:?int,nome_instancia:string,device_id:?string,estado:string} */
+/** @return array{id:int,tenant_id:int,subcliente_id:?int,nome_instancia:string,device_id:?string,estado:string,fluxo_cadastro_ativo:bool} */
 function whatsappGatewayResolveWebhookInstance(PDO $pdo, string $token): array
 {
     if (preg_match('/^[a-f0-9]{64}$/D', $token) !== 1) {
         throw new DomainException('WHATSAPP_WEBHOOK_UNAUTHORIZED');
     }
     $statement = $pdo->prepare(
-        "SELECT i.id, i.tenant_id, i.subcliente_id, i.nome_instancia, i.device_id, i.estado "
+        "SELECT i.id, i.tenant_id, i.subcliente_id, i.nome_instancia, i.device_id, i.estado, i.fluxo_cadastro_ativo "
         . "FROM whatsapp_instancias i JOIN tenants root ON root.id = i.tenant_id "
         . "AND root.parent_id IS NULL AND root.tipo = 'cliente' AND root.status_conta = 'ativo' "
         . "LEFT JOIN tenants unit ON unit.id = i.subcliente_id AND unit.parent_id = i.tenant_id "
@@ -59,6 +59,7 @@ function whatsappGatewayResolveWebhookInstance(PDO $pdo, string $token): array
         'nome_instancia' => (string) $row['nome_instancia'],
         'device_id' => $row['device_id'] === null ? null : (string) $row['device_id'],
         'estado' => (string) $row['estado'],
+        'fluxo_cadastro_ativo' => (bool) $row['fluxo_cadastro_ativo'],
     ];
 }
 
@@ -77,17 +78,18 @@ function whatsappGatewayReceiveEvent(PDO $pdo, string $token, array $payload, ?i
     $type = $payload['tipo'] ?? 'unknown';
     $fromMe = $payload['is_from_me'] ?? false;
     $group = $payload['grupo'] ?? false;
-    if (!is_string($encodedPayload) || strlen($encodedPayload) > 262144
+    if (!is_string($encodedPayload) || strlen($encodedPayload) > 2_097_152
         || !is_string($payload['usuario'] ?? null)
         || !hash_equals($instance['nome_instancia'], trim($payload['usuario']))
         || !is_string($messageId) || trim($messageId) === '' || strlen($messageId) > 160
         || preg_match('/[\x00-\x1f\x7f]/', $messageId) === 1
         || !is_string($phone) || strlen($phone) > 80 || preg_match('/[\x00-\x1f\x7f]/', $phone) === 1
-        || !is_string($text)
+        || !is_string($text) || strlen($text) > 4000
         || !is_array($media) && $media !== null
         || !is_string($type) || $type === '' || strlen($type) > 64
         || preg_match('/[\x00-\x1f\x7f]/', $type) === 1
-        || !is_bool($fromMe) || !is_bool($group)) {
+        || !is_bool($fromMe) || !is_bool($group)
+        || is_array($media) && isset($media['data']) && (!is_string($media['data']) || strlen($media['data']) > 1_500_000)) {
         throw new DomainException('WHATSAPP_WEBHOOK_PAYLOAD_INVALID');
     }
     $eventHash = hash_hmac(
@@ -211,4 +213,48 @@ function whatsappGatewayMarkEventProcessed(PDO $pdo, int $instanceId, string $ev
         'instance_id' => $instanceId,
         'event_hash' => $eventHash,
     ]);
+}
+
+/** Validate a service capability delegated by the superadmin to one opted-in GOWA instance. */
+function whatsappGatewayServicePrincipalCan(
+    PDO $pdo,
+    TenantContext $context,
+    array $identity,
+    int $tenantId,
+    ?int $subclientId,
+    string $permission
+): bool {
+    $instanceId = filter_var($identity['instancia_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if (($identity['papel_sistema'] ?? null) !== 'integracao_whatsapp' || $instanceId === false
+        || (int) ($identity['tenant_id'] ?? 0) !== $tenantId
+        || (($identity['subcliente_id'] ?? null) === null ? null : (int) $identity['subcliente_id']) !== $subclientId
+        || !in_array($permission, ['titular.criar', 'carteirinha.gerar'], true)
+        || $context->tenantId !== $tenantId || $context->subclienteId !== $subclientId
+        || $context->tipo !== ($subclientId === null ? 'cliente' : 'subcliente')) {
+        return false;
+    }
+    $lock = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
+    $statement = $pdo->prepare(
+        "SELECT c.id FROM whatsapp_instancias i JOIN whatsapp_conversas c ON c.id = :conversation "
+        . "AND c.instancia_id = i.id AND c.tenant_id = i.tenant_id "
+        . 'AND ((c.subcliente_id IS NULL AND i.subcliente_id IS NULL) OR c.subcliente_id = i.subcliente_id) '
+        . "AND c.estado = 'confirmando' AND c.revogado_em IS NULL "
+        . "JOIN tenants root ON root.id = i.tenant_id "
+        . "AND root.parent_id IS NULL AND root.tipo = 'cliente' AND root.status_conta = 'ativo' "
+        . "AND root.plano_id IS NOT NULL JOIN planos p ON p.id = root.plano_id AND p.ativo = 1 "
+        . "JOIN plano_feature_flags f ON f.plano_id = p.id AND f.feature_key = :permission AND f.habilitado = 1 "
+        . "LEFT JOIN tenants unit ON unit.id = i.subcliente_id AND unit.parent_id = i.tenant_id "
+        . "AND unit.tipo = 'subcliente' AND unit.status_conta = 'ativo' "
+        . "WHERE i.id = :instance AND i.tenant_id = :tenant AND i.estado = 'ativa' AND i.fluxo_cadastro_ativo = 1 "
+        . "AND ((i.subcliente_id IS NULL AND :child_null IS NULL) OR (i.subcliente_id = :child AND unit.id IS NOT NULL)) LIMIT 1" . $lock
+    );
+    $statement->execute([
+        'permission' => $permission,
+        'conversation' => filter_var($identity['conversation_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]),
+        'instance' => $instanceId,
+        'tenant' => $tenantId,
+        'child_null' => $subclientId,
+        'child' => $subclientId,
+    ]);
+    return $statement->fetchColumn() !== false;
 }

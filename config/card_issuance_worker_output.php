@@ -59,6 +59,10 @@ function cardIssuanceWorkerFinalize(PDO $pdo, int $jobId, int $now): void
             ->execute(['at' => gmdate('Y-m-d H:i:s', $now), 'job' => $jobId]);
         $pdo->prepare("UPDATE lotes_importacao SET status_lote = 'concluido', processados_sucesso = total_registros, worker_lease_until = NULL, erro_codigo = NULL, finalizado_em = :at WHERE id = :id")
             ->execute(['at' => gmdate('Y-m-d H:i:s', $now), 'id' => $jobId]);
+        $pdo->prepare(
+            "UPDATE whatsapp_conversas SET estado = 'entrega_pendente', atualizado_em = :at "
+            . "WHERE job_id = :job AND estado = 'emissao_pendente'"
+        )->execute(['at' => gmdate('Y-m-d H:i:s', $now), 'job' => $jobId]);
         $pdo->commit();
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) { $pdo->rollBack(); }

@@ -75,12 +75,13 @@ try {
                     parse_str($unitToken, $unitQuery);
                     $unitToken = (string) ($unitQuery['token'] ?? '');
                     $unitRow = $pdo->query(
-                        'SELECT tenant_id, subcliente_id, device_id, webhook_token_hash FROM whatsapp_instancias WHERE id = ' . $unitInstance['id']
+                        'SELECT tenant_id, subcliente_id, device_id, webhook_token_hash, fluxo_cadastro_ativo FROM whatsapp_instancias WHERE id = ' . $unitInstance['id']
                     )->fetch(PDO::FETCH_ASSOC);
                     if (!is_array($unitRow) || (int) $unitRow['tenant_id'] !== $tenantId
                         || (int) $unitRow['subcliente_id'] !== $unitId || $unitRow['device_id'] !== 'device-' . $unitInstance['instance_name']
                         || preg_match('/^[a-f0-9]{64}$/D', $unitToken) !== 1
                         || $unitRow['webhook_token_hash'] !== hash('sha256', $unitToken)
+                        || (int) $unitRow['fluxo_cadastro_ativo'] !== 0
                         || str_contains((string) json_encode($unitRow), $unitToken)) {
                         throw new RuntimeException($driver . ': provisioned instance did not keep only its scoped token hash.');
                     }
@@ -106,9 +107,16 @@ try {
                                 'status' => 200,
                                 'body' => json_encode(['ok' => true, 'device_id' => 'device-root-' . $tenantId]),
                             ];
-                        }
+                        },
+                        true
                     );
                     $instanceIds[] = $rootInstance['id'];
+                    $flowEnabled = $pdo->query(
+                        'SELECT fluxo_cadastro_ativo FROM whatsapp_instancias WHERE id = ' . $rootInstance['id']
+                    )->fetchColumn();
+                    if ((int) $flowEnabled !== 1) {
+                        throw new RuntimeException($driver . ': provisioning opt-in must persist the registration-flow setting.');
+                    }
                     $rootTokenParts = [];
                     parse_str((string) parse_url($rootInstance['webhook_url'], PHP_URL_QUERY), $rootTokenParts);
                     $rootToken = (string) ($rootTokenParts['token'] ?? '');

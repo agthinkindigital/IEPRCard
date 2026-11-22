@@ -12,7 +12,8 @@ function whatsappGatewayInstanceProvision(
     int $tenantId,
     ?int $subclientId = null,
     ?string $publicBaseUrl = null,
-    ?callable $transport = null
+    ?callable $transport = null,
+    bool $registrationFlowEnabled = false
 ): array {
     aiGlobalConfigAssertSuperadmin($pdo, $identity);
     if ($tenantId < 1 || ($subclientId !== null && $subclientId < 1)) {
@@ -59,8 +60,8 @@ function whatsappGatewayInstanceProvision(
     $now = gmdate('Y-m-d H:i:s');
     $insert = $pdo->prepare(
         "INSERT INTO whatsapp_instancias "
-        . "(tenant_id, subcliente_id, escopo_chave, nome_instancia, device_id, webhook_token_hash, estado, criado_em, atualizado_em) "
-        . "VALUES (:tenant, :subclient, :scope, :name, NULL, :token_hash, 'provisionando', :created, :updated)"
+        . "(tenant_id, subcliente_id, escopo_chave, nome_instancia, device_id, webhook_token_hash, fluxo_cadastro_ativo, estado, criado_em, atualizado_em) "
+        . "VALUES (:tenant, :subclient, :scope, :name, NULL, :token_hash, :flow_enabled, 'provisionando', :created, :updated)"
     );
     $insert->execute([
         'tenant' => $tenantId,
@@ -68,6 +69,7 @@ function whatsappGatewayInstanceProvision(
         'scope' => $scopeKey,
         'name' => $instanceName,
         'token_hash' => hash('sha256', $webhookToken),
+        'flow_enabled' => $registrationFlowEnabled ? 1 : 0,
         'created' => $now,
         'updated' => $now,
     ]);

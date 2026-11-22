@@ -42,6 +42,35 @@ try {
             'created' => gmdate('Y-m-d H:i:s'),
         ]);
         $titularId = (int) $pdo->lastInsertId();
+        $createdAt = gmdate('Y-m-d H:i:s');
+        $pdo->prepare(
+            "INSERT INTO whatsapp_instancias (tenant_id, escopo_chave, nome_instancia, webhook_token_hash, estado, fluxo_cadastro_ativo, criado_em, atualizado_em) "
+            . "VALUES (:tenant, :scope, :name, :token_hash, 'ativa', 0, :created, :updated)"
+        )->execute([
+            'tenant' => $fixture['tenant_id'],
+            'scope' => 'anonymization-test:' . $suffix,
+            'name' => 'anonymization-' . $suffix,
+            'token_hash' => hash('sha256', $suffix),
+            'created' => $createdAt,
+            'updated' => $createdAt,
+        ]);
+        $instanceId = (int) $pdo->lastInsertId();
+        $pdo->prepare(
+            "INSERT INTO whatsapp_conversas (instancia_id, tenant_id, subcliente_id, contato_hmac, estado, "
+            . 'consentimento_finalidade, consentimento_em, titular_id, expira_em, criado_em, atualizado_em) '
+            . "VALUES (:instance, :tenant, :subclient, :contact, 'concluida', :purpose, :consented, :holder, :expires, :created, :updated)"
+        )->execute([
+            'instance' => $instanceId,
+            'tenant' => $fixture['tenant_id'],
+            'subclient' => $fixture['subcliente_id'],
+            'contact' => hash('sha256', $suffix),
+            'purpose' => 'cadastro_titular_emissao_carteirinha',
+            'consented' => $createdAt,
+            'holder' => $titularId,
+            'expires' => gmdate('Y-m-d H:i:s', 1_800_086_400),
+            'created' => $createdAt,
+            'updated' => $createdAt,
+        ]);
         $now = 1_800_000_000;
         $keylessRequestId = bin2hex(random_bytes(20));
         $activeKey = getenv('IEPR_ANONYMIZATION_KEY');
@@ -96,6 +125,7 @@ try {
         $anonymized = $holder->fetch(PDO::FETCH_ASSOC);
         $stored->execute(['id' => $requestId]);
         $completed = $stored->fetch(PDO::FETCH_ASSOC);
+        $conversation = $pdo->query('SELECT estado, contato_hmac, dados_cifrados, titular_id FROM whatsapp_conversas LIMIT 1')->fetch(PDO::FETCH_ASSOC);
         if (($result['processed'] ?? null) !== 1 || ($result['failed'] ?? null) !== 0
             || !is_array($anonymized) || $anonymized['nome_completo'] !== 'Titular anonimizado'
             || $anonymized['cpf'] !== null || $anonymized['rg'] !== null || $anonymized['cargo_funcao'] !== null
@@ -104,6 +134,8 @@ try {
             || $anonymized['senha_portal_hash'] !== null || $anonymized['token_unico_carteira'] !== null
             || $anonymized['foto_url'] !== null || $anonymized['dados_extras_json'] !== null
             || (int) $anonymized['ativo'] !== 0 || (int) $anonymized['acesso_app_liberado'] !== 0
+            || !is_array($conversation) || $conversation['estado'] !== 'anonimizada' || $conversation['contato_hmac'] !== null
+            || $conversation['dados_cifrados'] !== null || $conversation['titular_id'] !== null
             || !is_array($completed) || $completed['estado'] !== 'concluida'
             || $completed['referencia_titular_cifrada'] !== '') {
             throw new RuntimeException($driver . ': due deletion requests must erase direct identifiers and clear their encrypted queue reference.');

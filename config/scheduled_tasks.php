@@ -42,6 +42,8 @@ function scheduledTasksSafeErrorCode(Throwable $exception): string
         'SCHEDULED_TASK_CONFIGURATION_INVALID',
         'SCHEDULED_TASK_LIMIT_INVALID',
         'SCHEDULED_TASK_RESULT_INVALID',
+        'WHATSAPP_CONVERSATION_CLEANUP_LIMIT_INVALID',
+        'WHATSAPP_DELIVERY_LIMIT_INVALID',
     ];
     $message = $exception->getMessage();
     return in_array($message, $safeCodes, true) ? $message : 'SCHEDULED_TASK_FAILED';
@@ -77,6 +79,12 @@ function scheduledTasksBuild(PDO $pdo, int $maxIssuanceJobs = 1, int $maintenanc
         'card_issuance' => static function () use ($pdo, $maxIssuanceJobs): array {
             $result = cardIssuanceWorkerRunBatch($pdo, $maxIssuanceJobs);
             return ['processed_jobs' => $result['processed'], 'skipped_lock' => $result['skipped'] ? 1 : 0];
+        },
+        'whatsapp_delivery' => static function () use ($pdo): array {
+            return whatsappConversationProcessPendingDeliveries($pdo);
+        },
+        'whatsapp_conversation_cleanup' => static function () use ($pdo, $maintenanceLimit): array {
+            return ['deleted' => whatsappConversationCleanupExpired($pdo, $maintenanceLimit)];
         },
         'import_staging_cleanup' => static function () use ($pdo, $maintenanceLimit): array {
             return ['expired_lots' => batchImportStagingCleanupExpired($pdo, time(), $maintenanceLimit)];

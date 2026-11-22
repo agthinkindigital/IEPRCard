@@ -79,7 +79,10 @@ try {
     $exitCode = $execution['exit_code'];
     $summary = json_decode((string) $stdout, true);
     if ($exitCode !== 0 || !is_array($summary) || ($summary['ok'] ?? null) !== true
-        || array_keys($summary['tasks'] ?? []) !== ['card_issuance', 'import_staging_cleanup', 'titular_anonymization']
+        || array_keys($summary['tasks'] ?? []) !== [
+            'card_issuance', 'whatsapp_delivery', 'whatsapp_conversation_cleanup',
+            'import_staging_cleanup', 'titular_anonymization',
+        ]
         || str_contains((string) $stdout, $storagePath) || str_contains((string) $stderr, $databasePath)) {
         throw new RuntimeException('The scheduled task CLI must run bounded tasks and emit a private-data-free summary: ' . $stderr . $stdout);
     }

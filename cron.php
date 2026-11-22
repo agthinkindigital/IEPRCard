@@ -14,6 +14,7 @@ if (count($argv) > 1 && $argv[1] !== '--once' || count($argv) > 2) {
 require_once __DIR__ . '/config/conn.php';
 require_once __DIR__ . '/config/batch_import_staging.php';
 require_once __DIR__ . '/config/card_issuance_worker.php';
+require_once __DIR__ . '/config/whatsapp_conversation.php';
 require_once __DIR__ . '/config/titular_anonymization.php';
 require_once __DIR__ . '/config/scheduled_tasks.php';
 

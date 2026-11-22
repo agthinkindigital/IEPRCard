@@ -110,14 +110,16 @@ try {
         throw new RuntimeException('GOWA message endpoint did not conceal invalid tokens or reject malformed payloads.');
     }
     $message = ['usuario' => $instanceName, 'id_mensagem' => 'http-unprocessed-event', 'telefone' => '5511999999999', 'texto' => 'private payload'];
-    if ($request('/webhook-gowa.php?token=' . $webhookToken, 'POST', json_encode($message)) !== 503) {
-        throw new RuntimeException('GOWA message endpoint must retry until the consent-aware consumer is installed.');
+    if ($request('/webhook-gowa.php?token=' . $webhookToken, 'POST', json_encode($message)) !== 204) {
+        throw new RuntimeException('A provisioned instance with registration disabled must safely accept and ignore messages.');
     }
     $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
-    if ((int) $pdo->query('SELECT COUNT(*) FROM webhook_gowa_eventos')->fetchColumn() !== 0) {
-        throw new RuntimeException('A request received before the consent-aware handler must not persist message events.');
+    $event = $pdo->query('SELECT estado, evento_hash FROM webhook_gowa_eventos LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($event) || $event['estado'] !== 'processado' || preg_match('/^[a-f0-9]{64}$/D', $event['evento_hash']) !== 1
+        || (int) $pdo->query('SELECT COUNT(*) FROM whatsapp_conversas')->fetchColumn() !== 0) {
+        throw new RuntimeException('A disabled GOWA flow must persist only the bounded event hash and no conversation data.');
     }
-    fwrite(STDOUT, "PASS: GOWA HTTP endpoints enforce method, media type, auth and pre-consent no-persistence.\n");
+    fwrite(STDOUT, "PASS: GOWA endpoints enforce method, media type, auth and disabled-flow data minimization.\n");
 } finally {
     proc_terminate($server);
     proc_close($server);

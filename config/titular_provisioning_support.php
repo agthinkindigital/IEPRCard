@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-/** @param list<array<string, mixed>> $inputs @return list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string}> */
+/** @param list<array<string, mixed>> $inputs @return list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string,foto_url:?string}> */
 function titularCreateBatchNormalize(array $inputs): array
 {
     if (!array_is_list($inputs) || $inputs === [] || count($inputs) > 25) {
@@ -77,7 +77,7 @@ function titularCreateBatchValidateScope(PDO $pdo, int $tenantId, ?int $subclien
     }
 }
 
-/** @param list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string}> $records */
+/** @param list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string,foto_url:?string}> $records */
 function titularCreateBatchValidateTargets(PDO $pdo, int $tenantId, array $records): void
 {
     $category = $pdo->prepare(
@@ -85,6 +85,10 @@ function titularCreateBatchValidateTargets(PDO $pdo, int $tenantId, array $recor
     );
     $duplicate = $pdo->prepare('SELECT id FROM titulares WHERE tenant_id = :tenant AND cpf = :cpf LIMIT 1');
     foreach ($records as $record) {
+        if ($record['foto_url'] !== null
+            && preg_match('~^private://' . $tenantId . '/[a-f0-9]{48}\.jpg$~D', $record['foto_url']) !== 1) {
+            throw new DomainException('TITULAR_CREATE_INVALID');
+        }
         if ($record['categoria_id'] !== null) {
             $category->execute(['id' => $record['categoria_id'], 'tenant' => $tenantId]);
             if ($category->fetchColumn() === false) {
@@ -100,13 +104,13 @@ function titularCreateBatchValidateTargets(PDO $pdo, int $tenantId, array $recor
     }
 }
 
-/** @param array<string, mixed> $identity @param array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string} $record */
+/** @param array<string, mixed> $identity @param array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string,foto_url:?string} $record */
 function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $subclienteId, array $record): int
 {
     $insert = $pdo->prepare(
         'INSERT INTO titulares (tenant_id, subcliente_id, categoria_id, nome_completo, cpf, cargo_funcao, '
-        . 'matricula, whatsapp, acesso_app_liberado, ativo, criado_em) '
-        . 'VALUES (:tenant, :subclient, :category, :name, :cpf, :role, :registration, :whatsapp, 0, 1, :created_at)'
+        . 'matricula, whatsapp, foto_url, acesso_app_liberado, ativo, criado_em) '
+        . 'VALUES (:tenant, :subclient, :category, :name, :cpf, :role, :registration, :whatsapp, :photo, 0, 1, :created_at)'
     );
     $insert->execute([
         'tenant' => $tenantId,
@@ -117,6 +121,7 @@ function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $sub
         'role' => $record['cargo_funcao'],
         'registration' => $record['matricula'],
         'whatsapp' => $record['whatsapp'],
+        'photo' => $record['foto_url'],
         'created_at' => gmdate('Y-m-d H:i:s'),
     ]);
     $titularId = (int) $pdo->lastInsertId();
@@ -128,7 +133,7 @@ function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $sub
     $audit->execute([
         'tenant' => $tenantId,
         'subclient' => $subclienteId,
-        'actor' => (int) $identity['id'],
+        'actor' => ($identity['id'] ?? null) === null ? null : (int) $identity['id'],
         'actor_type' => (string) $identity['papel_sistema'],
         'action' => 'titular.created',
         'entity' => 'titulares',
@@ -143,10 +148,10 @@ function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $sub
     return $titularId;
 }
 
-/** @param array<string, mixed> $input @return array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string} */
+/** @param array<string, mixed> $input @return array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string,foto_url:?string} */
 function titularCreateNormalize(array $input): array
 {
-    $allowedKeys = ['nome_completo', 'cpf', 'matricula', 'cargo_funcao', 'categoria_id', 'whatsapp'];
+    $allowedKeys = ['nome_completo', 'cpf', 'matricula', 'cargo_funcao', 'categoria_id', 'whatsapp', 'foto_url'];
     if (array_diff(array_keys($input), $allowedKeys) !== []) {
         throw new DomainException('TITULAR_CREATE_INVALID');
     }
@@ -174,6 +179,7 @@ function titularCreateNormalize(array $input): array
         'cargo_funcao' => $role,
         'categoria_id' => $categoryId,
         'whatsapp' => $whatsapp,
+        'foto_url' => titularCreateText($input['foto_url'] ?? null, 500, true),
     ];
 }
 
@@ -245,6 +251,10 @@ function titularCreateCanManage(
     int $tenantId,
     ?int $subclienteId
 ): bool {
+    if (($identity['papel_sistema'] ?? null) === 'integracao_whatsapp') {
+        require_once __DIR__ . '/whatsapp_gateway_webhook.php';
+        return whatsappGatewayServicePrincipalCan($pdo, $context, $identity, $tenantId, $subclienteId, 'titular.criar');
+    }
     if (($identity['papel_sistema'] ?? null) === 'superadmin') {
         return $context->tipo === 'admin' && $context->tenantId === null && $context->subclienteId === null
             && pode($pdo, $context, $identity, 'admin.clientes');

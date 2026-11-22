@@ -6,9 +6,7 @@ require_once dirname(__DIR__) . '/config/auth_session.php';
 require_once dirname(__DIR__) . '/config/whatsapp_gateway.php';
 require_once dirname(__DIR__) . '/config/whatsapp_gateway_webhook.php';
 $conversationHandler = dirname(__DIR__) . '/config/whatsapp_conversation.php';
-if (is_file($conversationHandler)) {
-    require_once $conversationHandler;
-}
+require_once $conversationHandler;
 
 function gowaWebhookRespond(int $status): never
 {
@@ -54,8 +52,8 @@ $contentType = strtolower(trim(explode(';', (string) ($_SERVER['CONTENT_TYPE'] ?
 if ($contentType !== 'application/json') {
     gowaWebhookRespond(415);
 }
-$rawBody = file_get_contents('php://input', false, null, 0, 262145);
-if (!is_string($rawBody) || strlen($rawBody) > 262144) {
+$rawBody = file_get_contents('php://input', false, null, 0, 2_097_153);
+if (!is_string($rawBody) || strlen($rawBody) > 2_097_152) {
     gowaWebhookRespond(413);
 }
 $payload = json_decode($rawBody, true, 32);
@@ -73,7 +71,7 @@ try {
         $token,
         $payload,
         static function (array $instance, array $message): void {
-            whatsappConversationHandleIncoming($instance, $message);
+            whatsappConversationHandleIncoming(dbConnection(), $instance, $message);
         }
     );
     gowaWebhookRespond(204);
