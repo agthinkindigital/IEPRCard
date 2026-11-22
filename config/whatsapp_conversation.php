@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/ai_global_config.php';
 require_once __DIR__ . '/whatsapp_gateway_api.php';
 require_once __DIR__ . '/privacy_subjects.php';
+require_once __DIR__ . '/titular_privacy_keys.php';
 require_once __DIR__ . '/phone.php';
 require_once __DIR__ . '/titular_provisioning.php';
 require_once __DIR__ . '/batch_import_staging_support.php';

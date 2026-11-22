@@ -203,6 +203,10 @@ try {
         || !str_contains($sent[7][2], 'Ana Maria Silva') || !str_contains($sent[7][2], '123.456.789-09')) {
         throw new RuntimeException('The confirmation step must summarize the validated data after consent.');
     }
+    $contactSubjectBeforeRegistration = privacySubjectFindForRecord($pdo, 'whatsapp_conversa', (int) $conversation['id']);
+    if (!is_array($contactSubjectBeforeRegistration)) {
+        throw new RuntimeException('The WhatsApp contact must have a removable privacy subject before holder creation.');
+    }
     whatsappConversationHandleIncoming(
         $pdo,
         $instance,
@@ -214,12 +218,20 @@ try {
     $conversation = $pdo->query('SELECT * FROM whatsapp_conversas')->fetch(PDO::FETCH_ASSOC);
     $holder = $pdo->query('SELECT * FROM titulares')->fetch(PDO::FETCH_ASSOC);
     $job = $pdo->query("SELECT * FROM lotes_importacao WHERE origem_tipo = 'emissao'")->fetch(PDO::FETCH_ASSOC);
+    $holderSubject = is_array($holder) ? privacySubjectFindForRecord($pdo, 'titular', (int) $holder['id']) : null;
+    $conversationSubject = is_array($conversation)
+        ? privacySubjectFindForRecord($pdo, 'whatsapp_conversa', (int) $conversation['id']) : null;
+    $oldContactSubject = $pdo->prepare('SELECT estado FROM privacy_subjects WHERE id = :id');
+    $oldContactSubject->execute(['id' => $contactSubjectBeforeRegistration['id']]);
     if (!is_array($holder) || $holder['cpf'] !== '12345678909' || $holder['whatsapp'] !== '+5511999991234'
         || (int) $holder['categoria_id'] !== $categoryId || !is_array($job) || (int) $job['design_id'] !== $designId
         || $job['modo_saida'] !== 'webp' || $job['status_lote'] !== 'na_fila'
         || $conversation['estado'] !== 'emissao_pendente' || (int) $conversation['titular_id'] !== (int) $holder['id']
-        || (int) $conversation['job_id'] !== (int) $job['id'] || $conversation['dados_cifrados'] !== null) {
-        throw new RuntimeException('Confirmed registration must create a scoped holder and an idempotent WebP issuance job, then clear the PII draft.');
+        || (int) $conversation['job_id'] !== (int) $job['id'] || $conversation['dados_cifrados'] !== null
+        || !is_array($holderSubject) || !is_array($conversationSubject)
+        || $holderSubject['id'] !== $conversationSubject['id']
+        || $oldContactSubject->fetchColumn() !== 'anonimizado') {
+        throw new RuntimeException('Confirmed registration must group the known contact and holder under one removable subject, erase the old contact key, and create the issuance job.');
     }
     cardIssuanceWorkerFinalize($pdo, (int) $job['id'], 1_800_000_500);
     $deliveryState = $pdo->query('SELECT estado FROM whatsapp_conversas')->fetchColumn();

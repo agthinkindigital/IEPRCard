@@ -107,6 +107,55 @@ if (!is_array($tenantSubject) || $tenantSubject['tipo'] !== 'pessoa'
     || (int) $tenantSubject['tenant_id'] !== $backfillTenantId || (int) $tenantSubject['linked_records'] !== 1) {
     throw new RuntimeException('Tenant backfill must idempotently bind organization PII to one tenant-scoped privacy subject.');
 }
+$oldAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
+putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(str_repeat("\x66", SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+try {
+    require_once dirname(__DIR__, 2) . '/config/titular_privacy_keys.php';
+    $contactSubject = privacySubjectCreate($connection, 'contato', $backfillTenantId);
+    $conversationRecordId = random_int(100000000, 999999999);
+    privacySubjectLinkRecord($connection, (int) $contactSubject['id'], 'whatsapp_conversa', $conversationRecordId);
+    $holderCpf = (string) random_int(10000000000, 99999999999);
+    $connection->prepare(
+        'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) VALUES (:tenant, :name, :cpf, 1, :created)'
+    )->execute([
+        'tenant' => $backfillTenantId, 'name' => 'Synthetic merge holder', 'cpf' => $holderCpf,
+        'created' => gmdate('Y-m-d H:i:s'),
+    ]);
+    $mergeHolderId = (int) $connection->lastInsertId();
+    $holderSubject = privacySubjectEnsureTitular($connection, $mergeHolderId, $backfillTenantId);
+    privacySubjectMergeRecordInto(
+        $connection,
+        'whatsapp_conversa',
+        $conversationRecordId,
+        'titular',
+        $mergeHolderId
+    );
+    privacySubjectMergeRecordInto(
+        $connection,
+        'whatsapp_conversa',
+        $conversationRecordId,
+        'titular',
+        $mergeHolderId
+    );
+    $mergedConversationSubject = privacySubjectFindForRecord($connection, 'whatsapp_conversa', $conversationRecordId);
+    $oldContactState = $connection->prepare('SELECT estado FROM privacy_subjects WHERE id = :id');
+    $oldContactState->execute(['id' => $contactSubject['id']]);
+    if (!is_array($mergedConversationSubject) || $mergedConversationSubject['id'] !== $holderSubject['id']
+        || $oldContactState->fetchColumn() !== 'anonimizado') {
+        throw new RuntimeException('MySQL subject merge must be idempotent and tombstone the old contact key owner.');
+    }
+    $connection->prepare('DELETE FROM privacy_subject_records WHERE privacy_subject_id IN (:source, :target)')->execute([
+        'source' => $contactSubject['id'], 'target' => $holderSubject['id'],
+    ]);
+    $connection->prepare('DELETE FROM privacy_subjects WHERE id IN (:source, :target)')->execute([
+        'source' => $contactSubject['id'], 'target' => $holderSubject['id'],
+    ]);
+    $connection->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $mergeHolderId]);
+} finally {
+    $oldAnonymizationKey === false
+        ? putenv('IEPR_ANONYMIZATION_KEY')
+        : putenv('IEPR_ANONYMIZATION_KEY=' . $oldAnonymizationKey);
+}
 $connection->prepare(
     "DELETE FROM privacy_subject_records WHERE tipo_registro = 'tenant_contato' AND registro_id = :tenant"
 )->execute(['tenant' => $backfillTenantId]);

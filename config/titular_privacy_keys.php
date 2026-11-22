@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/backup_destinations.php';
 require_once __DIR__ . '/s3_compatible_storage.php';
+require_once __DIR__ . '/titular_anonymization.php';
 require_once __DIR__ . '/privacy_subjects.php';
 
 function titularPrivacyReference(int $tenantId, int $titularId): string
@@ -401,6 +402,69 @@ function privacySubjectEraseBackupKey(PDO $pdo, int $subjectId, ?callable $clien
         throw new DomainException('PRIVACY_SUBJECT_NOT_FOUND');
     }
     return titularPrivacyEraseKeys($pdo, $reference, $clientFactory);
+}
+
+/** Move all records from a known contact into the confirmed person's subject and destroy the old backup key.
+ *  @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
+ */
+function privacySubjectMergeRecordInto(
+    PDO $pdo,
+    string $sourceRecordType,
+    int $sourceRecordId,
+    string $targetRecordType,
+    int $targetRecordId,
+    ?callable $clientFactory = null
+): int {
+    $source = privacySubjectFindForRecord($pdo, $sourceRecordType, $sourceRecordId);
+    $target = $targetRecordType === 'titular'
+        ? privacySubjectEnsureTitular($pdo, $targetRecordId)
+        : privacySubjectFindForRecord($pdo, $targetRecordType, $targetRecordId);
+    if (!is_array($source) || !is_array($target)) {
+        throw new RuntimeException('PRIVACY_SUBJECT_RECORD_MISSING');
+    }
+    $sourceId = (int) $source['id'];
+    $targetId = (int) $target['id'];
+    if ($sourceId === $targetId) {
+        return $targetId;
+    }
+
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $lock = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
+        $subjects = $pdo->prepare(
+            'SELECT id, tenant_id, estado FROM privacy_subjects WHERE id IN (:source, :target) ORDER BY id' . $lock
+        );
+        $subjects->execute(['source' => $sourceId, 'target' => $targetId]);
+        $rowsById = [];
+        foreach ($subjects->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $rowsById[(int) $row['id']] = $row;
+        }
+        $sourceRow = $rowsById[$sourceId] ?? null;
+        $targetRow = $rowsById[$targetId] ?? null;
+        if (!is_array($sourceRow) || !is_array($targetRow)
+            || ($sourceRow['estado'] ?? null) === 'anonimizado' || ($targetRow['estado'] ?? null) === 'anonimizado'
+            || ($sourceRow['tenant_id'] ?? null) !== ($targetRow['tenant_id'] ?? null)) {
+            throw new RuntimeException('PRIVACY_SUBJECT_MERGE_INVALID');
+        }
+        $move = $pdo->prepare('UPDATE privacy_subject_records SET privacy_subject_id = :target WHERE privacy_subject_id = :source');
+        $move->execute(['target' => $targetId, 'source' => $sourceId]);
+        if ($move->rowCount() < 1) {
+            throw new RuntimeException('PRIVACY_SUBJECT_RECORD_MISSING');
+        }
+        privacySubjectEraseBackupKey($pdo, $sourceId, $clientFactory);
+        if ($ownsTransaction) {
+            $pdo->commit();
+        }
+        return $targetId;
+    } catch (Throwable $exception) {
+        if ($ownsTransaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
 }
 
 require_once __DIR__ . '/titular_privacy_destinations.php';

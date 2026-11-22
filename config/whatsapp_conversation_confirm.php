@@ -65,6 +65,13 @@ function whatsappConversationConfirmRegistration(
                     throw new RuntimeException('WHATSAPP_CONVERSATION_STATE_CONFLICT');
                 }
             }
+            privacySubjectMergeRecordInto(
+                $pdo,
+                'whatsapp_conversa',
+                (int) $conversation['id'],
+                'titular',
+                $holderId
+            );
             $currentState = $pdo->prepare('SELECT estado FROM whatsapp_conversas WHERE id = :id LIMIT 1');
             $currentState->execute(['id' => (int) $conversation['id']]);
             if ($currentState->fetchColumn() === 'revogado') {
