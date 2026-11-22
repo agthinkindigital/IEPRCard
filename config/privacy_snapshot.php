@@ -17,7 +17,9 @@ function privacySnapshotPersonalFields(): array
         ],
         'usuarios' => ['nome', 'email', 'senha_hash', 'ultimo_login_em'],
         'tenants' => ['nome_responsavel', 'cargo_responsavel', 'assinatura_responsavel_url'],
-        'whatsapp_conversas' => ['contato_hmac', 'dados_cifrados'],
+        'whatsapp_conversas' => [
+            'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'dados_cifrados',
+        ],
         'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url'],
         'acessos_suporte' => ['token_hash', 'ip_usado'],
         'mcp_api_keys' => ['nome', 'chave_hash'],

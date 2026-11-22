@@ -86,6 +86,28 @@ try {
         || $ownerSubject['id'] !== $apiKeySubject['id'] || $messageSubject['type'] !== 'contato') {
         throw new RuntimeException('Privacy subject migration must group account, tenant contact, support and API key data while scoping legacy WhatsApp PII.');
     }
+    $pdo->prepare(
+        'INSERT INTO whatsapp_instancias (tenant_id, escopo_chave, nome_instancia, webhook_token_hash, estado, criado_em, atualizado_em) '
+        . 'VALUES (:tenant, :scope, :name, :token, :state, :created, :updated)'
+    )->execute([
+        'tenant' => $tenantId, 'scope' => 'synthetic-scope', 'name' => 'Synthetic instance',
+        'token' => hash('sha256', 'synthetic-token'), 'state' => 'ativa',
+        'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
+    ]);
+    $instanceId = (int) $pdo->lastInsertId();
+    $pdo->prepare(
+        'INSERT INTO whatsapp_conversas (instancia_id, tenant_id, contato_hmac, estado, consentimento_finalidade, '
+        . 'consentimento_em, revogado_em, expira_em, criado_em, atualizado_em) '
+        . 'VALUES (:instance, :tenant, :contact, :state, :purpose, :consented, :revoked, :expires, :created, :updated)'
+    )->execute([
+        'instance' => $instanceId, 'tenant' => $tenantId, 'contact' => hash('sha256', 'synthetic-contact'),
+        'state' => 'concluida', 'purpose' => 'synthetic-consent-purpose',
+        'consented' => '2026-11-22 11:13:14', 'revoked' => '2026-11-22 11:23:45',
+        'expires' => '2026-11-22 13:00:00', 'created' => '2026-11-22 10:00:00', 'updated' => '2026-11-22 11:30:00',
+    ]);
+    $conversationId = (int) $pdo->lastInsertId();
+    $conversationSubject = privacySubjectCreate($pdo, 'contato', $tenantId, '2026-11-22 12:00:00');
+    privacySubjectLinkRecord($pdo, (int) $conversationSubject['id'], 'whatsapp_conversa', $conversationId);
     $pdo->prepare('UPDATE titulares SET foto_url = :url WHERE id = :id')->execute([
         'url' => '/private/titular-photo.webp', 'id' => $legacyHolderId,
     ]);
@@ -155,15 +177,22 @@ try {
         'Legacy owner', 'legacy-owner@example.test', 'synthetic message', '+5511999990000', 'Legacy holder',
         'external-private-message-id', '2026-11-22 11:59:00',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
+        'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
         $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
     ] as $pii) {
         if (str_contains($snapshotJson, $pii)) {
-            throw new RuntimeException('Snapshot payload must not contain personal data in plaintext.');
+            throw new RuntimeException('Snapshot payload must not contain personal data in plaintext: ' . $pii);
         }
     }
     if (($snapshot['manifest']['format'] ?? null) !== 'ieprcard-snapshot-v2'
         || !is_array($snapshot['subject_envelopes'] ?? null) || count($snapshot['subject_envelopes']) < 3) {
         throw new RuntimeException('Snapshot must separate PII into versioned per-subject envelopes.');
+    }
+    $conversationSubjectPlaintext = $subjectPlaintexts[(int) $conversationSubject['id']] ?? '';
+    if (!str_contains($conversationSubjectPlaintext, 'synthetic-consent-purpose')
+        || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:13:14')
+        || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:23:45')) {
+        throw new RuntimeException('WhatsApp consent and revocation data must be encrypted in its removable subject envelope.');
     }
     $holderSubjectId = (int) $legacyRow['privacy_subject_id'];
     $holderEnvelope = json_decode((string) ($subjectPlaintexts[$holderSubjectId] ?? ''), true);
