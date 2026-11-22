@@ -186,8 +186,8 @@ try {
     [$status, , $successHeaders] = adminHttpRequest($baseUrl . '/admin/login.php', 'POST', $form, $cookie);
     $newCookie = adminHttpCookie($successHeaders);
     if ($status !== 303 || $newCookie === null || $newCookie === $cookie
-        || !str_contains(implode("\n", $successHeaders), 'Location: /admin/migracao-banco.php')) {
-        throw new RuntimeException('Valid login must rotate the session ID and redirect to the requested admin tool.');
+        || !str_contains(implode("\n", $successHeaders), 'Location: /admin/instalacao.php')) {
+        throw new RuntimeException('Valid login without an installation profile must rotate the session ID and redirect to setup.');
     }
 
     [$status] = adminHttpRequest($baseUrl . '/admin/logout.php', 'GET', null, $newCookie);

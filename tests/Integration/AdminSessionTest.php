@@ -74,9 +74,9 @@ adminAuthLogout();
 unset($_SERVER['HTTPS']);
 
 if (adminAuthSafeReturnPath('/admin/reports/monthly.php') !== '/admin/reports/monthly.php'
-    || adminAuthSafeReturnPath('//external.example.test/path') !== '/admin/migracao-banco.php'
-    || adminAuthSafeReturnPath('/admin/../login.php') !== '/admin/migracao-banco.php'
-    || adminAuthSafeReturnPath('/admin/tool.php?next=https://external.example.test') !== '/admin/migracao-banco.php') {
+    || adminAuthSafeReturnPath('//external.example.test/path') !== '/admin/instalacao.php'
+    || adminAuthSafeReturnPath('/admin/../login.php') !== '/admin/instalacao.php'
+    || adminAuthSafeReturnPath('/admin/tool.php?next=https://external.example.test') !== '/admin/instalacao.php') {
     throw new RuntimeException('Administrative return paths must stay within a safe local admin route.');
 }
 

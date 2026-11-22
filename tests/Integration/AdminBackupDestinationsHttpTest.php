@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/config/backup_destinations.php';
+require_once __DIR__ . '/AdminHttpProfileFixture.php';
 
 $root = dirname(__DIR__, 2);
 $directory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-backup-http-' . bin2hex(random_bytes(6));
@@ -29,6 +30,7 @@ $pdo->prepare(
     'password' => password_hash('backup-http-password', PASSWORD_DEFAULT),
 ]);
 $adminId = (int) $pdo->lastInsertId();
+adminHttpSeedHostedProfile($pdo, $adminId);
 $identity = ['id' => $adminId, 'papel_sistema' => 'superadmin'];
 $saved = backupDestinationSave($pdo, $identity, [
     'name' => 'Synthetic destination', 'bucket' => 'synthetic-backups', 'region' => 'us-east-1',

@@ -172,7 +172,7 @@ function atendimentoIaSafeError(string $code): string
 </head>
 <body>
 <aside class="sidebar"><a class="brand" href="/admin/atendimento-ia.php"><span class="brand-mark" aria-hidden="true">+</span><span><strong>IEPRCard</strong><small>ADMINISTRAÇÃO</small></span></a><p class="nav-heading">ADMINISTRAÇÃO</p>
-    <nav aria-label="Navegação administrativa"><a href="/admin/migracao-banco.php">Visão geral</a><a href="#instances">Clientes</a><a href="#instances">Domínios</a><a href="/admin/atualizar-schema.php">Operação</a><a href="/admin/backup-destinos.php">Backup externo</a><a class="active" aria-current="page" href="/admin/atendimento-ia.php">Atendimento e IA</a></nav>
+    <nav aria-label="Navegação administrativa"><a href="/admin/migracao-banco.php">Visão geral</a><a href="#instances">Clientes</a><a href="#instances">Domínios</a><a href="/admin/atualizar-schema.php">Operação</a><a href="/admin/instalacao.php">Instalação</a><a href="/admin/backup-destinos.php">Backup externo</a><a class="active" aria-current="page" href="/admin/atendimento-ia.php">Atendimento e IA</a></nav>
     <div class="sidebar-user"><span class="avatar" aria-hidden="true">LN</span><span><strong><?= atendimentoIaEscape($admin['nome']) ?></strong><small>Superadmin</small></span></div>
 </aside>
 <header class="topbar"><p>Administração <span aria-hidden="true">/</span> <strong>Atendimento e IA</strong></p><form method="post" action="/admin/logout.php"><input type="hidden" name="csrf_token" value="<?= atendimentoIaEscape($csrfToken) ?>"><button class="logout-button" type="submit">Sair</button></form></header>

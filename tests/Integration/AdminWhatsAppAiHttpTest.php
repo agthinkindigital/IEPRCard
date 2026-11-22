@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/whatsapp_gateway.php';
 require_once dirname(__DIR__, 2) . '/config/ai_global_config.php';
+require_once __DIR__ . '/AdminHttpProfileFixture.php';
 
 $root = dirname(__DIR__, 2);
 $dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-ai-admin-' . bin2hex(random_bytes(5));
@@ -24,6 +25,7 @@ $password = 'admin-http-synthetic-password';
 $pdo->prepare("INSERT INTO usuarios (papel_sistema,nome,email,senha_hash,ativo) VALUES ('superadmin','AI Admin','ai-admin@example.test',:hash,1)")
     ->execute(['hash' => password_hash($password, PASSWORD_DEFAULT)]);
 $identity = ['id' => (int) $pdo->lastInsertId(), 'papel_sistema' => 'superadmin', 'tenant_id' => null, 'subcliente_id' => null];
+adminHttpSeedHostedProfile($pdo, $identity['id']);
 whatsappGatewayConfigSave($pdo, $identity, 'https://gowa.example.test', 'synthetic-gowa-secret');
 aiGlobalConfigSave($pdo, $identity, 'openai', 'synthetic-ai-secret', 'gpt-test-model');
 unset($pdo);

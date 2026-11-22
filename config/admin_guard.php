@@ -47,6 +47,13 @@ function adminExigirAcesso(): array
 
     $admin = adminAuthCurrentUser(dbConnection());
     if ($admin !== null) {
+        $profile = installationProfileCurrent(dbConnection());
+        $requestedPath = adminAuthSafeReturnPath((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/admin/'), PHP_URL_PATH));
+        if ($profile === null && $requestedPath !== '/admin/instalacao.php') {
+            $_SESSION['admin_return_to'] = $requestedPath;
+            header('Location: /admin/instalacao.php', true, 303);
+            exit;
+        }
         return $admin;
     }
 
@@ -59,10 +66,10 @@ function adminExigirAcesso(): array
 /** @param array<string, mixed> $session */
 function adminAuthConsumeReturnPath(array &$session): string
 {
-    $path = $session['admin_return_to'] ?? '/admin/migracao-banco.php';
+    $path = $session['admin_return_to'] ?? '/admin/instalacao.php';
     unset($session['admin_return_to']);
 
-    return is_string($path) ? adminAuthSafeReturnPath($path) : '/admin/migracao-banco.php';
+    return is_string($path) ? adminAuthSafeReturnPath($path) : '/admin/instalacao.php';
 }
 
 function adminAuthSafeReturnPath(string $path): string
@@ -73,7 +80,7 @@ function adminAuthSafeReturnPath(string $path): string
         || preg_match('~^/admin/[A-Za-z0-9_./-]+$~D', $path) !== 1
         || in_array('..', explode('/', $path), true)
         || in_array($path, ['/admin/login.php', '/admin/logout.php'], true)) {
-        return '/admin/migracao-banco.php';
+        return '/admin/instalacao.php';
     }
 
     return $path;

@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
+require_once __DIR__ . '/AdminHttpProfileFixture.php';
 
 $root = dirname(__DIR__, 2);
 $directory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-migration-http-' . bin2hex(random_bytes(6));
@@ -35,6 +36,8 @@ $insert->execute([
     'email' => 'migration-admin@example.test',
     'password_hash' => password_hash('migration-http-password', PASSWORD_DEFAULT),
 ]);
+$adminId = (int) $pdo->lastInsertId();
+adminHttpSeedHostedProfile($pdo, $adminId);
 unset($insert, $pdo);
 
 $portProbe = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);

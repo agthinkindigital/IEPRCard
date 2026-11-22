@@ -104,6 +104,7 @@ function schemaUpdatePageEventLabel(string $event): string
     <p class="nav-heading">PLATAFORMA</p>
     <nav aria-label="Navegação administrativa">
         <a class="active" aria-current="page" href="/admin/atualizar-schema.php">Atualização de schema</a>
+        <a href="/admin/instalacao.php">Instalação</a>
         <a href="/admin/migracao-banco.php">Migração de dados SQLite → MySQL</a>
         <a href="/admin/backup-destinos.php">Backup externo</a>
         <a href="/admin/atendimento-ia.php">Atendimento e IA</a>
