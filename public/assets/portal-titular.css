@@ -54,6 +54,8 @@ h1 { margin: 0; font-size: clamp(25px, 4vw, 32px); line-height: 1.2; }
 .authenticity-note strong { color: #166534; font-size: 13px; }
 .authenticity-note span { color: #475569; font-size: 12px; line-height: 1.45; }
 .verify-link { display: inline-block; margin-top: 18px; color: #1d4ed8; font-size: 13px; }
+.pdf-download { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; margin-top: 16px; padding: 10px 16px; border: 1px solid #1d4ed8; border-radius: 7px; background: #fff; color: #1d4ed8; font-size: 14px; font-weight: 700; text-decoration: none; }
+.pdf-download:hover { background: #eff6ff; }
 :focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
 @media (max-width: 760px) {
     .site-header { min-height: 62px; padding: 0 18px; }

@@ -136,6 +136,8 @@ if ($cards !== []) {
         $_SESSION['portal_selected_card_id'] = $selectedCard['id'];
     }
 }
+$selectedCardCanDownloadPdf = $pdo instanceof PDO && $currentHolder !== null && $selectedCard !== null
+    && portalAuthPdfAsset($pdo, $currentHolder, $selectedCard['id']) !== null;
 
 $side = is_string($_GET['lado'] ?? null) && in_array($_GET['lado'], ['frente', 'verso'], true) ? $_GET['lado'] : 'frente';
 $pageTitle = $selectedCard !== null ? 'Sua carteirinha' : ($currentHolder !== null ? 'Carteirinha indisponível' : 'Acesse sua carteirinha');
@@ -234,6 +236,9 @@ $pageTitle = $selectedCard !== null ? 'Sua carteirinha' : ($currentHolder !== nu
                     <span>Aponte a câmera para conferir a situação.</span>
                 </div>
                 <a class="verify-link" href="/validar/">Sobre a validação pública</a>
+                <?php if ($selectedCardCanDownloadPdf): ?>
+                    <a class="pdf-download" href="/portal/carteirinha/<?= (int) $selectedCard['id'] ?>/pdf">Baixar PDF</a>
+                <?php endif; ?>
             </aside>
         </section>
     <?php endif; ?>

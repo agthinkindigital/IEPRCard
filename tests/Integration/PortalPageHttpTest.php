@@ -51,6 +51,15 @@ schemaGarantirEstrutura($pdo, 'test');
 schemaAplicarMigracoes($pdo, 'test');
 $fixture = tenantTestSeed($pdo);
 $suffix = bin2hex(random_bytes(4));
+$pdo->prepare('INSERT INTO planos (nome, ativo) VALUES (:name, 1)')->execute(['name' => 'Portal PDF ' . $suffix]);
+$planId = (int) $pdo->lastInsertId();
+$pdo->prepare('UPDATE tenants SET plano_id = :plan WHERE id = :tenant')->execute([
+    'plan' => $planId,
+    'tenant' => $fixture['tenant_id'],
+]);
+$pdo->prepare(
+    'INSERT INTO plano_feature_flags (plano_id, feature_key, habilitado) VALUES (:plan, :feature, 1)'
+)->execute(['plan' => $planId, 'feature' => 'carteirinha.pdf']);
 $pdo->prepare(
     'INSERT INTO designs_carteirinha (tenant_id, nome_layout, orientacao, criado_em) VALUES (:tenant, :name, :orientation, :created)'
 )->execute(['tenant' => $fixture['tenant_id'], 'name' => 'Portal page ' . $suffix, 'orientation' => 'horizontal', 'created' => gmdate('Y-m-d H:i:s')]);
@@ -79,14 +88,20 @@ for ($index = 0; $index < 2; $index++) {
         $cardFilePaths[] = $assetPath;
         $assetKeys[$side] = 'private://' . $fixture['tenant_id'] . '/' . $assetName;
     }
+    $pdfName = substr(hash('sha256', $suffix . '-' . $index . '-pdf'), 0, 48) . '.pdf';
+    $assetDirectory = $privateRoot . DIRECTORY_SEPARATOR . $fixture['tenant_id'];
+    $pdfPath = $assetDirectory . DIRECTORY_SEPARATOR . $pdfName;
+    file_put_contents($pdfPath, "%PDF-1.4\nportal page fixture\n%%EOF\n");
+    $cardFilePaths[] = $pdfPath;
     $pdo->prepare(
         'INSERT INTO carteirinhas_emitidas '
-        . '(tenant_id, subcliente_id, titular_id, design_id, codigo_validacao_qr, status_carteirinha, data_validade, webp_frente_url, webp_verso_url, emitida_em) '
-        . 'VALUES (:tenant, :unit, :holder, :design, :qr, :status, :validity, :front, :back, :created)'
+        . '(tenant_id, subcliente_id, titular_id, design_id, codigo_validacao_qr, status_carteirinha, data_validade, webp_frente_url, webp_verso_url, pdf_individual_url, emitida_em) '
+        . 'VALUES (:tenant, :unit, :holder, :design, :qr, :status, :validity, :front, :back, :pdf, :created)'
     )->execute([
         'tenant' => $fixture['tenant_id'], 'unit' => $fixture['subcliente_id'], 'holder' => $holderId, 'design' => $designId,
         'qr' => bin2hex(random_bytes(32)), 'status' => 'ativa', 'validity' => gmdate('Y-m-d', strtotime('+1 year')),
-        'front' => $assetKeys['frente'], 'back' => $assetKeys['verso'], 'created' => gmdate('Y-m-d H:i:s'),
+        'front' => $assetKeys['frente'], 'back' => $assetKeys['verso'],
+        'pdf' => 'private://' . $fixture['tenant_id'] . '/' . $pdfName, 'created' => gmdate('Y-m-d H:i:s'),
     ]);
     $cardIds[] = (int) $pdo->lastInsertId();
 }
@@ -192,6 +207,29 @@ try {
     if ($status !== 200 || !str_contains($body, '/portal/carteirinha/' . $cardIds[0] . '/frente')) {
         throw new RuntimeException('A selected card must be revalidated from the authenticated session.');
     }
+    $policyPdo = dbConnect($testDbConfiguration);
+    $policyPdo->prepare('UPDATE tenants SET pdf_portal_habilitado = 1, permissoes_unidade_json = :permissions WHERE id = :tenant')
+        ->execute(['permissions' => '["carteirinha.pdf"]', 'tenant' => $fixture['tenant_id']]);
+    [$status, $body] = $request('/portal/', $authenticatedCookie);
+    if ($status !== 200 || !str_contains($body, 'Baixar PDF')
+        || !str_contains($body, '/portal/carteirinha/' . $cardIds[0] . '/pdf')
+        || str_contains($body, '/portal/carteirinha/' . $cardIds[1] . '/pdf')) {
+        throw new RuntimeException('The authenticated portal must show a PDF action only for the selected card after Sede enablement and unit delegation.');
+    }
+    [$status, $body, $headers] = $request('/portal/carteirinha/' . $cardIds[0] . '/pdf', $authenticatedCookie);
+    if ($status !== 200 || $body !== "%PDF-1.4\nportal page fixture\n%%EOF\n"
+        || portalPageHeaderValue($headers, 'Content-Type') !== 'application/pdf') {
+        throw new RuntimeException('The visible PDF action must resolve only through the private authorized route.');
+    }
+    $policyPdo->prepare('UPDATE tenants SET permissoes_unidade_json = :permissions WHERE id = :tenant')
+        ->execute(['permissions' => '[]', 'tenant' => $fixture['tenant_id']]);
+    unset($policyPdo);
+    [$status, $body] = $request('/portal/', $authenticatedCookie);
+    if ($status !== 200 || str_contains($body, 'Baixar PDF')) {
+        throw new RuntimeException('The portal must hide PDF after explicit unit delegation is revoked.');
+    }
+    [$status] = $request('/portal/carteirinha/' . $cardIds[0] . '/pdf', $authenticatedCookie);
+    if ($status !== 404) throw new RuntimeException('Revoking unit PDF delegation must also deny direct requests.');
     [$status, $body, $headers] = $request('/portal/carteirinha/' . $cardIds[0] . '/verso', $authenticatedCookie);
     if ($status !== 200 || $body !== "RIFF" . pack('V', 4) . 'WEBP'
         || portalPageHeaderValue($headers, 'Content-Type') !== 'image/webp') {
