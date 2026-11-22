@@ -230,6 +230,7 @@ try {
             || str_contains(json_encode($tombstone), $privacyReference)) {
             throw new RuntimeException($driver . ': SDK-backed erasure must permanently purge key versions and retain only a pseudonymous tombstone.');
         }
+        s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $tombstoneKey);
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $privacyHolderId]);
         $pdo->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $privacyTenantId]);
 
