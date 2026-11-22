@@ -172,6 +172,23 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
         return ['processed' => 0, 'failed' => 0, 'skipped' => 1];
     }
 
+    $lockPath = batchImportStagingPrivateRoot() . DIRECTORY_SEPARATOR . 'privacy-snapshot.lock';
+    if (is_link($lockPath)) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_LOCK_UNAVAILABLE');
+    }
+    $lockHandle = @fopen($lockPath, 'c');
+    if (!is_resource($lockHandle)) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_LOCK_UNAVAILABLE');
+    }
+    if (DIRECTORY_SEPARATOR === '/') {
+        @chmod($lockPath, 0600);
+    }
+    if (!flock($lockHandle, LOCK_EX | LOCK_NB)) {
+        fclose($lockHandle);
+        return ['processed' => 0, 'failed' => 0, 'skipped' => 1];
+    }
+
+    try {
     try {
         $snapshot = privacySnapshotBuildPayload($pdo, $encryptSubject);
         $json = json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -232,6 +249,10 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
         }
     }
     return ['processed' => $processed, 'failed' => $failed, 'skipped' => 0];
+    } finally {
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+    }
 }
 
 /** @return array{processed:int,failed:int,skipped:int} */

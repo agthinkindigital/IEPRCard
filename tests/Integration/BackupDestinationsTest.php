@@ -33,6 +33,9 @@ $backupDestinationStorage = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard
 if (!mkdir($backupDestinationStorage, 0700, true)) {
     throw new RuntimeException('Could not create local S3 contract-test storage.');
 }
+$oldPrivateStorage = getenv('IEPR_PRIVATE_STORAGE_PATH');
+$backupDestinationPrivateStorage = $backupDestinationStorage . '-private';
+putenv('IEPR_PRIVATE_STORAGE_PATH=' . $backupDestinationPrivateStorage);
 $backupDestinationNullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
 $backupDestinationStdout = fopen($backupDestinationNullDevice, 'wb');
 $backupDestinationStderr = fopen($backupDestinationNullDevice, 'wb');
@@ -268,6 +271,25 @@ try {
         }
 
         $privacySnapshotClient = null;
+        if (!is_dir($backupDestinationPrivateStorage) && !mkdir($backupDestinationPrivateStorage, 0700, true)) {
+            throw new RuntimeException($driver . ': could not create private snapshot lock directory.');
+        }
+        $snapshotLockPath = $backupDestinationPrivateStorage . DIRECTORY_SEPARATOR . 'privacy-snapshot.lock';
+        $snapshotLock = fopen($snapshotLockPath, 'c');
+        if (!is_resource($snapshotLock) || !flock($snapshotLock, LOCK_EX | LOCK_NB)) {
+            throw new RuntimeException($driver . ': could not acquire the snapshot lock fixture.');
+        }
+        $overlapUpload = privacySnapshotUpload(
+            $pdo,
+            [(int) $saved['id']],
+            static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $plaintext),
+            static function (): object { throw new RuntimeException('An overlapping snapshot must not upload.'); }
+        );
+        flock($snapshotLock, LOCK_UN);
+        fclose($snapshotLock);
+        if (($overlapUpload['skipped'] ?? 0) !== 1 || ($overlapUpload['processed'] ?? 0) !== 0) {
+            throw new RuntimeException($driver . ': overlapping snapshot runs must skip without publishing a second copy.');
+        }
         $snapshotUpload = privacySnapshotUpload(
             $pdo,
             [(int) $saved['id']],
@@ -369,6 +391,11 @@ try {
         $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $superadminId]);
     }
 } finally {
+    if ($oldPrivateStorage === false) {
+        putenv('IEPR_PRIVATE_STORAGE_PATH');
+    } else {
+        putenv('IEPR_PRIVATE_STORAGE_PATH=' . $oldPrivateStorage);
+    }
     if ($oldIntegrationKey === false) {
         putenv('IEPR_INTEGRATION_KEY');
     } else {
@@ -387,9 +414,24 @@ try {
     foreach ($files as $file) {
         if (is_file($file)) {
             unlink($file);
+        } elseif (is_dir($file)) {
+            foreach (glob($file . DIRECTORY_SEPARATOR . '*') ?: [] as $nestedFile) {
+                if (is_file($nestedFile)) {
+                    unlink($nestedFile);
+                }
+            }
+            @rmdir($file);
         }
     }
     @rmdir($backupDestinationStorage);
+    if (is_dir($backupDestinationPrivateStorage)) {
+        foreach (glob($backupDestinationPrivateStorage . DIRECTORY_SEPARATOR . '*') ?: [] as $privateFile) {
+            if (is_file($privateFile)) {
+                unlink($privateFile);
+            }
+        }
+        @rmdir($backupDestinationPrivateStorage);
+    }
 }
 
 fwrite(STDOUT, "PASS: global backup destinations are encrypted and connect to an S3-compatible endpoint.\n");
