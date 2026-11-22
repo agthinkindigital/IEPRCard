@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/privacy_snapshot.php';
+require_once __DIR__ . '/privacy_subject_lifecycle.php';
 
 /** @param array<string, callable():array<string, int>> $tasks @return array{ok:bool,tasks:array<string, array<string, mixed>>} */
 function scheduledTasksRun(array $tasks): array
@@ -41,6 +42,7 @@ function scheduledTasksSafeErrorCode(Throwable $exception): string
         'IMPORT_STORAGE_UNAVAILABLE',
         'ISSUANCE_WORKER_LIMIT_INVALID',
         'ISSUANCE_WORKER_LOCK_UNAVAILABLE',
+        'PRIVACY_SUBJECT_BATCH_LIMIT_INVALID',
         'SCHEDULED_TASK_CONFIGURATION_INVALID',
         'SCHEDULED_TASK_LIMIT_INVALID',
         'SCHEDULED_TASK_RESULT_INVALID',
@@ -85,15 +87,19 @@ function scheduledTasksBuild(PDO $pdo, int $maxIssuanceJobs = 1, int $maintenanc
         'whatsapp_delivery' => static function () use ($pdo): array {
             return whatsappConversationProcessPendingDeliveries($pdo);
         },
-        'whatsapp_conversation_cleanup' => static function () use ($pdo, $maintenanceLimit): array {
-            return ['deleted' => whatsappConversationCleanupExpired($pdo, $maintenanceLimit)];
-        },
         'import_staging_cleanup' => static function () use ($pdo, $maintenanceLimit): array {
             return ['expired_lots' => batchImportStagingCleanupExpired($pdo, time(), $maintenanceLimit)];
         },
         'titular_anonymization' => static function () use ($pdo, $maintenanceLimit): array {
             $result = titularAnonymizationProcessDue($pdo, null, $maintenanceLimit);
             return ['processed' => $result['processed'], 'failed' => $result['failed']];
+        },
+        'privacy_subject_retention' => static function () use ($pdo, $maintenanceLimit): array {
+            $result = privacySubjectLifecycleProcessDue($pdo, null, $maintenanceLimit);
+            return ['processed' => $result['processed'], 'failed' => $result['failed']];
+        },
+        'whatsapp_conversation_cleanup' => static function () use ($pdo, $maintenanceLimit): array {
+            return ['deleted' => whatsappConversationCleanupExpired($pdo, $maintenanceLimit)];
         },
         'privacy_backup' => static function () use ($pdo): array {
             return privacySnapshotRunDue($pdo);

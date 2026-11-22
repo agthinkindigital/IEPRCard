@@ -8,7 +8,9 @@ require_once dirname(__DIR__, 2) . '/config/ai_global_config.php';
 require_once dirname(__DIR__, 2) . '/config/whatsapp_conversation.php';
 require_once dirname(__DIR__, 2) . '/config/card_issuance_worker_output.php';
 $oldIntegrationKey = getenv('IEPR_INTEGRATION_KEY');
+$oldAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
 putenv('IEPR_INTEGRATION_KEY=' . base64_encode(str_repeat("\x64", SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(str_repeat("\x65", SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
 $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
 try {
     schemaAplicarMigracoes($pdo, 'test');
@@ -238,9 +240,51 @@ try {
         || $conversation['contato_hmac'] !== null || $conversation['dados_cifrados'] !== null || $paused !== 1) {
         throw new RuntimeException('Consent revocation must stop the flow, erase its draft reference, and pause AI for a linked holder.');
     }
+    $pdo->prepare(
+        'INSERT INTO whatsapp_conversas (instancia_id, tenant_id, contato_hmac, estado, dados_cifrados, expira_em, criado_em, atualizado_em) '
+        . 'VALUES (:instance, :tenant, :contact, :state, :data, :expires, :created, :updated)'
+    )->execute([
+        'instance' => $instanceId, 'tenant' => $tenantId, 'contact' => hash('sha256', 'expired-unlinked-contact'),
+        'state' => 'concluida', 'data' => 'synthetic-encrypted-conversation',
+        'expires' => '2026-11-22 09:00:00', 'created' => '2026-11-22 08:00:00', 'updated' => '2026-11-22 08:00:00',
+    ]);
+    $expiredConversationId = (int) $pdo->lastInsertId();
+    $expiredSubject = privacySubjectCreate($pdo, 'contato', $tenantId, '2026-11-22 08:00:00');
+    privacySubjectLinkRecord($pdo, $expiredSubject['id'], 'whatsapp_conversa', $expiredConversationId);
+    $expiredCleanup = whatsappConversationCleanupExpired($pdo, 100, strtotime('2026-11-22 10:00:00 UTC'));
+    $expiredCount = $pdo->prepare('SELECT COUNT(*) FROM whatsapp_conversas WHERE id = :id');
+    $expiredCount->execute(['id' => $expiredConversationId]);
+    $expiredSubjectState = $pdo->prepare('SELECT estado FROM privacy_subjects WHERE id = :id');
+    $expiredSubjectState->execute(['id' => $expiredSubject['id']]);
+    if ($expiredCleanup !== 1 || (int) $expiredCount->fetchColumn() !== 0
+        || $expiredSubjectState->fetchColumn() !== 'anonimizado') {
+        throw new RuntimeException('An unlinked WhatsApp conversation must erase its backup key before the 24-hour cleanup deletes it.');
+    }
+    $pdo->prepare(
+        'INSERT INTO whatsapp_conversas (instancia_id, tenant_id, contato_hmac, estado, dados_cifrados, expira_em, criado_em, atualizado_em) '
+        . 'VALUES (:instance, :tenant, :contact, :state, :data, :expires, :created, :updated)'
+    )->execute([
+        'instance' => $instanceId, 'tenant' => $tenantId, 'contact' => hash('sha256', 'expired-unlinked-without-subject'),
+        'state' => 'concluida', 'data' => 'synthetic-unlinked-conversation',
+        'expires' => '2026-11-22 09:00:00', 'created' => '2026-11-22 08:00:00', 'updated' => '2026-11-22 08:00:00',
+    ]);
+    $unlinkedConversationId = (int) $pdo->lastInsertId();
+    $missingSubjectFailedClosed = false;
+    try {
+        whatsappConversationCleanupExpired($pdo, 100, strtotime('2026-11-22 10:00:00 UTC'));
+    } catch (RuntimeException $exception) {
+        $missingSubjectFailedClosed = $exception->getMessage() === 'PRIVACY_SUBJECT_RECORD_MISSING';
+    }
+    $unlinkedCount = $pdo->prepare('SELECT COUNT(*) FROM whatsapp_conversas WHERE id = :id');
+    $unlinkedCount->execute(['id' => $unlinkedConversationId]);
+    if (!$missingSubjectFailedClosed || (int) $unlinkedCount->fetchColumn() !== 1) {
+        throw new RuntimeException('Expired WhatsApp data without a privacy subject must remain stored and fail closed.');
+    }
     fwrite(STDOUT, "PASS: WhatsApp conversation requests consent before storing or forwarding personal data.\n");
 } finally {
     if ($oldIntegrationKey === false) putenv('IEPR_INTEGRATION_KEY');
     else putenv('IEPR_INTEGRATION_KEY=' . $oldIntegrationKey);
+    if ($oldAnonymizationKey === false) putenv('IEPR_ANONYMIZATION_KEY');
+    else putenv('IEPR_ANONYMIZATION_KEY=' . $oldAnonymizationKey);
 }
 return 'pass';

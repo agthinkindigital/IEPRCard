@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
+require_once dirname(__DIR__, 2) . '/config/privacy_subject_lifecycle.php';
 
 $oldKey = getenv('IEPR_ANONYMIZATION_KEY');
 $oldStorage = getenv('IEPR_PRIVATE_STORAGE_PATH');
@@ -217,6 +218,80 @@ try {
             }
         }
 
+        $genericNow = strtotime('2026-11-22 10:00:00 UTC');
+        $genericEmail = 'privacy-subject-' . $suffix . '@example.test';
+        $pdo->prepare(
+            'INSERT INTO usuarios (tenant_id, papel_sistema, nome, email, senha_hash, ativo, criado_em) '
+            . "VALUES (:tenant, 'titular_cliente', :name, :email, :password, 0, :created)"
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'name' => 'Sensitive user ' . $suffix,
+            'email' => $genericEmail, 'password' => password_hash('synthetic-user-secret', PASSWORD_DEFAULT),
+            'created' => '2024-01-01 00:00:00',
+        ]);
+        $genericUserId = (int) $pdo->lastInsertId();
+        $genericSubject = privacySubjectCreate($pdo, 'pessoa', $fixture['tenant_id'], '2024-01-01 00:00:00');
+        privacySubjectLinkRecord($pdo, $genericSubject['id'], 'usuario', $genericUserId);
+        $pdo->prepare(
+            'UPDATE tenants SET nome_responsavel = :name, cargo_responsavel = :role WHERE id = :id'
+        )->execute([
+            'name' => 'Sensitive owner ' . $suffix, 'role' => 'Contact role ' . $suffix,
+            'id' => $fixture['tenant_id'],
+        ]);
+        privacySubjectLinkRecord($pdo, $genericSubject['id'], 'tenant_contato', $fixture['tenant_id']);
+        $pdo->prepare(
+            'INSERT INTO acessos_suporte (tenant_id, usuario_id, token_hash, tipo, criado_em, expira_em, ip_usado) '
+            . 'VALUES (:tenant, :user, :token, :type, :created, :expires, :ip)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'user' => $genericUserId, 'token' => hash('sha256', 'support-' . $suffix),
+            'type' => 'suporte', 'created' => '2024-01-01 01:00:00', 'expires' => '2024-01-01 02:00:00',
+            'ip' => '198.51.100.42',
+        ]);
+        $supportId = (int) $pdo->lastInsertId();
+        privacySubjectLinkRecord($pdo, $genericSubject['id'], 'acesso_suporte', $supportId);
+        $pdo->prepare(
+            'INSERT INTO mcp_api_keys (tenant_id, usuario_id, nome, chave_hash, escopos_json, criado_em) '
+            . 'VALUES (:tenant, :user, :name, :hash, :scopes, :created)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'user' => $genericUserId, 'name' => 'Sensitive MCP label ' . $suffix,
+            'hash' => 'synthetic-mcp-hash-' . $suffix, 'scopes' => '[]', 'created' => '2024-01-01 01:00:00',
+        ]);
+        $mcpKeyId = (int) $pdo->lastInsertId();
+        privacySubjectLinkRecord($pdo, $genericSubject['id'], 'mcp_api_key', $mcpKeyId);
+        $pdo->prepare(
+            "UPDATE privacy_subjects SET estado = 'inativo', inativado_em = :inactive WHERE id = :id"
+        )->execute(['inactive' => '2025-11-22 10:00:00', 'id' => $genericSubject['id']]);
+        $genericResult = privacySubjectLifecycleProcessDue($pdo, $genericNow, 10);
+        $genericUserQuery = $pdo->prepare('SELECT nome, email, senha_hash, ativo FROM usuarios WHERE id = :id');
+        $genericUserQuery->execute(['id' => $genericUserId]);
+        $genericUser = $genericUserQuery->fetch(PDO::FETCH_ASSOC);
+        $genericSubjectQuery = $pdo->prepare('SELECT estado, anonimizado_em FROM privacy_subjects WHERE id = :id');
+        $genericSubjectQuery->execute(['id' => $genericSubject['id']]);
+        $genericSubjectState = $genericSubjectQuery->fetch(PDO::FETCH_ASSOC);
+        $genericContact = $pdo->query(
+            'SELECT nome_responsavel, cargo_responsavel FROM tenants WHERE id = ' . $fixture['tenant_id']
+        )->fetch(PDO::FETCH_ASSOC);
+        $genericSupportQuery = $pdo->prepare('SELECT token_hash, ip_usado FROM acessos_suporte WHERE id = :id');
+        $genericSupportQuery->execute(['id' => $supportId]);
+        $genericSupport = $genericSupportQuery->fetch(PDO::FETCH_ASSOC);
+        $genericMcpQuery = $pdo->prepare('SELECT nome, chave_hash, ativo FROM mcp_api_keys WHERE id = :id');
+        $genericMcpQuery->execute(['id' => $mcpKeyId]);
+        $genericMcp = $genericMcpQuery->fetch(PDO::FETCH_ASSOC);
+        if (($genericResult['processed'] ?? null) !== 1 || ($genericResult['failed'] ?? null) !== 0
+            || !is_array($genericUser) || $genericUser['nome'] !== 'Usuário anonimizado'
+            || $genericUser['email'] !== 'anonimizado-' . $genericUserId . '@invalid.example'
+            || $genericUser['senha_hash'] !== '!disabled-privacy-user-' . $genericUserId
+            || (int) $genericUser['ativo'] !== 0 || !is_array($genericSubjectState)
+            || $genericSubjectState['estado'] !== 'anonimizado'
+            || $genericSubjectState['anonimizado_em'] !== gmdate('Y-m-d H:i:s', $genericNow)
+            || !is_array($genericContact) || $genericContact['nome_responsavel'] !== null
+            || $genericContact['cargo_responsavel'] !== null || !is_array($genericSupport)
+            || str_contains((string) $genericSupport['token_hash'], $suffix) || $genericSupport['ip_usado'] !== null
+            || !is_array($genericMcp) || $genericMcp['nome'] !== 'Chave revogada'
+            || str_contains((string) $genericMcp['chave_hash'], $suffix) || (int) $genericMcp['ativo'] !== 0) {
+            throw new RuntimeException($driver . ': generic inactive privacy subjects must erase account PII after twelve months: '
+                . json_encode([$genericResult, $genericUser, $genericSubjectState, $genericContact, $genericSupport, $genericMcp]));
+        }
+
         $retentionInsert = $pdo->prepare(
             'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) '
             . 'VALUES (:tenant, :name, :cpf, 1, :created)'
@@ -259,6 +334,8 @@ try {
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $titularId]);
         $pdo->prepare('DELETE FROM solicitacoes_anonimizacao WHERE id > :baseline')->execute(['baseline' => $queueBaseline]);
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $retentionId]);
+        $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $genericUserId]);
+        $pdo->prepare('DELETE FROM privacy_subjects WHERE id = :id')->execute(['id' => $genericSubject['id']]);
         tenantTestCleanup($pdo, $fixture);
         fwrite(STDOUT, 'PASS: ' . $driver . " anonymization request stores only an encrypted reference and a 72-hour deadline.\n");
     }

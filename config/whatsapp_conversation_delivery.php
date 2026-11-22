@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/privacy_subject_lifecycle.php';
+
 function whatsappConversationSend(PDO $pdo, array $instance, string $phone, string $text, ?callable $transport = null): void
 {
     if ($transport !== null) {
@@ -120,16 +122,29 @@ function whatsappConversationCleanupExpired(PDO $pdo, int $limit = 100, ?int $no
     if ($limit < 1 || $limit > 200) throw new InvalidArgumentException('WHATSAPP_CONVERSATION_CLEANUP_LIMIT_INVALID');
     $stamp = gmdate('Y-m-d H:i:s', $now ?? time());
     $query = $pdo->prepare(
-        'SELECT id, tenant_id FROM whatsapp_conversas WHERE expira_em < :now AND titular_id IS NULL '
-        . "AND estado IN ('aguardando_consentimento','recusado','revogado') ORDER BY id LIMIT " . $limit
+        'SELECT c.id, c.tenant_id, r.privacy_subject_id FROM whatsapp_conversas c '
+        . "LEFT JOIN privacy_subject_records r ON r.tipo_registro = 'whatsapp_conversa' AND r.registro_id = c.id "
+        . 'WHERE c.expira_em <= :now AND c.titular_id IS NULL ORDER BY c.id LIMIT ' . $limit
     );
     $query->execute(['now' => $stamp]);
     $deleted = 0;
     foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if ($row['privacy_subject_id'] === null) {
+            throw new RuntimeException('PRIVACY_SUBJECT_RECORD_MISSING');
+        }
+        $errorCode = null;
+        if (!privacySubjectLifecycleProcessOne($pdo, (int) $row['privacy_subject_id'], $stamp, $errorCode)) {
+            throw new RuntimeException($errorCode ?? 'PRIVACY_SUBJECT_ANONYMIZATION_FAILED');
+        }
+        $subjectState = $pdo->prepare('SELECT estado FROM privacy_subjects WHERE id = :id LIMIT 1');
+        $subjectState->execute(['id' => (int) $row['privacy_subject_id']]);
+        if ($subjectState->fetchColumn() !== 'anonimizado') {
+            continue;
+        }
         $deterministicPhotoKey = 'private://' . (int) $row['tenant_id'] . '/'
             . substr(hash('sha256', (int) $row['id'] . ':1:jpg'), 0, 48) . '.jpg';
         whatsappConversationDeleteDraftPhoto((int) $row['tenant_id'], ['foto_url' => $deterministicPhotoKey]);
-        $remove = $pdo->prepare('DELETE FROM whatsapp_conversas WHERE id = :id AND expira_em < :now AND titular_id IS NULL');
+        $remove = $pdo->prepare('DELETE FROM whatsapp_conversas WHERE id = :id AND expira_em <= :now AND titular_id IS NULL');
         $remove->execute(['id' => (int) $row['id'], 'now' => $stamp]);
         $deleted += $remove->rowCount();
     }
