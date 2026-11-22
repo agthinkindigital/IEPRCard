@@ -50,6 +50,27 @@ function whatsappGatewayConfigSave(PDO $pdo, array $identity, string $apiBaseUrl
     return whatsappGatewayConfigRead($pdo, $identity);
 }
 
+/** Test a candidate before replacing the known-good global connection. */
+function whatsappGatewayConfigSaveTested(PDO $pdo, array $identity, string $apiBaseUrl, string $apiToken, ?callable $transport = null): array
+{
+    aiGlobalConfigAssertSuperadmin($pdo, $identity);
+    if (trim($apiToken) === '') {
+        $stored = $pdo->query("SELECT api_token_cifrado FROM whatsapp_config_global WHERE chave = 'global' LIMIT 1")->fetchColumn();
+        if (!is_string($stored)) throw new InvalidArgumentException('Informe o token de acesso GOWA.');
+        $apiToken = aiGlobalConfigOpen($stored);
+    }
+    $test = whatsappGatewayConfigTestCandidate($apiBaseUrl, $apiToken, $transport);
+    if ($test['status'] !== 'success') return $test;
+    whatsappGatewayConfigSave($pdo, $identity, $apiBaseUrl, $apiToken);
+    $now = gmdate('Y-m-d H:i:s');
+    $record = $pdo->prepare(
+        "UPDATE whatsapp_config_global SET ultimo_teste_status = 'success', ultimo_teste_em = :tested, "
+        . 'ultimo_erro_codigo = NULL, atualizado_em = :updated WHERE chave = \'global\''
+    );
+    $record->execute(['tested' => $now, 'updated' => $now]);
+    return $test;
+}
+
 /** @param array<string, mixed> $identity
  *  @return array{configured:bool,api_base_url:?string,token_configured:bool,last_test_status:?string,last_test_at:?string,last_error_code:?string}
  */
@@ -95,12 +116,29 @@ function whatsappGatewayConfigTest(PDO $pdo, array $identity, ?callable $transpo
         throw new DomainException('WHATSAPP_GOWA_NOT_CONFIGURED');
     }
 
+    $result = whatsappGatewayConfigTestCandidate((string) $row['api_base_url'], aiGlobalConfigOpen((string) $row['api_token_cifrado']), $transport);
+    $now = gmdate('Y-m-d H:i:s');
+    $update = $pdo->prepare(
+        "UPDATE whatsapp_config_global SET ultimo_teste_status = :status, ultimo_teste_em = :tested, "
+        . 'ultimo_erro_codigo = :error, atualizado_em = :updated WHERE chave = \'global\''
+    );
+    $update->execute([
+        'status' => $result['status'], 'tested' => $now,
+        'error' => $result['error_code'], 'updated' => $now,
+    ]);
+    return $result;
+}
+
+/** @param callable(string,string,array<string,mixed>):array{status:int,body:string}|null $transport
+ *  @return array{status:'success'|'failed',error_code:?string}
+ */
+function whatsappGatewayConfigTestCandidate(string $apiBaseUrl, string $apiToken, ?callable $transport = null): array
+{
     $errorCode = null;
     try {
-        $token = aiGlobalConfigOpen((string) $row['api_token_cifrado']);
         $response = whatsappGatewayApiRequest(
-            (string) $row['api_base_url'],
-            $token,
+            $apiBaseUrl,
+            $apiToken,
             'StatusInstancias',
             [],
             $transport
@@ -115,18 +153,6 @@ function whatsappGatewayConfigTest(PDO $pdo, array $identity, ?callable $transpo
             default => 'connection_failed',
         };
     }
-
-    $now = gmdate('Y-m-d H:i:s');
-    $update = $pdo->prepare(
-        "UPDATE whatsapp_config_global SET ultimo_teste_status = :status, ultimo_teste_em = :tested, "
-        . 'ultimo_erro_codigo = :error, atualizado_em = :updated WHERE chave = \'global\''
-    );
-    $update->execute([
-        'status' => $errorCode === null ? 'success' : 'failed',
-        'tested' => $now,
-        'error' => $errorCode,
-        'updated' => $now,
-    ]);
 
     return ['status' => $errorCode === null ? 'success' : 'failed', 'error_code' => $errorCode];
 }

@@ -9,13 +9,24 @@ function aiGlobalConfigSave(PDO $pdo, array $identity, string $provider, string 
     aiGlobalConfigAssertSuperadmin($pdo, $identity);
     aiGlobalConfigAssertProvider($provider);
     $apiKey = trim($apiKey);
-    if ($apiKey === '' || strlen($apiKey) > 4096 || preg_match('/[\x00-\x1f\x7f]/', $apiKey) === 1) {
+    if (strlen($apiKey) > 4096 || preg_match('/[\x00-\x1f\x7f]/', $apiKey) === 1) {
         throw new InvalidArgumentException('Credencial inválida.');
     }
     if ($model === '' || strlen($model) > 120 || preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]*$/D', $model) !== 1) {
         throw new InvalidArgumentException('Modelo inválido.');
     }
-    $encryptedKey = aiGlobalConfigSeal($apiKey, $configuration);
+    if ($apiKey === '') {
+        $existing = $pdo->prepare('SELECT chave_cifrada FROM ia_config_global WHERE provedor = :provider LIMIT 1');
+        $existing->execute(['provider' => $provider]);
+        $stored = $existing->fetchColumn();
+        if (!is_string($stored) || $stored === '') {
+            throw new InvalidArgumentException('Informe a chave do provedor.');
+        }
+        aiGlobalConfigOpen($stored, $configuration);
+        $encryptedKey = $stored;
+    } else {
+        $encryptedKey = aiGlobalConfigSeal($apiKey, $configuration);
+    }
     $now = gmdate('Y-m-d H:i:s');
 
     try {

@@ -87,6 +87,7 @@ $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) /
     <nav aria-label="Navegação administrativa">
         <a href="#overview">Visão geral</a><a href="#source">Clientes</a><a href="#execution">Operações</a>
         <a href="/admin/atualizar-schema.php">Atualização de schema</a>
+        <a href="/admin/atendimento-ia.php">Atendimento e IA</a>
         <a class="active" aria-current="page" href="/admin/migracao-banco.php">Migração de dados SQLite → MySQL</a>
         <a href="/admin/backup-destinos.php">Backup externo</a>
         <a href="#results">Auditoria</a><a href="#help">Configurações</a>

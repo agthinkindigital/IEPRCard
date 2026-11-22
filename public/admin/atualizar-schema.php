@@ -106,6 +106,7 @@ function schemaUpdatePageEventLabel(string $event): string
         <a class="active" aria-current="page" href="/admin/atualizar-schema.php">Atualização de schema</a>
         <a href="/admin/migracao-banco.php">Migração de dados SQLite → MySQL</a>
         <a href="/admin/backup-destinos.php">Backup externo</a>
+        <a href="/admin/atendimento-ia.php">Atendimento e IA</a>
         <a href="#history">Histórico</a>
     </nav>
     <div class="sidebar-user"><span class="avatar" aria-hidden="true">LN</span><span><strong><?= schemaUpdatePageEscape($admin['nome']) ?></strong><small>Superadmin</small></span></div>

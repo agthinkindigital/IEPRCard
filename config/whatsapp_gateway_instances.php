@@ -168,3 +168,16 @@ function whatsappGatewayRotateInstanceWebhook(
     }
     return ['webhook_url' => $webhookUrl];
 }
+
+/** Change the explicit per-instance opt-in for titular registration. */
+function whatsappGatewayInstanceSetRegistrationFlow(PDO $pdo, array $identity, int $instanceId, bool $enabled): void
+{
+    aiGlobalConfigAssertSuperadmin($pdo, $identity);
+    if ($instanceId < 1) throw new InvalidArgumentException('Instância inválida.');
+    $update = $pdo->prepare(
+        "UPDATE whatsapp_instancias SET fluxo_cadastro_ativo = :enabled, atualizado_em = :updated "
+        . "WHERE id = :id AND estado = 'ativa'"
+    );
+    $update->execute(['enabled' => $enabled ? 1 : 0, 'updated' => gmdate('Y-m-d H:i:s'), 'id' => $instanceId]);
+    if ($update->rowCount() !== 1) throw new DomainException('WHATSAPP_INSTANCE_UNAVAILABLE');
+}

@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/ai_global_config.php';
+require_once dirname(__DIR__, 2) . '/config/ai_global_test.php';
 
 $connections = ['SQLite' => dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:'])];
 $mysqlSettings = [
@@ -66,6 +67,31 @@ foreach ($connections as $driver => $pdo) {
             || ($status['providers']['openai']['model'] ?? null) !== 'gpt-test-model'
             || ($status['active_provider'] ?? null) !== null) {
             throw new RuntimeException('Saving a global provider must persist safe metadata without activating it or returning its secret.');
+        }
+        $syntheticRequest = null;
+        $testResult = aiGlobalConfigTestProvider($pdo, $superadmin, 'openai', static function (string $url, array $headers, array $payload) use (&$syntheticRequest): array {
+            $syntheticRequest = [$url, $headers, $payload];
+            return ['status' => 200, 'body' => json_encode(['choices' => [['message' => ['content' => 'OK']]]], JSON_THROW_ON_ERROR)];
+        });
+        if ($testResult['status'] !== 'success' || !is_array($syntheticRequest)
+            || !str_contains((string) json_encode($syntheticRequest[2]), 'synthetic connection check')
+            || str_contains((string) json_encode($syntheticRequest[2]), 'CPF')) {
+            throw new RuntimeException('AI connection test must use only a synthetic prompt and validate a provider response.');
+        }
+        $testFailure = aiGlobalConfigTestProvider($pdo, $superadmin, 'openai', static fn(): array => ['status' => 401, 'body' => '{"error":"synthetic"}']);
+        if ($testFailure['status'] !== 'failed' || aiGlobalConfigRead($pdo, $superadmin)['active_provider'] !== null) {
+            throw new RuntimeException('A failed synthetic provider test must not activate or replace configuration.');
+        }
+        $cipherBeforeCandidateFailure = (string) $pdo->query("SELECT chave_cifrada FROM ia_config_global WHERE provedor='openai'")->fetchColumn();
+        $candidateFailure = aiGlobalConfigTestCredentials('openai', 'replacement-secret', 'gpt-candidate', static fn(string $url, array $headers, array $payload): array => ['status' => 401, 'body' => '{"error":"synthetic"}']);
+        if ($candidateFailure['status'] !== 'failed'
+            || (string) $pdo->query("SELECT chave_cifrada FROM ia_config_global WHERE provedor='openai'")->fetchColumn() !== $cipherBeforeCandidateFailure
+            || aiGlobalConfigRead($pdo, $superadmin)['active_provider'] !== null) {
+            throw new RuntimeException('A failed candidate AI check must preserve the last saved key and active provider.');
+        }
+        aiGlobalConfigSave($pdo, $superadmin, 'openai', '', 'gpt-test-model');
+        if (aiGlobalConfigOpen((string) $pdo->query("SELECT chave_cifrada FROM ia_config_global WHERE provedor='openai'")->fetchColumn()) !== 'synthetic-openai-secret') {
+            throw new RuntimeException('Saving an empty secret field must preserve the configured credential.');
         }
         aiGlobalConfigSave($pdo, $superadmin, 'openai', 'synthetic-openai-secret', 'gpt-test-model');
         if ((int) $pdo->query("SELECT COUNT(*) FROM ia_config_global WHERE provedor = 'openai'")->fetchColumn() !== 1) {

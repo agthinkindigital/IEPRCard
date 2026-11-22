@@ -32,6 +32,7 @@ O mockup está em [`whatsapp-ia-mockup.svg`](../mockups/whatsapp-ia-mockup.svg) 
 - Uma falha de teste não troca o provedor ativo nem apaga configuração anterior.
 - Rótulos persistentes, foco visível, confirmação textual e operação por teclado; nenhum estado é indicado somente por cor.
 - Em 375 px, empilhar os cartões dos provedores e o preview do consentimento em coluna única, sem rolagem horizontal.
+- Abaixo da configuração, listar instâncias com estado registrado, escopo e opt-in do fluxo; oferecer provisionamento e rotação com exibição da URL bearer somente na confirmação de uso único.
 
 ## Gate
 

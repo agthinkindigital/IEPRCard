@@ -123,6 +123,30 @@ try {
                 || $afterFailure['ultimo_teste_status'] !== 'failed') {
                 throw new RuntimeException($driver . ': failed connectivity checks must preserve saved credentials.');
             }
+            $candidateFailure = whatsappGatewayConfigSaveTested(
+                $pdo,
+                $superadmin,
+                'https://new-gowa.example.test',
+                'replacement-token',
+                static fn(): array => ['status' => 401, 'body' => '{"error":"synthetic"}']
+            );
+            $preserved = whatsappGatewayConfigRead($pdo, $superadmin);
+            if ($candidateFailure['status'] !== 'failed' || $preserved['api_base_url'] !== 'https://gowa.example.test'
+                || aiGlobalConfigOpen((string) $pdo->query("SELECT api_token_cifrado FROM whatsapp_config_global WHERE chave='global'")->fetchColumn()) !== $token) {
+                throw new RuntimeException($driver . ': a failed candidate probe must preserve the last known-good GOWA connection.');
+            }
+            $candidateSuccess = whatsappGatewayConfigSaveTested(
+                $pdo,
+                $superadmin,
+                'https://new-gowa.example.test',
+                'replacement-token',
+                static fn(): array => ['status' => 200, 'body' => '{"ok":true}']
+            );
+            $updated = whatsappGatewayConfigRead($pdo, $superadmin);
+            if ($candidateSuccess['status'] !== 'success' || $updated['api_base_url'] !== 'https://new-gowa.example.test'
+                || $updated['last_test_status'] !== 'success') {
+                throw new RuntimeException($driver . ': a verified candidate should replace the connection and retain a safe test status.');
+            }
 
             fwrite(STDOUT, 'PASS: ' . $driver . " GOWA global settings stay encrypted and probes are read-only.\n");
         } finally {
