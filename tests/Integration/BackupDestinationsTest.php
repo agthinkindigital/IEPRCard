@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/backup_destinations.php';
+require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
 
 $backupDestinationsConnections = ['SQLite' => dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:'])];
 $backupDestinationsMysql = [
@@ -64,7 +65,9 @@ if (!$backupDestinationServerReady) {
 }
 
 $oldIntegrationKey = getenv('IEPR_INTEGRATION_KEY');
+$oldAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
 putenv('IEPR_INTEGRATION_KEY=' . base64_encode(str_repeat("\x61", SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(str_repeat("\x62", SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
 try {
     foreach ($backupDestinationsConnections as $driver => $pdo) {
         schemaAplicarMigracoes($pdo, 'test');
@@ -117,6 +120,23 @@ try {
         }
 
         $originalCiphertext = (string) $stored['credentials_cifradas'];
+        $protectedReference = hash('sha256', 'synthetic-holder-' . bin2hex(random_bytes(8)));
+        $pdo->prepare(
+            "INSERT INTO titular_chaves_backup (destino_id, referencia_hmac, estado, criado_em, atualizado_em) "
+            . "VALUES (:destination, :reference, 'ativa', :created, :updated)"
+        )->execute([
+            'destination' => $saved['id'], 'reference' => $protectedReference,
+            'created' => gmdate('Y-m-d H:i:s'), 'updated' => gmdate('Y-m-d H:i:s'),
+        ]);
+        try {
+            backupDestinationSave($pdo, $identity, array_merge($input, [
+                'id' => (int) $saved['id'], 'bucket' => 'changed-bucket', 'access_key' => '', 'secret_key' => '',
+            ]));
+            throw new RuntimeException($driver . ': storage settings changed while holder key envelopes were registered.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'BACKUP_DESTINATION_PRIVACY_KEYS_PRESENT') throw $exception;
+        }
+        $pdo->prepare('DELETE FROM titular_chaves_backup WHERE destino_id = :id')->execute(['id' => $saved['id']]);
         $updated = backupDestinationSave($pdo, $identity, array_merge($input, [
             'id' => (int) $saved['id'], 'access_key' => '', 'secret_key' => '',
         ]));
@@ -126,6 +146,9 @@ try {
         if ($updated['id'] !== $saved['id'] || $updatedCiphertext !== $originalCiphertext
             || $updated['test_status'] !== null || $updated['tested_at'] !== null) {
             throw new RuntimeException($driver . ': updating metadata without a new secret must preserve encrypted credentials.');
+        }
+        if ((backupDestinationTest($pdo, $identity, (int) $saved['id'])['status'] ?? null) !== 'success') {
+            throw new RuntimeException($driver . ': destination changes must be tested before re-enabling it.');
         }
 
         $second = backupDestinationSave($pdo, $identity, array_merge($input, ['name' => 'Second S3 ' . $driver]));
@@ -138,22 +161,103 @@ try {
             throw new RuntimeException($driver . ': destinations must be independently enableable.');
         }
 
+        $pdo->prepare(
+            "INSERT INTO tenants (tipo, nome_organizacao, status_conta) VALUES ('cliente', :name, 'ativo')"
+        )->execute(['name' => 'S3 privacy test tenant ' . $driver]);
+        $privacyTenantId = (int) $pdo->lastInsertId();
+        $pdo->prepare(
+            'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) '
+            . 'VALUES (:tenant, :name, :cpf, 1, :created)'
+        )->execute([
+            'tenant' => $privacyTenantId,
+            'name' => 'Synthetic S3 privacy holder',
+            'cpf' => '52998224725',
+            'created' => gmdate('Y-m-d H:i:s'),
+        ]);
+        $privacyHolderId = (int) $pdo->lastInsertId();
+        $privacyReference = titularPrivacyEnsureReference($pdo, $privacyTenantId, $privacyHolderId);
+        titularPrivacyProvisionKey($pdo, $privacyTenantId, $privacyHolderId);
+        $snapshotPlaintext = 'Synthetic private S3 snapshot payload';
+        $snapshotCiphertext = titularPrivacyEncryptSnapshotData(
+            $pdo,
+            $privacyTenantId,
+            $privacyHolderId,
+            $snapshotPlaintext
+        );
+        $activeDestinations = titularPrivacyActiveDestinations($pdo);
+        $privacyClient = titularPrivacyCreateClient($activeDestinations[0], null);
+        $keyObject = titularPrivacyObjectKey('keys', $privacyReference, titularAnonymizationEncryptionKey());
+        $envelopeObject = $privacyClient->getObject(['Bucket' => $saved['bucket'], 'Key' => $keyObject]);
+        $envelope = json_decode((string) $envelopeObject['Body'], true);
+        $wrappedDek = is_array($envelope)
+            ? base64_decode((string) ($envelope['wrapped_dek'] ?? ''), true)
+            : false;
+        $dataDek = is_string($wrappedDek) ? sodium_crypto_secretbox_open(
+            substr($wrappedDek, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+            substr($wrappedDek, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+            titularAnonymizationEncryptionKey()
+        ) : false;
+        $encryptedBytes = base64_decode(substr($snapshotCiphertext, 3), true);
+        $decryptedSnapshot = is_string($dataDek) && is_string($encryptedBytes)
+            ? sodium_crypto_secretbox_open(
+                substr($encryptedBytes, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+                substr($encryptedBytes, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+                $dataDek
+            )
+            : false;
+        if (!str_starts_with($snapshotCiphertext, 'v1:') || str_contains($snapshotCiphertext, $snapshotPlaintext)
+            || !is_string($decryptedSnapshot) || !hash_equals($snapshotPlaintext, $decryptedSnapshot)) {
+            throw new RuntimeException($driver . ': snapshot payload must be encrypted using the external holder key envelope.');
+        }
+        if (is_string($dataDek)) sodium_memzero($dataDek);
+        $keyVersionsBefore = $privacyClient->listObjectVersions([
+            'Bucket' => $saved['bucket'], 'Prefix' => $keyObject, 'MaxKeys' => 100,
+        ]);
+        if (count($keyVersionsBefore['Versions'] ?? []) !== 1) {
+            throw new RuntimeException($driver . ': AWS SDK must store a versioned privacy key envelope in the S3 fixture.');
+        }
+        $erasure = titularPrivacyEraseKeys($pdo, $privacyReference);
+        $keyVersionsAfter = $privacyClient->listObjectVersions([
+            'Bucket' => $saved['bucket'], 'Prefix' => $keyObject, 'MaxKeys' => 100,
+        ]);
+        $tombstoneKey = titularPrivacyObjectKey('tombstones', $privacyReference, titularAnonymizationEncryptionKey());
+        $tombstone = json_decode((string) $privacyClient->getObject([
+            'Bucket' => $saved['bucket'], 'Key' => $tombstoneKey,
+        ])['Body'], true);
+        if (($erasure['destinations'] ?? 0) !== 1 || ($keyVersionsAfter['Versions'] ?? []) !== []
+            || ($keyVersionsAfter['DeleteMarkers'] ?? []) !== [] || !is_array($tombstone)
+            || strlen((string) ($tombstone['reference_hmac'] ?? '')) !== 64
+            || str_contains(json_encode($tombstone), $privacyReference)) {
+            throw new RuntimeException($driver . ': SDK-backed erasure must permanently purge key versions and retain only a pseudonymous tombstone.');
+        }
+        $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $privacyHolderId]);
+        $pdo->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $privacyTenantId]);
+
         backupDestinationSave($pdo, $identity, array_merge($input, [
             'id' => (int) $saved['id'], 'endpoint' => 'http://127.0.0.1:1', 'access_key' => '', 'secret_key' => '',
         ]));
         $failedTest = backupDestinationTest($pdo, $identity, (int) $saved['id']);
         $afterFailure = $pdo->query(
-            'SELECT ultimo_teste_status, ultimo_sucesso_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
+            'SELECT ultimo_teste_status, ultimo_sucesso_em, ativo FROM destinos_backup WHERE id = ' . (int) $saved['id']
         )->fetch(PDO::FETCH_ASSOC);
         if (($failedTest['status'] ?? null) !== 'failed' || !is_array($afterFailure)
             || $afterFailure['ultimo_teste_status'] !== 'failed'
+            || (int) $afterFailure['ativo'] !== 0
             || $afterFailure['ultimo_sucesso_em'] !== $persisted['ultimo_sucesso_em']) {
             throw new RuntimeException($driver . ': failed tests must preserve the previous successful timestamp.');
+        }
+        try {
+            backupDestinationSetEnabled($pdo, $identity, (int) $saved['id'], true);
+            throw new RuntimeException($driver . ': a destination that failed permanent deletion checks was enabled.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'BACKUP_DESTINATION_TEST_REQUIRED') throw $exception;
         }
         backupDestinationDelete($pdo, $identity, (int) $second['id']);
         if (count(backupDestinationReadAll($pdo, $identity)) !== 1) {
             throw new RuntimeException($driver . ': a superadmin must be able to remove one destination independently.');
         }
+        backupDestinationSetEnabled($pdo, $identity, (int) $saved['id'], false);
+        backupDestinationDelete($pdo, $identity, (int) $saved['id']);
 
         try {
             backupDestinationSave($pdo, $identity, array_merge($input, ['endpoint' => 'https://user:pass@example.com']));
@@ -198,6 +302,11 @@ try {
         putenv('IEPR_INTEGRATION_KEY');
     } else {
         putenv('IEPR_INTEGRATION_KEY=' . $oldIntegrationKey);
+    }
+    if ($oldAnonymizationKey === false) {
+        putenv('IEPR_ANONYMIZATION_KEY');
+    } else {
+        putenv('IEPR_ANONYMIZATION_KEY=' . $oldAnonymizationKey);
     }
     if (is_resource($backupDestinationProcess)) {
         proc_terminate($backupDestinationProcess);

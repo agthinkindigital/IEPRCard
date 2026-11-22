@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/batch_import_staging_support.php';
 
 /** @return array{processed:int,failed:int,errors:array<string,int>} */
-function titularAnonymizationProcessDue(PDO $pdo, ?int $now = null, int $limit = 100): array
+function titularAnonymizationProcessDue(PDO $pdo, ?int $now = null, int $limit = 100, ?callable $clientFactory = null): array
 {
     if ($limit < 1 || $limit > 200) {
         throw new InvalidArgumentException('ANONYMIZATION_BATCH_LIMIT_INVALID');
@@ -23,7 +23,7 @@ function titularAnonymizationProcessDue(PDO $pdo, ?int $now = null, int $limit =
     $errors = [];
     foreach ($ids as $id) {
         $errorCode = null;
-        if (titularAnonymizationProcessOne($pdo, $id, $nowText, $key, $errorCode)) {
+        if (titularAnonymizationProcessOne($pdo, $id, $nowText, $key, $errorCode, $clientFactory)) {
             ++$processed;
         } else {
             ++$failed;
@@ -63,7 +63,14 @@ function titularAnonymizationQueueExpiredInactive(PDO $pdo, string $key, string 
     }
 }
 
-function titularAnonymizationProcessOne(PDO $pdo, int $id, string $nowText, string $key, ?string &$errorCode = null): bool
+function titularAnonymizationProcessOne(
+    PDO $pdo,
+    int $id,
+    string $nowText,
+    string $key,
+    ?string &$errorCode = null,
+    ?callable $clientFactory = null
+): bool
 {
     $lock = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql' ? ' FOR UPDATE' : '';
     $pdo->beginTransaction();
@@ -87,11 +94,13 @@ function titularAnonymizationProcessOne(PDO $pdo, int $id, string $nowText, stri
         }
 
         $holderQuery = $pdo->prepare(
-            'SELECT id, foto_url FROM titulares WHERE id = :id AND tenant_id = :tenant LIMIT 1' . $lock
+            'SELECT id, foto_url, referencia_privacidade FROM titulares WHERE id = :id AND tenant_id = :tenant LIMIT 1' . $lock
         );
         $holderQuery->execute(['id' => $reference['titular_id'], 'tenant' => $reference['tenant_id']]);
         $holder = $holderQuery->fetch(PDO::FETCH_ASSOC);
         if (is_array($holder)) {
+            $privacyReference = titularPrivacyEnsureReference($pdo, $reference['tenant_id'], $reference['titular_id']);
+            titularPrivacyEraseKeys($pdo, $privacyReference, $clientFactory);
             titularAnonymizationDeleteHolderArtifacts($pdo, $reference['tenant_id'], $reference['titular_id'], $holder);
             $cards = $pdo->prepare(
                 "UPDATE carteirinhas_emitidas SET status_carteirinha = 'revogada', snapshot_dados_json = NULL, "

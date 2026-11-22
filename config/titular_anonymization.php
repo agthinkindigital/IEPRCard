@@ -117,3 +117,4 @@ function titularAnonymizationReferenceMatches(string $ciphertext, int $tenantId,
 
 require_once __DIR__ . '/titular_anonymization_lifecycle.php';
 require_once __DIR__ . '/titular_anonymization_worker.php';
+require_once __DIR__ . '/titular_privacy_keys.php';
