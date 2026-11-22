@@ -21,7 +21,7 @@ Este painel é restrito ao superadmin e configura destinos externos com API S3, 
 
 Os erros exibidos são resumidos e não incluem credenciais nem respostas brutas do serviço. O painel não mostra dados de clientes ou titulares.
 
-## Restaurar snapshot por ZIP — proposta aguardando aprovação
+## Restaurar snapshot por ZIP — aprovado em 2026-11-22
 
 1. Acesse **Restaurar backup** e selecione um ZIP exportado pelo próprio IEPRCard. Pacotes de atualização de código não são aceitos.
 2. Marque a confirmação para validar o arquivo sem alterar a base ativa e selecione **Validar arquivo**.
@@ -29,4 +29,4 @@ Os erros exibidos são resumidos e não incluem credenciais nem respostas brutas
 4. Se a validação passar, selecione **Preparar isolada**. O sistema restaura sem tráfego, emissão, sessão de cliente ou chamadas MCP e aplica os tombstones de privacidade.
 5. A liberação exige revisão humana posterior do resultado. O fluxo não restaura diretamente sobre produção.
 
-O fluxo e o mockup correspondente ainda aguardam aprovação explícita. Ele segue o contrato de recuperação do [ADR-0012](../adr/0012-ci-deploy-e-backup.md).
+O fluxo e o mockup correspondente foram aprovados em 2026-11-22. A implementação depende da conclusão da [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e segue o contrato de recuperação do [ADR-0012](../adr/0012-ci-deploy-e-backup.md).
