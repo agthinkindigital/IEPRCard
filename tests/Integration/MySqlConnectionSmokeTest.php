@@ -80,11 +80,11 @@ $actualSchemaTables = $connection->query('SELECT TABLE_NAME FROM information_sch
 sort($expectedSchemaTables, SORT_STRING);
 sort($actualSchemaTables, SORT_STRING);
 if ($actualSchemaTables !== $expectedSchemaTables) {
-    throw new RuntimeException('MySQL/MariaDB must contain exactly the 27 canonical MVP tables.');
+    throw new RuntimeException('MySQL/MariaDB must contain exactly the canonical MVP tables.');
 }
 
 $migrations = schemaAplicarMigracoes($connection, 'test');
-if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance'] || array_filter(schemaInspecionar($connection)) !== []) {
+if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config'] || array_filter(schemaInspecionar($connection)) !== []) {
     throw new RuntimeException('MySQL/MariaDB versioned migrations must be repeatable and leave no schema drift.');
 }
 

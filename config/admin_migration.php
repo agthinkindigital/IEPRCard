@@ -8,6 +8,11 @@ function adminMigrationStatePath(): string
     return (string) (getenv('IEPRCARD_MIGRATION_STATE_PATH') ?: dirname(__DIR__) . '/var/admin-migration-job.json');
 }
 
+function adminMigrationExpectedTableCount(): int
+{
+    return count(\IEPRCard\Database\Schema\catalogoCanonico());
+}
+
 /** @return array<string, mixed> */
 function adminMigrationStateRead(?string $path = null): array
 {
@@ -36,7 +41,7 @@ function adminMigrationQueueCreate(int $requestedBy, ?int $timestamp = null, ?st
             'status' => 'queued',
             'requested_by' => $requestedBy,
             'created_at' => $timestamp,
-            'total_tables' => count(\IEPRCard\Database\Schema\catalogoCanonico()),
+            'total_tables' => adminMigrationExpectedTableCount(),
             'total_records' => max(0, $estimatedRecords),
             'completed_tables' => 0,
             'completed_records' => 0,

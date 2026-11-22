@@ -24,7 +24,7 @@ $state = adminMigrationStateRead();
 echo json_encode([
     'status' => $state['status'] ?? 'unknown',
     'completed_tables' => (int) ($state['completed_tables'] ?? 0),
-    'total_tables' => (int) ($state['total_tables'] ?? 27),
+    'total_tables' => (int) ($state['total_tables'] ?? adminMigrationExpectedTableCount()),
     'completed_records' => (int) ($state['completed_records'] ?? 0),
     'total_records' => $state['total_records'] ?? null,
     'current_table' => $state['current_table'] ?? null,

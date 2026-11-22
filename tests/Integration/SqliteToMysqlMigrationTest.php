@@ -5,6 +5,8 @@ require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 
+$expectedTableCount = count(\IEPRCard\Database\Schema\catalogoCanonico());
+
 $ci = filter_var(getenv('CI') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 if (!in_array('mysql', PDO::getAvailableDrivers(), true)
     || getenv('TEST_MYSQL_HOST') === false
@@ -99,8 +101,8 @@ if (($result['total_records'] ?? null) !== 1002 + $permissionBaselineCount
     || ($result['tables']['tenants']['row_count'] ?? null) !== 1
     || ($result['tables']['permissoes']['row_count'] ?? null) !== $permissionBaselineCount
     || ($result['tables']['telemetria_eventos']['row_count'] ?? null) !== 1000
-    || count($progress) !== 27
-    || ($progress[26]['completed_tables'] ?? null) !== 27
+    || count($progress) !== $expectedTableCount
+    || ($progress[$expectedTableCount - 1]['completed_tables'] ?? null) !== $expectedTableCount
     || ($progress[26]['completed_records'] ?? null) !== 1002 + $permissionBaselineCount
     || $planCount !== 1
     || $tenantName !== 'Cliente de teste'

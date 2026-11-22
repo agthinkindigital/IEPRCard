@@ -52,7 +52,7 @@
             }
             if (messageNode) messageNode.textContent = (labels[state.status] || labels.idle)[1];
             if (progressBar) {
-                const totalTables = Math.max(1, Number(state.total_tables) || 27);
+                const totalTables = Math.max(1, Number(state.total_tables) || 1);
                 const doneTables = Math.max(0, Number(state.completed_tables) || 0);
                 progressBar.max = totalTables;
                 progressBar.value = doneTables;

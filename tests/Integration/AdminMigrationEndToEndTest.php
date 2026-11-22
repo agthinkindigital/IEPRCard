@@ -5,6 +5,8 @@ require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/config/admin_migration.php';
 
+$expectedTableCount = count(\IEPRCard\Database\Schema\catalogoCanonico());
+
 $mysqlHost = getenv('TEST_MYSQL_HOST');
 $mysqlDatabase = getenv('TEST_MYSQL_DATABASE');
 $mysqlUsername = getenv('TEST_MYSQL_USERNAME');
@@ -156,8 +158,8 @@ try {
     $workerExit = proc_close($worker);
     $state = adminMigrationStateRead($statePath);
     if ($workerExit !== 0 || ($state['status'] ?? null) !== 'completed'
-        || ($state['completed_tables'] ?? null) !== 27 || ($state['completed_records'] ?? null) !== 0
-        || count($state['result']['tables'] ?? []) !== 27
+        || ($state['completed_tables'] ?? null) !== $expectedTableCount || ($state['completed_records'] ?? null) !== 0
+        || count($state['result']['tables'] ?? []) !== $expectedTableCount
         || ($mysqlConfiguration['DB_PASSWORD'] !== '' && str_contains($workerOutput, $mysqlConfiguration['DB_PASSWORD']))) {
         throw new RuntimeException('CLI worker must execute and verify all tables without blocking the HTTP request or exposing secrets.');
     }

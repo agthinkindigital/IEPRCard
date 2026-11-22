@@ -68,7 +68,7 @@ function migrationCount(int $value): string
     return number_format(max(0, $value), 0, ',', '.');
 }
 $validatedAt = (int) ($preflight['validated_at'] ?? time());
-$totalTables = max(1, (int) ($state['total_tables'] ?? 27));
+$totalTables = max(1, (int) ($state['total_tables'] ?? adminMigrationExpectedTableCount()));
 $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) / $totalTables));
 ?>
 <!doctype html>
@@ -106,7 +106,7 @@ $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) /
     <section class="connection-grid" aria-label="Bancos envolvidos">
         <article class="panel connection-card" id="source">
             <div class="card-heading"><span class="database-icon" aria-hidden="true">+</span><h2>Origem SQLite</h2><span class="status-chip <?= count(array_filter($preflight['checks'], static fn(array $c): bool => str_contains($c['label'], 'origem') && $c['status'] === 'Bloqueado')) === 0 ? 'good' : 'bad' ?>"><?= count(array_filter($preflight['checks'], static fn(array $c): bool => str_contains($c['label'], 'origem') && $c['status'] === 'Bloqueado')) === 0 ? 'Válida' : 'Bloqueada' ?></span></div>
-            <dl><div><dt>Arquivo</dt><dd><?= migrationEscape((string) $preflight['source_name']) ?></dd></div><div><dt>Schema</dt><dd>27 tabelas canônicas</dd></div><div><dt>Registros</dt><dd><?= migrationCount((int) $preflight['source_records']) ?> em <?= count($preflight['table_estimates']) ?> tabelas</dd></div></dl>
+            <dl><div><dt>Arquivo</dt><dd><?= migrationEscape((string) $preflight['source_name']) ?></dd></div><div><dt>Schema</dt><dd><?= migrationCount(adminMigrationExpectedTableCount()) ?> tabelas canônicas</dd></div><div><dt>Registros</dt><dd><?= migrationCount((int) $preflight['source_records']) ?> em <?= count($preflight['table_estimates']) ?> tabelas</dd></div></dl>
             <small class="subtle">Caminho completo oculto</small>
         </article>
         <article class="panel connection-card">
@@ -130,7 +130,7 @@ $progress = min(100, (int) floor(100 * (int) ($state['completed_tables'] ?? 0) /
         <div class="section-heading"><h2 id="execution-title">Execução</h2><span id="job-status" aria-live="polite" class="job-chip state-<?= migrationEscape((string) ($state['status'] ?? 'unknown')) ?>"><?= migrationEscape(adminMigrationStatusLabel((string) ($state['status'] ?? 'unknown'))) ?></span></div>
         <p id="job-message" class="execution-copy" aria-live="polite"><?= migrationEscape(adminMigrationStatusMessage($state)) ?></p>
         <progress class="progress-track" id="progress-bar" aria-label="Tabelas verificadas" value="<?= (int) ($state['completed_tables'] ?? 0) ?>" max="<?= $totalTables ?>"><?= $progress ?>%</progress>
-        <div class="progress-labels"><span id="progress-tables"><?= migrationCount((int) ($state['completed_tables'] ?? 0)) ?> de <?= migrationCount((int) ($state['total_tables'] ?? 27)) ?> tabelas verificadas</span><span id="progress-records"><?= migrationCount((int) ($state['completed_records'] ?? 0)) ?> de <?= migrationCount((int) ($state['total_records'] ?? $preflight['source_records'])) ?> registros processados</span></div>
+        <div class="progress-labels"><span id="progress-tables"><?= migrationCount((int) ($state['completed_tables'] ?? 0)) ?> de <?= migrationCount((int) ($state['total_tables'] ?? adminMigrationExpectedTableCount())) ?> tabelas verificadas</span><span id="progress-records"><?= migrationCount((int) ($state['completed_records'] ?? 0)) ?> de <?= migrationCount((int) ($state['total_records'] ?? $preflight['source_records'])) ?> registros processados</span></div>
         <?php if (isset($state['current_table']) && is_string($state['current_table'])): ?><p class="current-table">Tabela atual: <code><?= migrationEscape($state['current_table']) ?></code></p><?php endif; ?>
         <?php if (isset($state['error']) && is_string($state['error']) && $state['error'] !== ''): ?><p class="migration-error" role="alert"><?= migrationEscape($state['error']) ?></p><?php endif; ?>
         <form method="post" id="queue-form" class="queue-form">

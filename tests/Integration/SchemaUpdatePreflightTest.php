@@ -25,7 +25,7 @@ try {
         || ($report['environment'] ?? null) !== 'dev'
         || ($report['driver'] ?? null) !== 'sqlite'
         || ($report['database_name'] ?? null) !== 'source.sqlite'
-        || ($report['schema']['expected_tables'] ?? null) !== 27
+        || ($report['schema']['expected_tables'] ?? null) !== count(\IEPRCard\Database\Schema\catalogoCanonico())
         || ($report['schema']['drift_count'] ?? null) !== 0
         || !is_array($report['migrations'] ?? null)
         || count($report['migrations']) !== count(schemaUpdateReleaseManifest()['migrations'])

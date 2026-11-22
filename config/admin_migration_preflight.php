@@ -74,9 +74,9 @@ function adminMigrationPreflight(): array
         try {
             ieprMigracaoValidarSchema($targetPdo, $catalog, 'destino');
             $targetSchemaValid = true;
-            $checks[] = adminMigrationCheck('Schema do destino compatível', 'Aprovado', 'Schema canônico de 27 tabelas; sem alteração automática.');
+            $checks[] = adminMigrationCheck('Schema do destino compatível', 'Aprovado', 'Schema canônico compatível; sem alteração automática.');
         } catch (Throwable) {
-            $checks[] = adminMigrationCheck('Schema do destino compatível', 'Bloqueado', 'O destino precisa ter o schema canônico de 27 tabelas; a tela não aplica alterações.');
+            $checks[] = adminMigrationCheck('Schema do destino compatível', 'Bloqueado', 'O destino precisa ter o schema canônico; a tela não aplica alterações.');
         }
         if ($targetSchemaValid) {
             try {

@@ -96,7 +96,7 @@ $expectedMvpTables = [
     'permissoes', 'usuario_permissoes', 'usuarios', 'categorias_titular',
     'designs_carteirinha', 'lotes_importacao', 'titulares', 'carteirinhas_emitidas',
     'telemetria_eventos', 'telemetria_diaria', 'auditoria_processos', 'acessos_suporte',
-    'mensagens_whatsapp', 'ia_config', 'webhooks_recebidos', 'outbox_eventos',
+    'mensagens_whatsapp', 'ia_config', 'ia_config_global', 'webhooks_recebidos', 'outbox_eventos',
     'reservas_cota', 'mcp_api_keys', 'mcp_audit_logs', 'configuracoes_operacionais',
     'metricas_lotes_diarias', 'solicitacoes_anonimizacao',
 ];
@@ -107,7 +107,7 @@ $createdTables = $schemaPdo->query("SELECT name FROM sqlite_master WHERE type = 
 sort($expectedMvpTables, SORT_STRING);
 
 if ($createdTables !== $expectedMvpTables) {
-    throw new RuntimeException('Development self-healing must create exactly the canonical 27 MVP tables.');
+    throw new RuntimeException('Development self-healing must create exactly the canonical 28 MVP tables.');
 }
 $schemaDrift = schemaInspecionar($schemaPdo);
 foreach (['missing_tables', 'missing_columns', 'missing_indexes', 'missing_foreign_keys'] as $driftType) {
@@ -116,7 +116,7 @@ foreach (['missing_tables', 'missing_columns', 'missing_indexes', 'missing_forei
     }
 }
 
-fwrite(STDOUT, "PASS: dev/test self-healing creates the canonical 27 tables idempotently.\n");
+fwrite(STDOUT, "PASS: dev/test self-healing creates the canonical 28 tables idempotently.\n");
 
 $existingPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
 $existingPdo->exec('CREATE TABLE webhooks_recebidos (id INTEGER PRIMARY KEY AUTOINCREMENT, evento_id VARCHAR(180) NOT NULL, origem VARCHAR(60) NOT NULL, payload_hash TEXT NOT NULL)');
@@ -145,7 +145,7 @@ $migrationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory
 $firstMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $secondMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $migrationDrift = schemaInspecionar($migrationPdo);
-if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance'] || $secondMigrationRun !== $firstMigrationRun
+if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config'] || $secondMigrationRun !== $firstMigrationRun
     || array_filter($migrationDrift) !== []) {
     throw new RuntimeException('Versioned migrations must apply explicitly, be repeatable, and produce the canonical SQLite schema: ' . json_encode([$firstMigrationRun, $secondMigrationRun, $migrationDrift]));
 }
@@ -156,7 +156,7 @@ $productionPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memor
 $productionDrift = schemaGarantirEstrutura($productionPdo, 'production');
 $productionTables = $productionPdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_COLUMN);
 
-if ($productionTables !== [] || count($productionDrift['missing_tables'] ?? []) !== 27) {
+if ($productionTables !== [] || count($productionDrift['missing_tables'] ?? []) !== 28) {
     throw new RuntimeException('Production drift checks must report missing tables without executing DDL.');
 }
 
