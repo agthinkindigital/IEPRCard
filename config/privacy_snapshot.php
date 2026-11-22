@@ -15,10 +15,10 @@ function privacySnapshotPersonalFields(): array
             'data_batismo_ou_admissao', 'whatsapp', 'email_login', 'senha_portal_hash',
             'token_unico_carteira', 'foto_url', 'dados_extras_json',
         ],
-        'usuarios' => ['nome', 'email', 'senha_hash'],
+        'usuarios' => ['nome', 'email', 'senha_hash', 'ultimo_login_em'],
         'tenants' => ['nome_responsavel', 'cargo_responsavel', 'assinatura_responsavel_url'],
         'whatsapp_conversas' => ['contato_hmac', 'dados_cifrados'],
-        'mensagens_whatsapp' => ['telefone', 'conteudo', 'arquivo_url'],
+        'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url'],
         'acessos_suporte' => ['token_hash', 'ip_usado'],
         'mcp_api_keys' => ['nome', 'chave_hash'],
         'carteirinhas_emitidas' => [
@@ -478,6 +478,10 @@ function privacySnapshotMinimizeOperationalRows(string $table, array &$row): voi
         $row['tentativas'] = 0;
         $row['proxima_tentativa_em'] = null;
         $row['correlation_id'] = null;
+    }
+    if ($table === 'lotes_importacao') {
+        $row['colunas_detectadas_json'] = null;
+        $row['mapa_de_para_usado_json'] = null;
     }
     if ($table === 'whatsapp_instancias') {
         $row['nome_instancia'] = 'Instância protegida';

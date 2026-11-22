@@ -34,9 +34,12 @@ try {
         . "VALUES (:tenant, 'titular_cliente', 'Legacy owner', 'legacy-owner@example.test', 'synthetic-hash', 1, :created)"
     )->execute(['tenant' => $tenantId, 'created' => '2025-01-02 03:04:05']);
     $legacyOwnerId = (int) $pdo->lastInsertId();
+    $pdo->prepare('UPDATE usuarios SET ultimo_login_em = :last_login WHERE id = :id')->execute([
+        'last_login' => '2026-11-22 11:59:00', 'id' => $legacyOwnerId,
+    ]);
     $pdo->prepare(
-        "INSERT INTO mensagens_whatsapp (tenant_id, telefone, direcao, tipo_mensagem, conteudo, criado_em) "
-        . "VALUES (:tenant, '+5511999990000', 'entrada', 'texto', 'synthetic message', :created)"
+        "INSERT INTO mensagens_whatsapp (tenant_id, telefone, direcao, tipo_mensagem, conteudo, id_mensagem_api, criado_em) "
+        . "VALUES (:tenant, '+5511999990000', 'entrada', 'texto', 'synthetic message', 'external-private-message-id', :created)"
     )->execute(['tenant' => $tenantId, 'created' => '2025-01-02 03:04:05']);
     $legacyMessageId = (int) $pdo->lastInsertId();
     $pdo->prepare(
@@ -127,6 +130,14 @@ try {
         'event' => 'synthetic-outbox', 'type' => 'synthetic.event', 'payload' => '{"email":"outbox-private@example.test"}',
         'status' => 'pending', 'created' => '2026-11-22 12:00:00',
     ]);
+    $importMetadata = [
+        'colunas_detectadas_json' => '["Nome de Maria Silva", "email"]',
+        'mapa_de_para_usado_json' => '{"Nome de Maria Silva":"nome_completo"}',
+    ];
+    privacySnapshotMinimizeOperationalRows('lotes_importacao', $importMetadata);
+    if ($importMetadata['colunas_detectadas_json'] !== null || $importMetadata['mapa_de_para_usado_json'] !== null) {
+        throw new RuntimeException('Import column metadata that may contain personal labels must be excluded from snapshots.');
+    }
     $pdo->prepare(
         'INSERT INTO ia_config (tenant_id, provedor, chave_cifrada, modelo, ativo, criado_em, atualizado_em) '
         . 'VALUES (:tenant, :provider, :secret, :model, 1, :created, :updated)'
@@ -142,6 +153,7 @@ try {
     $snapshotJson = json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     foreach ([
         'Legacy owner', 'legacy-owner@example.test', 'synthetic message', '+5511999990000', 'Legacy holder',
+        'external-private-message-id', '2026-11-22 11:59:00',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
         $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
     ] as $pii) {
