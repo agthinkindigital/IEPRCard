@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1500" viewBox="0 0 1440 1500" role="img" aria-labelledby="title desc">
+  <title id="title">Configuração de atendimento WhatsApp e IA</title>
+  <desc id="desc">Mockup administrativo global para selecionar OpenAI ou Gemini, configurar chaves sem exibi-las depois de salvas e revisar o aviso de consentimento do titular.</desc>
+  <defs>
+    <style>
+      text{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;fill:#0F172A}
+      .muted{fill:#475569}.tiny{font-size:13px}.small{font-size:15px}.body{font-size:17px}.label{font-size:14px;font-weight:650}.section{font-size:21px;font-weight:700}.heading{font-size:27px;font-weight:700}.title{font-size:34px;font-weight:750}
+      .card{fill:#FFFFFF;stroke:#DCE3EC;stroke-width:1.5}.bg{fill:#F6F8FB}.line{stroke:#DCE3EC;stroke-width:1.5}.blue{fill:#1D4ED8}.lightblue{fill:#EFF6FF}.green{fill:#166534}.lightgreen{fill:#F0FDF4}.amber{fill:#92400E}.lightamber{fill:#FFFBEB}.red{fill:#B91C1C}.field{fill:#FFFFFF;stroke:#94A3B8;stroke-width:1.4}.selected{stroke:#1D4ED8;stroke-width:2.5}
+    </style>
+  </defs>
+  <rect width="1440" height="1500" fill="#E8EDF4"/>
+  <rect x="42" y="36" width="1356" height="1428" rx="18" class="bg"/>
+  <rect x="42" y="36" width="1356" height="72" rx="18" fill="#FFFFFF"/>
+  <path d="M42 107H1398" class="line"/>
+  <rect x="70" y="54" width="36" height="36" rx="9" fill="#1D4ED8"/>
+  <text x="82" y="79" font-size="19" font-weight="750" fill="#FFFFFF">I</text>
+  <text x="118" y="80" class="label">IEPRCard</text>
+  <text x="1165" y="78" class="small muted">Admin SaaS · Leonardo</text>
+  <rect x="42" y="108" width="238" height="1356" fill="#FFFFFF"/>
+  <path d="M280 108V1464" class="line"/>
+  <text x="68" y="151" class="tiny muted" font-weight="700">ADMINISTRAÇÃO</text>
+  <text x="82" y="202" class="small muted">Visão geral</text>
+  <text x="82" y="250" class="small muted">Clientes</text>
+  <text x="82" y="298" class="small muted">Planos</text>
+  <rect x="56" y="318" width="208" height="44" rx="8" class="lightblue"/>
+  <rect x="56" y="318" width="4" height="44" rx="2" class="blue"/>
+  <text x="82" y="346" class="small blue" font-weight="700">Atendimento e IA</text>
+  <text x="82" y="398" class="small muted">MCP</text>
+  <text x="82" y="446" class="small muted">Infraestrutura</text>
+  <text x="312" y="153" class="tiny muted" font-weight="700">ADMINISTRAÇÃO / INTEGRAÇÕES</text>
+  <text x="312" y="199" class="title">Atendimento e IA</text>
+  <text x="312" y="230" class="body muted">Estado ilustrativo: OpenAI conectada; Gemini disponível como alternativa configurável.</text>
+  <rect x="1140" y="168" width="220" height="38" rx="19" class="lightblue"/>
+  <text x="1161" y="193" class="small blue" font-weight="650">Somente superadmin</text>
+
+  <rect x="312" y="260" width="1048" height="92" rx="12" class="lightamber" stroke="#FDE68A"/>
+  <circle cx="342" cy="305" r="13" fill="#92400E"/>
+  <text x="338" y="311" font-size="16" font-weight="700" fill="#FFFFFF">!</text>
+  <text x="370" y="296" class="label amber">Configuração global da plataforma</text>
+  <text x="370" y="322" class="small amber">Aplica-se aos clientes que usam o atendimento. As chamadas são cobradas na conta do provedor configurado.</text>
+
+  <rect x="312" y="374" width="1048" height="400" rx="12" class="card"/>
+  <text x="340" y="415" class="section">Provedor de IA</text>
+  <text x="340" y="441" class="small muted">Cadastre as chaves disponíveis e escolha um provedor principal para novas conversas.</text>
+  <rect x="340" y="462" width="484" height="278" rx="10" class="card selected"/>
+  <circle cx="365" cy="492" r="10" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
+  <circle cx="365" cy="492" r="5" class="blue"/>
+  <text x="386" y="498" class="section">OpenAI</text>
+  <rect x="716" y="477" width="86" height="27" rx="13" class="lightgreen"/>
+  <text x="730" y="496" class="tiny green" font-weight="650">PRINCIPAL</text>
+  <text x="364" y="537" class="label">Chave de API</text>
+  <rect x="364" y="550" width="432" height="44" rx="7" class="field"/>
+  <text x="380" y="578" class="small muted">•••••••••••••••••••••••••••</text>
+  <text x="364" y="625" class="label">Modelo</text>
+  <rect x="364" y="638" width="432" height="42" rx="7" class="field"/>
+  <text x="380" y="665" class="small muted">Selecione ou informe um modelo</text>
+  <text x="364" y="714" class="tiny muted">Conexão aprovada · chave protegida e mascarada</text>
+
+  <rect x="848" y="462" width="484" height="278" rx="10" class="card"/>
+  <circle cx="873" cy="492" r="10" fill="#FFFFFF" stroke="#64748B" stroke-width="2"/>
+  <text x="894" y="498" class="section">Google Gemini</text>
+  <rect x="1222" y="477" width="86" height="27" rx="13" fill="#F1F5F9"/>
+  <text x="1237" y="496" class="tiny muted" font-weight="650">OPCIONAL</text>
+  <text x="872" y="537" class="label">Chave de API</text>
+  <rect x="872" y="550" width="432" height="44" rx="7" class="field"/>
+  <text x="888" y="578" class="small muted">Chave não configurada</text>
+  <text x="872" y="625" class="label">Modelo</text>
+  <rect x="872" y="638" width="432" height="42" rx="7" class="field"/>
+  <text x="888" y="665" class="small muted">Selecione ou informe um modelo</text>
+  <text x="872" y="714" class="tiny muted">Cadastre somente se este provedor for necessário.</text>
+
+  <rect x="312" y="796" width="1048" height="122" rx="12" class="card"/>
+  <text x="340" y="836" class="section">Comportamento de seleção</text>
+  <rect x="340" y="854" width="22" height="22" rx="5" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5"/>
+  <text x="376" y="871" class="body">Usar fallback automático entre provedores</text>
+  <text x="340" y="899" class="small muted">Desativado no MVP: uma conversa não será enviada a outro provedor automaticamente.</text>
+
+  <rect x="312" y="940" width="1048" height="282" rx="12" class="card"/>
+  <text x="340" y="980" class="section">Prévia do consentimento no WhatsApp</text>
+  <text x="340" y="1007" class="small muted">O texto informa finalidade e provedor antes de solicitar qualquer dado ou foto.</text>
+  <rect x="340" y="1028" width="650" height="154" rx="12" fill="#F1F5F9"/>
+  <text x="364" y="1060" class="small">Para solicitar sua carteirinha, usaremos os dados</text>
+  <text x="364" y="1084" class="small">e a imagem que você enviar. Com sua autorização,</text>
+  <text x="364" y="1108" class="small">texto e imagem poderão ser processados por OpenAI,</text>
+  <text x="364" y="1132" class="small">configurada pela plataforma. Deseja continuar?</text>
+  <rect x="364" y="1148" width="212" height="30" rx="7" fill="#1D4ED8"/>
+  <text x="379" y="1169" class="tiny" fill="#FFFFFF" font-weight="650">Concordo e continuar</text>
+  <rect x="586" y="1148" width="166" height="30" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="604" y="1169" class="tiny" font-weight="650">Não concordo</text>
+  <text x="1020" y="1060" class="label amber">Regra de entrada</text>
+  <text x="1020" y="1090" class="small muted">Conteúdo recebido antes do aceite</text>
+  <text x="1020" y="1113" class="small muted">não é salvo nem encaminhado à IA.</text>
+  <text x="1020" y="1154" class="small muted">O titular pode encerrar sem consentir.</text>
+
+  <rect x="312" y="1244" width="1048" height="92" rx="12" class="lightblue" stroke="#BFDBFE"/>
+  <text x="340" y="1280" class="label blue">Proteção das chaves</text>
+  <text x="340" y="1307" class="small blue">Após salvar, os segredos ficam mascarados. O teste usa uma mensagem sintética, nunca dados de titular.</text>
+  <rect x="312" y="1360" width="1048" height="1" fill="#DCE3EC"/>
+  <rect x="1000" y="1380" width="172" height="48" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5"/>
+  <text x="1034" y="1410" class="body" font-weight="650">Testar conexão</text>
+  <rect x="1184" y="1380" width="176" height="48" rx="8" fill="#1D4ED8"/>
+  <text x="1220" y="1410" class="body" fill="#FFFFFF" font-weight="650">Salvar configuração</text>
+</svg>
