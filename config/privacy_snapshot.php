@@ -19,6 +19,7 @@ function privacySnapshotPersonalFields(): array
         'tenants' => [
             'nome_organizacao', 'slug_subdominio', 'nome_responsavel', 'cargo_responsavel', 'assinatura_responsavel_url',
         ],
+        'dominios_tenant' => ['hostname'],
         'whatsapp_conversas' => [
             'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'titular_id', 'job_id', 'dados_cifrados',
         ],
@@ -99,7 +100,12 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
             if ($values !== [] || $hasArtifacts) {
                 $recordType = privacySnapshotRecordType($table);
                 $rowId = filter_var($row['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-                $subjectId = $rowId === false ? false : ($recordsByKey[$recordType . ':' . $rowId] ?? false);
+                $subjectRecordId = $table === 'dominios_tenant'
+                    ? filter_var($row['tenant_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                    : $rowId;
+                $subjectId = $subjectRecordId === false
+                    ? false
+                    : ($recordsByKey[$recordType . ':' . $subjectRecordId] ?? false);
                 if ($subjectId === false) {
                     throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_MISSING');
                 }
@@ -290,6 +296,7 @@ function privacySnapshotRecordType(string $table): string
         'titulares' => 'titular',
         'usuarios' => 'usuario',
         'tenants' => 'tenant_contato',
+        'dominios_tenant' => 'tenant_contato',
         'whatsapp_conversas' => 'whatsapp_conversa',
         'mensagens_whatsapp' => 'mensagem_whatsapp',
         'acessos_suporte' => 'acesso_suporte',
@@ -319,6 +326,12 @@ function privacySnapshotReplacePersonalValues(string $table, int $id, array &$ro
     } elseif ($table === 'tenants') {
         $row['nome_organizacao'] = 'Organização protegida';
         $row['slug_subdominio'] = null;
+    } elseif ($table === 'dominios_tenant') {
+        $row['hostname'] = 'snapshot-disabled-domain-' . $id . '.invalid';
+        $row['estado'] = 'pendente_verificacao';
+        $row['token_verificacao_hash'] = hash('sha256', 'snapshot-disabled-domain-token-' . $id);
+        $row['verificado_em'] = null;
+        $row['tls_validado_em'] = null;
     } elseif ($table === 'acessos_suporte') {
         $row['token_hash'] = hash('sha256', 'snapshot-disabled-support-' . $id);
     } elseif ($table === 'mcp_api_keys') {

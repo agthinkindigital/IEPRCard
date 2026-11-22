@@ -120,6 +120,15 @@ try {
     $supportSubject = privacySubjectFindForRecord($pdo, 'acesso_suporte', $legacyAccessId);
     $apiKeySubject = privacySubjectFindForRecord($pdo, 'mcp_api_key', $legacyApiKeyId);
     $messageSubject = privacySubjectFindForRecord($pdo, 'mensagem_whatsapp', $legacyMessageId);
+    $pdo->prepare(
+        'INSERT INTO dominios_tenant (tenant_id, hostname, estado, token_verificacao_hash, verificado_em, tls_validado_em, criado_em) '
+        . 'VALUES (:tenant, :host, :state, :token, :verified, :tls, :created)'
+    )->execute([
+        'tenant' => $tenantId, 'host' => 'person-owned-private-domain.example.test', 'state' => 'ativo',
+        'token' => hash('sha256', 'synthetic-domain-token'), 'verified' => '2026-11-22 11:51:18',
+        'tls' => '2026-11-22 11:52:19', 'created' => '2026-11-22 11:50:17',
+    ]);
+    $legacyDomainId = (int) $pdo->lastInsertId();
     $pdo->prepare('UPDATE privacy_subjects SET criado_em = :created WHERE id = :id')->execute([
         'created' => '2026-11-22 11:45:12', 'id' => $messageSubject['id'],
     ]);
@@ -228,6 +237,7 @@ try {
         'external-private-message-id', '2026-11-22 11:59:00',
         '2026-11-22 11:42:09', '2026-11-22 11:43:10', '2026-11-22 11:44:11',
         '2026-11-22 11:47:14', '2027-11-22', '2026-11-22 11:49:16',
+        'person-owned-private-domain.example.test',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
         'Synthetic privacy organization', 'synthetic-private-subdomain',
         'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
@@ -260,8 +270,18 @@ try {
     }
     $ownerSubjectPlaintext = $subjectPlaintexts[(int) $ownerSubject['id']] ?? '';
     if (!str_contains($ownerSubjectPlaintext, 'Synthetic privacy organization')
-        || !str_contains($ownerSubjectPlaintext, 'synthetic-private-subdomain')) {
-        throw new RuntimeException('Tenant organization identity must remain recoverable only from its removable subject envelope.');
+        || !str_contains($ownerSubjectPlaintext, 'synthetic-private-subdomain')
+        || !str_contains($ownerSubjectPlaintext, 'person-owned-private-domain.example.test')) {
+        throw new RuntimeException('Tenant identity and custom hostnames must remain recoverable only from the removable subject envelope.');
+    }
+    $snapshotDomains = array_values(array_filter(
+        $snapshot['tables']['dominios_tenant'],
+        static fn(array $row): bool => (int) ($row['id'] ?? 0) === $legacyDomainId
+    ));
+    $snapshotDomain = $snapshotDomains[0] ?? [];
+    if (($snapshotDomain['hostname'] ?? null) !== 'snapshot-disabled-domain-' . $legacyDomainId . '.invalid'
+        || ($snapshotDomain['estado'] ?? null) !== 'pendente_verificacao') {
+        throw new RuntimeException('Restored custom hostnames must stay disabled until they are verified again.');
     }
     foreach (['2026-11-22 11:43:10', '2026-11-22 11:44:11'] as $activityTimestamp) {
         if (!str_contains($ownerSubjectPlaintext, $activityTimestamp)) {
