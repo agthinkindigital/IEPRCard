@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2630" viewBox="0 0 1440 2630" role="img" aria-labelledby="title description">
   <title id="title">Portal do titular e validação QR</title>
-  <desc id="description">Propostas desktop e mobile para acesso privado do titular, consulta da carteirinha digital e resultado público minimizado de validação QR.</desc>
+  <desc id="description">Propostas desktop e mobile para acesso privado do titular, consulta da carteirinha digital com ação de PDF somente quando autorizada e resultado público minimizado de validação QR.</desc>
   <defs>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
     <style>
@@ -84,10 +84,14 @@
   <text x="120" y="1202" text-anchor="middle" class="small" fill="#0F172A">‹ Frente</text>
   <rect x="184" y="1180" width="112" height="34" rx="17" fill="#FFFFFF" stroke="#94A3B8"/>
   <text x="240" y="1202" text-anchor="middle" class="small" fill="#0F172A">Verso ›</text>
-  <rect x="952" y="940" width="384" height="108" rx="10" class="card"/>
+  <rect x="952" y="940" width="384" height="190" rx="10" class="card"/>
   <text x="976" y="975" class="label muted">AUTENTICIDADE</text>
   <text x="976" y="1003" class="body" fill="#166534">QR Code pronto para validação</text>
   <text x="976" y="1028" class="small muted">Aponte a câmera para conferir a situação.</text>
+  <rect x="976" y="1050" width="336" height="42" rx="7" fill="#FFFFFF" stroke="#1D4ED8"/>
+  <path d="M1085 1064h18v13h-18zM1089 1060h10v4h-10z" fill="none" stroke="#1D4ED8" stroke-width="1.5"/>
+  <text x="1164" y="1077" text-anchor="middle" class="small" font-weight="700" fill="#1D4ED8">Baixar PDF</text>
+  <text x="1144" y="1114" text-anchor="middle" class="tiny muted">Ação exibida somente quando esta emissão permite o download.</text>
 
   <!-- Validação pública -->
   <rect x="24" y="1264" width="1392" height="520" rx="14" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
@@ -140,6 +144,9 @@
   <text x="357" y="2254" text-anchor="middle" class="small">‹ Frente</text>
   <rect x="436" y="2228" width="134" height="40" rx="20" fill="#FFFFFF" stroke="#94A3B8"/>
   <text x="503" y="2254" text-anchor="middle" class="small">Verso ›</text>
+  <rect x="290" y="2284" width="280" height="42" rx="8" fill="#FFFFFF" stroke="#1D4ED8"/>
+  <text x="430" y="2310" text-anchor="middle" class="small" font-weight="700" fill="#1D4ED8">Baixar PDF</text>
+  <text x="290" y="2350" class="tiny muted">Só aparece se o PDF desta carteirinha estiver autorizado.</text>
   <text x="290" y="2400" class="tiny muted">Sem rolagem horizontal; ações em sequência.</text>
 
   <rect x="830" y="1890" width="360" height="660" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>

@@ -2,7 +2,7 @@
 
 ## Referências
 
-O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) reúne os estados de acesso, carteirinha digital e validação pública. Usa os tokens de [`MASTER.md`](../MASTER.md). As regras de negócio, os dados expostos e os limites de acesso permanecem em [`docs/01-regras-de-negocio.md`](../../docs/01-regras-de-negocio.md) e no [SAD](../../docs/architecture/SAD.md); este documento especifica apenas a apresentação e os estados visíveis.
+O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) reúne os estados de acesso, carteirinha digital com PDF autorizado e validação pública. Usa os tokens de [`MASTER.md`](../MASTER.md). As regras de negócio, os dados expostos e os limites de acesso permanecem em [`docs/01-regras-de-negocio.md`](../../docs/01-regras-de-negocio.md) e no [SAD](../../docs/architecture/SAD.md); este documento especifica apenas a apresentação e os estados visíveis.
 
 ## Acesso do titular
 
@@ -16,7 +16,7 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 - Mostrar a organização/unidade emissora e a vinculação à Sede conforme os dados permitidos para o vínculo.
 - Exibir frente e verso com controle explícito de lado; não expor CPF na área de consulta.
 - Se houver mais de uma emissão ativa e acessível, permitir selecionar uma delas; caso contrário, não mostrar seletor.
-- A ação de baixar PDF fica fora da interface atual. O contrato backend exige habilitação da Sede e, para titulares de unidades, delegação explícita de `carteirinha.pdf`; atualizar mockup e guia e obter aprovação antes de expor a ação.
+- Exibir **Baixar PDF** somente para a emissão ativa quando a autorização efetiva permitir. A Sede habilita o recurso; titulares de unidade também precisam da delegação `carteirinha.pdf`. Se qualquer requisito faltar, ocultar a ação. A rota continua revalidando autorização no servidor e não expõe o arquivo por URL pública.
 - A validação QR abre uma página pública separada; nenhum dado administrativo ou identificador interno é enviado ao navegador.
 
 ## Validação pública
@@ -35,4 +35,4 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 
 ## Dependências para implementação
 
-Mockup e guia aprovados pelo mantenedor em 2026-11-20. A página QR pública e o portal autenticado foram implementados na [#68](https://github.com/agthinkindigital/IEPRCard/issues/68) e [#69](https://github.com/agthinkindigital/IEPRCard/issues/69). Os serviços de autenticação/consulta, entrega privada WebP e validação QR estão nas [#66](https://github.com/agthinkindigital/IEPRCard/issues/66), [#67](https://github.com/agthinkindigital/IEPRCard/issues/67) e [#65](https://github.com/agthinkindigital/IEPRCard/issues/65). O backend do PDF está sendo implementado na [#76](https://github.com/agthinkindigital/IEPRCard/issues/76); a interface ainda requer mockup e guia atualizados e aprovação explícita.
+Mockup e guia do portal/QR aprovados pelo mantenedor em 2026-11-20. A página QR pública e o portal autenticado foram implementados na [#68](https://github.com/agthinkindigital/IEPRCard/issues/68) e [#69](https://github.com/agthinkindigital/IEPRCard/issues/69). Os serviços de autenticação/consulta, entrega privada WebP e validação QR estão nas [#66](https://github.com/agthinkindigital/IEPRCard/issues/66), [#67](https://github.com/agthinkindigital/IEPRCard/issues/67) e [#65](https://github.com/agthinkindigital/IEPRCard/issues/65). O backend de autorização e entrega PDF foi concluído na [#76](https://github.com/agthinkindigital/IEPRCard/issues/76). Esta versão atualiza a ação condicional de PDF; a mudança visual ainda precisa de aprovação explícita.

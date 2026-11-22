@@ -14,15 +14,15 @@ O portal permite que o titular consulte somente as carteirinhas digitais emitida
 1. Confira o nome e a unidade emissora exibidos no cabeçalho.
 2. Use **Frente** e **Verso** para alternar os lados. No celular, os mesmos controles ficam abaixo da imagem.
 3. Se houver mais de uma emissão ativa disponível, escolha a carteirinha pelo seletor. Se houver apenas uma, o seletor não aparece.
-4. A tela atual não oferece ação de download de PDF. O backend só libera o arquivo quando a Sede habilita o recurso e, para unidades, delega `carteirinha.pdf`; a interface continua fora do escopo até revisão do mockup e guia.
-5. Para confirmar a autenticidade, abra a câmera do celular e leia o QR da carteirinha. A página pública mostra o estado e os dados mínimos de validação, sem CPF.
+4. Se **Baixar PDF** aparecer, selecione a ação para obter o arquivo da emissão ativa. A opção só aparece quando a Sede habilitou o recurso e, para uma unidade, autorizou explicitamente `carteirinha.pdf`. Se ela não aparecer, peça à Sede que confira a configuração; acessar o endereço do arquivo diretamente também não libera o download.
+5. Para confirmar a autenticidade, abra a câmera do celular e leia o QR da carteirinha. A página pública informa somente o estado (`ativa`, `suspensa`, `vencida`, `revogada` ou `inválida`); não exibe nome, foto, CPF, unidade ou validade.
 
 ## Estados e problemas
 
-- **Ativa:** a página de validação informa que a carteirinha está ativa e mostra apenas nome, foto se houver, unidade e validade aplicável.
+- **Ativa:** a página de validação informa somente que a carteirinha está ativa.
 - **Suspensa, vencida ou revogada:** a página informa que a carteirinha não está ativa e orienta a consultar a organização emissora.
 - **Código inválido:** a página informa que não foi possível validar o código e permite tentar outro QR. Ela não confirma se existe um titular com aqueles dados.
 - **Acesso indisponível:** se o link expirou, o acesso foi desabilitado ou a carteira não está disponível, solicite à organização um novo link ou a regularização do cadastro.
-- **PDF indisponível:** o download é negado por padrão e também quando a Sede não habilitou o recurso, a unidade não recebeu delegação ou a carteirinha não está ativa e dentro da validade.
+- **PDF indisponível:** a ação não aparece quando a Sede não habilitou o recurso, a unidade não recebeu delegação ou a carteirinha não está ativa. A autorização é conferida novamente ao solicitar o arquivo.
 
 O sistema não solicita dados de pagamento. O portal não altera dados cadastrais, não permite editar a carteirinha e não mostra informações de outras pessoas.
