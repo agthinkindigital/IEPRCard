@@ -26,3 +26,9 @@ O mockup [`admin-backup-destinations-mockup.svg`](../mockups/admin-backup-destin
 ## Limites deste painel
 
 O teste confirma conexão e purga permanente do objeto temporário; não confirma a integridade de um snapshot, uma restauração ou a execução de cron. Esses estados só devem aparecer após seus workers e fluxos serem implementados. Mockup e guia foram aprovados em 2026-11-22; a tela está na [#82](https://github.com/agthinkindigital/IEPRCard/issues/82). Não oferecer opção MEGA até existir um adaptador próprio validado.
+
+## Restauração isolada por ZIP — proposta aguardando aprovação
+
+O mockup proposto [`admin-backup-restore-mockup.svg`](../mockups/admin-backup-restore-mockup.svg) acrescenta um fluxo de restauração ao painel superadmin. A pessoa envia um snapshot ZIP do IEPRCard, valida manifesto, integridade, schema, ledger e chave mestra, e só então solicita a preparação de um ambiente isolado. A aplicação ativa continua separada; a liberação exige aplicar tombstones e revisar o resultado. ZIPs de atualização de código não são snapshots de dados e devem ser rejeitados.
+
+O mockup e este fluxo ainda aguardam aprovação explícita. Regras de recuperação, privacidade e retenção permanecem no ADR-0012.

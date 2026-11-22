@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1120" viewBox="0 0 1440 1120" role="img" aria-labelledby="title description">
+  <title id="title">Restaurar backup ZIP — painel superadmin</title>
+  <desc id="description">Tela administrativa para validar um snapshot ZIP e preparar uma restauração isolada, sem publicar os dados na aplicação ativa.</desc>
+  <defs>
+    <style>
+      text { font-family: Inter, system-ui, "Segoe UI", sans-serif; }
+      .muted { fill: #475569; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .body { font-size: 15px; }
+      .label { font-size: 12px; font-weight: 700; letter-spacing: .35px; }
+      .title { font-size: 26px; font-weight: 700; fill: #0F172A; }
+      .panel { fill: #FFFFFF; stroke: #DCE3EC; }
+      .field { fill: #FFFFFF; stroke: #94A3B8; }
+      .separator { stroke: #DCE3EC; }
+    </style>
+  </defs>
+  <rect width="1440" height="1120" fill="#F6F8FB"/>
+  <text x="32" y="30" class="label muted">IEPRCARD · MOCKUP ADMINISTRATIVO · DADOS FICTÍCIOS · AGUARDANDO APROVAÇÃO</text>
+  <rect x="24" y="48" width="1392" height="1028" rx="14" class="panel"/>
+  <rect x="24" y="48" width="220" height="1028" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <rect x="48" y="68" width="32" height="32" rx="8" fill="#1D4ED8"/>
+  <path d="M56 77h16v14H56zM60 73h8v4h-8z" fill="none" stroke="#FFFFFF" stroke-width="1.6"/>
+  <text x="90" y="90" font-size="17" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="48" y="145" class="tiny muted">ADMINISTRAÇÃO</text>
+  <text x="64" y="184" class="small muted">Visão geral</text>
+  <text x="64" y="224" class="small muted">Clientes</text>
+  <text x="64" y="264" class="small muted">Domínios</text>
+  <text x="64" y="304" class="small muted">Operação</text>
+  <rect x="36" y="326" width="196" height="42" rx="7" fill="#EFF6FF"/>
+  <rect x="36" y="326" width="3" height="42" rx="1.5" fill="#1D4ED8"/>
+  <text x="64" y="352" class="small" font-weight="700" fill="#1D4ED8">Backup externo</text>
+  <text x="64" y="408" class="small muted">IA e integrações</text>
+  <path d="M40 1000h188" class="separator"/>
+  <circle cx="62" cy="1034" r="16" fill="#DBEAFE"/>
+  <text x="62" y="1039" text-anchor="middle" class="tiny" font-weight="700" fill="#1D4ED8">LN</text>
+  <text x="88" y="1031" class="small" font-weight="700" fill="#0F172A">Leonardo</text>
+  <text x="88" y="1050" class="tiny muted">Superadmin</text>
+
+  <text x="272" y="96" class="small muted">Administração  /  Backup externo  /  Restaurar</text>
+  <text x="272" y="143" class="title">Restaurar backup</text>
+  <text x="272" y="171" class="body muted">Envie um ZIP para verificar e preparar a cópia em ambiente isolado.</text>
+  <rect x="272" y="194" width="1112" height="94" rx="10" fill="#FEF2F2" stroke="#FCA5A5"/>
+  <text x="296" y="224" class="small" font-weight="700" fill="#991B1B">A restauração não altera o sistema ativo nesta etapa.</text>
+  <text x="296" y="249" class="small" fill="#7F1D1D">Os dados só poderão ser liberados após integridade, ledger e tombstones serem confirmados.</text>
+  <text x="296" y="271" class="tiny" fill="#7F1D1D">ZIPs de atualização do código da aplicação não são aceitos como snapshots de dados.</text>
+
+  <rect x="272" y="308" width="1112" height="316" rx="10" class="panel"/>
+  <text x="296" y="346" font-size="17" font-weight="700" fill="#0F172A">1 · Escolher snapshot ZIP</text>
+  <text x="296" y="371" class="small muted">Selecione um arquivo de backup exportado pelo IEPRCard.</text>
+  <rect x="296" y="394" width="1064" height="112" rx="8" fill="#F8FAFC" stroke="#94A3B8" stroke-dasharray="6 4"/>
+  <circle cx="354" cy="448" r="24" fill="#DBEAFE"/>
+  <path d="M354 460v-24m0 0-9 9m9-9 9 9M342 464v5h24v-5" fill="none" stroke="#1D4ED8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="394" y="438" class="body" font-weight="700" fill="#0F172A">snapshot-iepr-2026-11-22.zip</text>
+  <text x="394" y="463" class="small muted">248 MB · selecionado agora · será enviado por conexão protegida</text>
+  <rect x="1240" y="426" width="96" height="38" rx="7" fill="#FFFFFF" stroke="#1D4ED8"/>
+  <text x="1288" y="450" text-anchor="middle" class="small" font-weight="700" fill="#1D4ED8">Trocar ZIP</text>
+  <text x="296" y="538" class="label" fill="#0F172A">CONFIRMAÇÃO DO ADMINISTRADOR</text>
+  <rect x="296" y="553" width="18" height="18" rx="3" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="328" y="568" class="small" fill="#0F172A">Confirmo que quero validar o snapshot sem alterar a base ativa.</text>
+  <rect x="296" y="582" width="176" height="34" rx="7" fill="#1D4ED8"/>
+  <text x="384" y="604" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Validar arquivo</text>
+  <text x="492" y="604" class="tiny muted">O progresso e o resultado ficam registrados sem dados pessoais.</text>
+
+  <rect x="272" y="644" width="1112" height="382" rx="10" class="panel"/>
+  <text x="296" y="682" font-size="17" font-weight="700" fill="#0F172A">2 · Resultado da validação</text>
+  <rect x="296" y="704" width="1064" height="60" rx="8" fill="#DCFCE7" stroke="#86EFAC"/>
+  <circle cx="322" cy="734" r="12" fill="#166534"/>
+  <path d="m316 734 4 4 8-9" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="346" y="730" class="small" font-weight="700" fill="#166534">Arquivo íntegro · manifesto compatível · versão de schema reconhecida</text>
+  <text x="346" y="750" class="tiny" fill="#166534">Resultado ilustrativo; cada item precisa ser confirmado pelo worker antes de liberar a próxima etapa.</text>
+  <text x="296" y="801" class="label" fill="#0F172A">PRÉ-VERIFICAÇÕES</text>
+  <text x="296" y="833" class="small" fill="#0F172A">✓ Assinatura e checksum conferidos</text>
+  <text x="296" y="861" class="small" fill="#0F172A">✓ Ledger de privacidade disponível e compatível</text>
+  <text x="296" y="889" class="small" fill="#0F172A">✓ Chave mestra disponível sem exibir segredo</text>
+  <text x="296" y="917" class="small" fill="#0F172A">○ Tombstones aplicados após preparar o ambiente isolado</text>
+  <rect x="296" y="946" width="1064" height="52" rx="8" fill="#FFFBEB" stroke="#FCD34D"/>
+  <text x="316" y="968" class="small" font-weight="700" fill="#78350F">Próximo passo: preparar restauração isolada</text>
+  <text x="316" y="988" class="tiny" fill="#78350F">Sem tráfego, login de clientes, emissão ou chamadas MCP. A liberação exige revisão humana posterior.</text>
+  <rect x="1160" y="950" width="176" height="42" rx="7" fill="#1D4ED8"/>
+  <text x="1248" y="976" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Preparar isolada</text>
+</svg>
