@@ -8,7 +8,7 @@ O mockup [`admin-backup-destinations-mockup.svg`](../mockups/admin-backup-destin
 
 - Navegação administrativa global com a seção **Backup externo** selecionada.
 - Aviso persistente diferencia configuração/teste de conexão da execução real de backups.
-- Resumo e lista mostram cada destino S3 compatível, bucket/endpoint, estado de conexão, data do último teste bem-sucedido e ações.
+- Resumo e lista mostram cada destino S3 compatível, bucket/endpoint, estado de conexão, envio do último snapshot, estado de retenção/purga e ações.
 - Formulário aceita nome, tipo compatível, bucket, região, endpoint opcional, opção path-style e credenciais. Um destino novo é salvo antes de poder ser testado; destinos existentes podem ser testados na lista ou no estado de edição.
 - Em edição, credenciais nunca são pré-preenchidas. Os campos vazios preservam as chaves existentes; novas chaves substituem as atuais.
 - Estados de validação, teste bem-sucedido, falha, destino inativo e confirmação de remoção usam rótulo e texto junto à cor.
@@ -18,9 +18,10 @@ O mockup [`admin-backup-destinations-mockup.svg`](../mockups/admin-backup-destin
 
 - Inicial sem destinos: explicar que nenhum destino foi cadastrado e oferecer **Adicionar destino**.
 - Salvando/testando: mostrar progresso e impedir duplicação da mesma ação.
-- Sucesso: indicar apenas que escrita, leitura e purga permanente do objeto temporário (incluindo versões) funcionaram.
+- Sucesso: indicar apenas que escrita, leitura, listagem, metadado de teste e purga permanente do objeto temporário (incluindo versões) funcionaram.
 - Falha: exibir erro seguro e próximo passo genérico; nunca renderizar credenciais ou mensagem bruta do SDK.
 - Remoção: pedir confirmação usando o nome do destino; cancelar mantém a configuração.
+- Retry pendente: mostrar estado aguardando confirmação; bloquear troca de armazenamento/credenciais e remoção até resolver o snapshot.
 - Controles têm rótulos persistentes, foco visível, teclado e contraste AA; status não depende só de cor.
 
 ## Limites deste painel
@@ -35,4 +36,4 @@ O mockup e o guia funcional foram aprovados pelo mantenedor em 2026-11-22. Regra
 
 ## Retenção de snapshots por destino — proposta aguardando aprovação
 
-O backend da #84 passou a reter snapshots por destino, com padrão de 30 dias e faixa de 1 a 3650 dias. A proposta amplia este painel para editar o prazo e exibir a última purga, quantidade removida e falha segura por destino. O estado de backup continua separado do teste de conexão. A purga abrange versões e delete markers, sem remover envelopes de chaves ativos nem tombstones/ledger; o contrato está no ADR-0012. A interface não deve ser implementada antes da aprovação desta extensão do mockup e deste fluxo.
+O backend da #84 passou a reter snapshots por destino, com padrão de 30 dias e faixa de 1 a 3650 dias. A proposta amplia este painel para editar o prazo e exibir a última purga, quantidade removida, retry pendente e falha segura por destino. O estado de backup continua separado do teste de conexão. A purga abrange versões e delete markers, sem remover envelopes de chaves ativos nem tombstones/ledger; o contrato está no ADR-0012. A interface não deve ser implementada antes da aprovação desta extensão do mockup e deste fluxo.

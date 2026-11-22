@@ -129,6 +129,8 @@ function backupDestinationSafeDomainMessage(string $code): string
 {
     return match ($code) {
         'BACKUP_DESTINATION_PRIVACY_KEYS_PRESENT' => 'Este destino mantém envelopes de chaves de titulares. Não altere nem remova o armazenamento enquanto esses envelopes dependerem dele.',
+        'BACKUP_DESTINATION_DUPLICATE_STORAGE' => 'Este bucket e endpoint já estão cadastrados em outro destino. Use um armazenamento separado para manter cópias independentes.',
+        'BACKUP_DESTINATION_SNAPSHOT_PENDING' => 'O destino tem um snapshot pendente de confirmação. Conclua a tentativa de backup antes de trocar o armazenamento ou remover o destino.',
         'BACKUP_DESTINATION_TEST_REQUIRED' => 'Ative o destino somente após um teste bem-sucedido de escrita, leitura e purga permanente.',
         'BACKUP_DESTINATION_NOT_FOUND' => 'O destino não foi encontrado. Atualize a página e tente novamente.',
         'BACKUP_DESTINATION_FORBIDDEN', 'AI_CONFIG_FORBIDDEN' => 'Acesso restrito ao superadmin.',

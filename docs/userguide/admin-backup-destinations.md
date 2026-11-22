@@ -8,14 +8,14 @@ Este painel é restrito ao superadmin e configura destinos externos com API S3, 
 2. Para AWS S3, deixe o endpoint personalizado vazio. Para outro serviço compatível, informe o endpoint HTTPS e marque path-style se o provedor exigir.
 3. Informe access key e secret key. Os campos são enviados uma vez para serem cifrados; o sistema não os mostra depois de salvar.
 4. Selecione **Salvar destino**. Ele começa inativo e aparece na lista sem teste registrado.
-5. Na lista, selecione **Testar**. O sistema envia um objeto aleatório temporário, lê o conteúdo, confere a igualdade e comprova sua remoção permanente, incluindo versões quando o bucket tem versionamento.
+5. Na lista, selecione **Testar**. O sistema envia um objeto aleatório temporário, lê e lista esse objeto, confere o metadado de teste e comprova sua remoção permanente, incluindo versões quando o bucket tem versionamento.
 6. Se o teste passar, o estado mostra quando ocorreu a última conexão bem-sucedida. Se falhar, reveja host, região, bucket, permissões e chaves e teste novamente.
 7. Selecione **Ativar** no menu do destino após confirmar a configuração.
 
 ## Editar, ativar e remover
 
 - Para trocar as chaves, digite as novas. Deixe os campos vazios para conservar as chaves atuais.
-- **Ativo** permite ao cron enviar snapshots periódicos para o destino. O horário do último teste mede conexão; consulte o estado de snapshot separadamente.
+- **Ativo** permite ao cron enviar snapshots periódicos para o destino. Se um envio ficar pendente, o cron confirma ou repete o mesmo snapshot antes de iniciar outro; enquanto isso, não troque nem remova o destino.
 - **Testar** comprova conexão e purga permanente de um objeto temporário. A data exibida é do teste, não de um backup.
 - **Remover** pede confirmação com o nome do destino e exclui somente essa configuração.
 
@@ -33,4 +33,4 @@ O fluxo e o mockup correspondente foram aprovados em 2026-11-22. A implementaç�
 
 ## Retenção por destino — proposta aguardando aprovação
 
-A retenção é de 30 dias por padrão e pode ser definida entre 1 e 3650 dias para cada destino. O cron remove snapshots vencidos, inclusive todas as versões S3 e delete markers, e registra horário e falha da execução. A proposta de expor esses controles e estados nesta tela aguarda aprovação do mantenedor; o backend já aplica o prazo armazenado para cada destino. Envelopes de chaves ativos e tombstones/ledger não são removidos por essa rotina.
+A retenção é de 30 dias por padrão e pode ser definida entre 1 e 3650 dias para cada destino. O cron remove snapshots vencidos, inclusive todas as versões S3 e delete markers, e registra horário e falha da execução. A proposta de expor esses controles, o retry pendente e seus estados nesta tela aguarda aprovação do mantenedor; o backend já aplica o prazo armazenado para cada destino. Envelopes de chaves ativos e tombstones/ledger não são removidos por essa rotina.

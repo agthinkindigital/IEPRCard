@@ -35,7 +35,8 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
     $existing = null;
     if ($id > 0) {
         $query = $pdo->prepare(
-            'SELECT bucket, regiao, endpoint, path_style, credentials_cifradas, retencao_dias FROM destinos_backup WHERE id = :id'
+            'SELECT bucket, regiao, endpoint, path_style, credentials_cifradas, retencao_dias, snapshot_pendente_id '
+            . 'FROM destinos_backup WHERE id = :id'
         );
         $query->execute(['id' => $id]);
         $existing = $query->fetch(PDO::FETCH_ASSOC);
@@ -63,6 +64,17 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
         $retentionDays = is_array($existing) ? (int) $existing['retencao_dias'] : 30;
     }
 
+    $duplicateStorage = $pdo->prepare(
+        "SELECT 1 FROM destinos_backup WHERE id <> :id AND LOWER(bucket) = LOWER(:bucket) "
+        . "AND LOWER(COALESCE(endpoint, '')) = LOWER(:endpoint) LIMIT 1"
+    );
+    $duplicateStorage->execute([
+        'id' => $id, 'bucket' => $bucket, 'endpoint' => $endpoint ?? '',
+    ]);
+    if ($duplicateStorage->fetchColumn() !== false) {
+        throw new DomainException('BACKUP_DESTINATION_DUPLICATE_STORAGE');
+    }
+
     if (is_array($existing)) {
         $protectedKeys = $pdo->prepare('SELECT 1 FROM titular_chaves_backup WHERE destino_id = :id LIMIT 1');
         $protectedKeys->execute(['id' => $id]);
@@ -73,6 +85,9 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
             || (string) $existing['credentials_cifradas'] !== $encrypted;
         if ($protectedKeys->fetchColumn() !== false && $storageChanged) {
             throw new DomainException('BACKUP_DESTINATION_PRIVACY_KEYS_PRESENT');
+        }
+        if (is_string($existing['snapshot_pendente_id'] ?? null) && $existing['snapshot_pendente_id'] !== '' && $storageChanged) {
+            throw new DomainException('BACKUP_DESTINATION_SNAPSHOT_PENDING');
         }
     }
 
@@ -170,6 +185,12 @@ function backupDestinationSetEnabled(PDO $pdo, array $identity, int $id, bool $e
 function backupDestinationDelete(PDO $pdo, array $identity, int $id): void
 {
     backupDestinationAssertSuperadmin($pdo, $identity);
+    $pendingSnapshot = $pdo->prepare('SELECT snapshot_pendente_id FROM destinos_backup WHERE id = :id');
+    $pendingSnapshot->execute(['id' => $id]);
+    $pendingSnapshotId = $pendingSnapshot->fetchColumn();
+    if (is_string($pendingSnapshotId) && $pendingSnapshotId !== '') {
+        throw new DomainException('BACKUP_DESTINATION_SNAPSHOT_PENDING');
+    }
     $keys = $pdo->prepare('SELECT 1 FROM titular_chaves_backup WHERE destino_id = :id LIMIT 1');
     $keys->execute(['id' => $id]);
     if ($keys->fetchColumn() !== false) {

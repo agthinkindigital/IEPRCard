@@ -136,6 +136,12 @@ try {
             || $persisted['ultimo_erro_codigo'] !== null) {
             throw new RuntimeException($driver . ': S3 probe result was invalid: ' . json_encode($tested) . ' ' . json_encode($persisted));
         }
+        try {
+            backupDestinationSave($pdo, $identity, array_merge($input, ['name' => 'Duplicate storage ' . $driver]));
+            throw new RuntimeException($driver . ': the same bucket and endpoint were accepted as a second backup destination.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'BACKUP_DESTINATION_DUPLICATE_STORAGE') throw $exception;
+        }
         if ((glob($backupDestinationStorage . DIRECTORY_SEPARATOR . '*') ?: []) !== []) {
             throw new RuntimeException($driver . ': the S3 connection probe must remove its temporary object.');
         }
@@ -179,7 +185,10 @@ try {
 
         $secondInput = $input;
         unset($secondInput['retention_days']);
-        $second = backupDestinationSave($pdo, $identity, array_merge($secondInput, ['name' => 'Second S3 ' . $driver]));
+        $driverBucketSuffix = strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', $driver));
+        $second = backupDestinationSave($pdo, $identity, array_merge($secondInput, [
+            'name' => 'Second S3 ' . $driver, 'bucket' => 'iepr-second-backup-' . $driverBucketSuffix,
+        ]));
         if ($second['id'] === $saved['id'] || $second['retention_days'] !== 30
             || count(backupDestinationReadAll($pdo, $identity)) !== 2) {
             throw new RuntimeException($driver . ': multiple independent backup destinations must be supported.');
@@ -322,6 +331,7 @@ try {
                         $this->uploads[] = $input;
                         return $this->client->putObject($input);
                     }
+                public function __call(string $name, array $arguments): mixed { return $this->client->{$name}(...$arguments); }
                 };
                 return $privacySnapshotClient;
             }
@@ -345,12 +355,133 @@ try {
         }
         s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $snapshotKey);
 
+        $pdo->prepare(
+            'UPDATE destinos_backup SET ultimo_sucesso_em = NULL, snapshot_pendente_id = NULL, snapshot_pendente_em = NULL '
+            . 'WHERE id = :id'
+        )->execute(['id' => $saved['id']]);
+        $ambiguousSnapshotClient = new class($privacyClient) {
+            public int $putAttempts = 0;
+            public array $uploadedKeys = [];
+            public function __construct(private object $client) {}
+            public function putObject(array $input): mixed {
+                ++$this->putAttempts;
+                $this->uploadedKeys[] = (string) $input['Key'];
+                $result = $this->client->putObject($input);
+                if ($this->putAttempts === 1) {
+                    throw new RuntimeException('Synthetic acknowledgement loss after object creation.');
+                }
+                return $result;
+            }
+            public function __call(string $name, array $arguments): mixed { return $this->client->{$name}(...$arguments); }
+        };
+        $snapshotFactory = static fn(array $destination, array $credentials): object => $ambiguousSnapshotClient;
+        $snapshotEncryptor = static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext);
+        $snapshotTime = strtotime('2026-11-22T12:00:00Z');
+        $ambiguousFirst = privacySnapshotRunDue($pdo, $snapshotTime, 900, $snapshotEncryptor, $snapshotFactory);
+        $pendingAfterAmbiguous = $pdo->query(
+            'SELECT snapshot_pendente_id, snapshot_pendente_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetch(PDO::FETCH_ASSOC);
+        if (($ambiguousFirst['failed'] ?? 0) !== 1 || !is_array($pendingAfterAmbiguous)
+            || !is_string($pendingAfterAmbiguous['snapshot_pendente_id'] ?? null)
+            || !preg_match('/^[a-f0-9]{32}$/D', $pendingAfterAmbiguous['snapshot_pendente_id'])) {
+            throw new RuntimeException($driver . ': a failed acknowledgement must retain the pending snapshot identity for retry.');
+        }
+        $pendingSnapshotId = $pendingAfterAmbiguous['snapshot_pendente_id'];
+        try {
+            backupDestinationSave($pdo, $identity, array_merge($input, [
+                'id' => (int) $saved['id'], 'bucket' => 'replacement-bucket', 'access_key' => '', 'secret_key' => '',
+            ]));
+            throw new RuntimeException($driver . ': a destination with a pending snapshot allowed its storage to change.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'BACKUP_DESTINATION_SNAPSHOT_PENDING') throw $exception;
+        }
+        try {
+            backupDestinationDelete($pdo, $identity, (int) $saved['id']);
+            throw new RuntimeException($driver . ': a destination with a pending snapshot was removed.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'BACKUP_DESTINATION_SNAPSHOT_PENDING') throw $exception;
+        }
+        $ambiguousRetry = privacySnapshotRunDue($pdo, $snapshotTime + 60, 900, $snapshotEncryptor, $snapshotFactory);
+        $pendingAfterRetry = $pdo->query(
+            'SELECT snapshot_pendente_id, ultimo_sucesso_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetch(PDO::FETCH_ASSOC);
+        $retriedSnapshotKey = 'ieprcard-snapshots/v2/' . gmdate('Y/m/d', strtotime((string) $pendingAfterAmbiguous['snapshot_pendente_em']))
+            . '/' . $pendingSnapshotId . '.json.gz';
+        $retriedSnapshotVersions = $privacyClient->listObjectVersions([
+            'Bucket' => $saved['bucket'], 'Prefix' => $retriedSnapshotKey, 'MaxKeys' => 100,
+        ]);
+        $retriedSnapshotPayload = json_decode(
+            gzdecode((string) $privacyClient->getObject(['Bucket' => $saved['bucket'], 'Key' => $retriedSnapshotKey])['Body']) ?: '',
+            true
+        );
+        $snapshotDestinationRows = is_array($retriedSnapshotPayload)
+            ? ($retriedSnapshotPayload['tables']['destinos_backup'] ?? []) : [];
+        $snapshotDestination = is_array($snapshotDestinationRows[0] ?? null) ? $snapshotDestinationRows[0] : [];
+        if (($ambiguousRetry['processed'] ?? 0) !== 1 || $ambiguousSnapshotClient->putAttempts !== 1
+            || $ambiguousSnapshotClient->uploadedKeys !== [$retriedSnapshotKey]
+            || !is_array($pendingAfterRetry) || $pendingAfterRetry['snapshot_pendente_id'] !== null
+            || !is_string($pendingAfterRetry['ultimo_sucesso_em'] ?? null)
+            || count($retriedSnapshotVersions['Versions'] ?? []) !== 1
+            || ($retriedSnapshotPayload['manifest']['snapshot_id'] ?? null) !== $pendingSnapshotId
+            || ($retriedSnapshotPayload['manifest']['schema_version'] ?? null) !== '0020'
+            || !array_key_exists('snapshot_pendente_id', $snapshotDestination) || $snapshotDestination['snapshot_pendente_id'] !== null
+            || !array_key_exists('snapshot_pendente_em', $snapshotDestination) || $snapshotDestination['snapshot_pendente_em'] !== null) {
+            throw new RuntimeException($driver . ': retry after an ambiguous S3 acknowledgement must confirm the same complete object without creating another version.');
+        }
+        s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $retriedSnapshotKey);
+
+        if ((backupDestinationTest($pdo, $identity, (int) $second['id'])['status'] ?? null) !== 'success') {
+            throw new RuntimeException($driver . ': the second independent destination did not pass its S3 contract probe.');
+        }
+        backupDestinationSetEnabled($pdo, $identity, (int) $second['id'], true);
+        $multipleDestinationUploads = [];
+        $multipleDestinationResult = privacySnapshotUpload(
+            $pdo,
+            [(int) $saved['id'], (int) $second['id']],
+            $snapshotEncryptor,
+            static function (array $destination, array $credentials) use (&$multipleDestinationUploads, $privacyClient): object {
+                return new class($privacyClient, $destination, $multipleDestinationUploads) {
+                    public function __construct(
+                        private object $client,
+                        private array $destination,
+                        private array &$uploads
+                    ) {}
+                    public function putObject(array $input): mixed {
+                        $this->uploads[(int) $this->destination['id']] = $input;
+                        return $this->client->putObject($input);
+                    }
+                    public function __call(string $name, array $arguments): mixed { return $this->client->{$name}(...$arguments); }
+                };
+            }
+        );
+        $multipleDestinationKeys = array_map(
+            static fn(array $upload): string => (string) ($upload['Key'] ?? ''),
+            array_values($multipleDestinationUploads)
+        );
+        if (($multipleDestinationResult['processed'] ?? 0) !== 2 || ($multipleDestinationResult['failed'] ?? 0) !== 0
+            || count($multipleDestinationKeys) !== 2 || $multipleDestinationKeys[0] === $multipleDestinationKeys[1]) {
+            throw new RuntimeException($driver . ': independent S3 destinations must receive separate, complete snapshot identities.');
+        }
+        foreach ($multipleDestinationUploads as $destinationId => $upload) {
+            $destinationRow = $pdo->query(
+                'SELECT bucket FROM destinos_backup WHERE id = ' . (int) $destinationId
+            )->fetch(PDO::FETCH_ASSOC);
+            s3CompatibleDeleteObjectPermanently($privacyClient, (string) $destinationRow['bucket'], (string) $upload['Key']);
+        }
+
         $oldSnapshotKey = 'ieprcard-snapshots/v2/2026/10/01/' . str_repeat('a', 32) . '.json.gz';
         $olderSnapshotKey = 'ieprcard-snapshots/v2/2026/09/01/' . str_repeat('c', 32) . '.json.gz';
+        $pendingSnapshotKey = 'ieprcard-snapshots/v2/2026/09/01/' . str_repeat('d', 32) . '.json.gz';
         $recentSnapshotKey = 'ieprcard-snapshots/v2/2026/11/01/' . str_repeat('b', 32) . '.json.gz';
+        $pdo->prepare(
+            'UPDATE destinos_backup SET snapshot_pendente_id = :pending_id, snapshot_pendente_em = :pending_at WHERE id = :id'
+        )->execute([
+            'pending_id' => str_repeat('d', 32), 'pending_at' => '2026-09-01 00:00:00', 'id' => $saved['id'],
+        ]);
         $retentionClient = new class([
             $oldSnapshotKey => strtotime('2026-10-01T00:00:00Z'),
             $olderSnapshotKey => strtotime('2026-09-01T00:00:00Z'),
+            $pendingSnapshotKey => strtotime('2026-09-01T00:00:00Z'),
             $recentSnapshotKey => strtotime('2026-11-01T00:00:00Z'),
             'ieprcard-privacy/keys/synthetic.json' => strtotime('2026-01-01T00:00:00Z'),
         ]) {
@@ -380,22 +511,56 @@ try {
                 throw new RuntimeException('NoSuchKey', 404);
             }
         };
+        $emptyRetentionClient = new class {
+            public function listObjectsV2(array $input): array { return ['Contents' => [], 'IsTruncated' => false]; }
+        };
+        $retentionClientFactory = static fn(array $destination, array $credentials): object => (int) $destination['id'] === (int) $saved['id']
+            ? $retentionClient : $emptyRetentionClient;
         $retentionResult = privacySnapshotPurgeExpired(
             $pdo,
             strtotime('2026-11-22T12:00:00Z'),
             1,
-            static fn(array $destination, array $credentials): object => $retentionClient
+            $retentionClientFactory
         );
         if (($retentionResult['processed'] ?? 0) !== 1 || ($retentionResult['failed'] ?? 0) !== 0
             || isset($retentionClient->objects[$oldSnapshotKey]) || !isset($retentionClient->objects[$olderSnapshotKey])
-            || !isset($retentionClient->objects[$recentSnapshotKey])
+            || !isset($retentionClient->objects[$pendingSnapshotKey]) || !isset($retentionClient->objects[$recentSnapshotKey])
             || !isset($retentionClient->objects['ieprcard-privacy/keys/synthetic.json'])) {
             throw new RuntimeException($driver . ': snapshot retention must permanently remove only expired snapshots on every configured destination.');
         }
+        $retentionRemainder = privacySnapshotPurgeExpired(
+            $pdo,
+            strtotime('2026-11-22T12:05:00Z'),
+            25,
+            $retentionClientFactory
+        );
+        if (($retentionRemainder['processed'] ?? 0) !== 1 || isset($retentionClient->objects[$olderSnapshotKey])
+            || !isset($retentionClient->objects[$pendingSnapshotKey])) {
+            throw new RuntimeException($driver . ': retention must not purge the object attached to an unfinished snapshot retry.');
+        }
+        $pdo->prepare('UPDATE destinos_backup SET ativo = 0 WHERE id = :id')->execute(['id' => $saved['id']]);
+        $inactivePendingRetention = privacySnapshotPurgeExpired(
+            $pdo,
+            strtotime('2026-11-22T12:10:00Z'),
+            25,
+            $retentionClientFactory
+        );
+        $inactivePendingState = $pdo->query(
+            'SELECT snapshot_pendente_id, snapshot_pendente_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetch(PDO::FETCH_ASSOC);
+        if (($inactivePendingRetention['failed'] ?? 0) !== 0 || isset($retentionClient->objects[$pendingSnapshotKey])
+            || !is_array($inactivePendingState) || $inactivePendingState['snapshot_pendente_id'] !== null
+            || $inactivePendingState['snapshot_pendente_em'] !== null) {
+            throw new RuntimeException($driver . ': retention must release an expired pending snapshot when its destination is inactive.');
+        }
+        $pdo->prepare('UPDATE destinos_backup SET ativo = 1 WHERE id = :id')->execute(['id' => $saved['id']]);
+        $pdo->prepare(
+            'UPDATE destinos_backup SET snapshot_pendente_id = NULL, snapshot_pendente_em = NULL WHERE id = :id'
+        )->execute(['id' => $saved['id']]);
         $retentionState = $pdo->query(
             'SELECT retencao_ultima_execucao_em, retencao_erro_codigo FROM destinos_backup WHERE id = ' . (int) $saved['id']
         )->fetch(PDO::FETCH_ASSOC);
-        if (!is_array($retentionState) || $retentionState['retencao_ultima_execucao_em'] !== gmdate('Y-m-d H:i:s', strtotime('2026-11-22T12:00:00Z'))
+        if (!is_array($retentionState) || $retentionState['retencao_ultima_execucao_em'] !== gmdate('Y-m-d H:i:s', strtotime('2026-11-22T12:10:00Z'))
             || $retentionState['retencao_erro_codigo'] !== null) {
             throw new RuntimeException($driver . ': retention state must be tracked independently per destination.');
         }

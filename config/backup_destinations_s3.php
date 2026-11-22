@@ -30,7 +30,10 @@ function backupDestinationTest(PDO $pdo, array $identity, int $id): array
         $payload = bin2hex(random_bytes(24));
         $written = true;
         try {
-            $client->putObject(['Bucket' => $destination['bucket'], 'Key' => $key, 'Body' => $payload]);
+            $client->putObject([
+                'Bucket' => $destination['bucket'], 'Key' => $key, 'Body' => $payload,
+                'Metadata' => ['iepr-probe' => $payload],
+            ]);
             $object = $client->getObject(['Bucket' => $destination['bucket'], 'Key' => $key]);
             $body = (string) $object['Body'];
             if (!hash_equals($payload, $body)) {
@@ -42,6 +45,11 @@ function backupDestinationTest(PDO $pdo, array $identity, int $id): array
             $listedKey = $listing['Contents'][0]['Key'] ?? null;
             if (!is_string($listedKey) || !hash_equals($key, $listedKey)) {
                 throw new RuntimeException('BACKUP_DESTINATION_PROBE_LIST_MISMATCH');
+            }
+            $head = $client->headObject(['Bucket' => $destination['bucket'], 'Key' => $key]);
+            $metadata = $head['Metadata'] ?? [];
+            if (!is_array($metadata) || !hash_equals($payload, (string) ($metadata['iepr-probe'] ?? ''))) {
+                throw new RuntimeException('BACKUP_DESTINATION_PROBE_METADATA_MISMATCH');
             }
             s3CompatibleDeleteObjectPermanently($client, (string) $destination['bucket'], $key);
             $written = false;
@@ -57,7 +65,8 @@ function backupDestinationTest(PDO $pdo, array $identity, int $id): array
     } catch (Throwable $exception) {
         $errorCode = match ($exception->getMessage()) {
             'BACKUP_DESTINATION_PROBE_CLEANUP_FAILED' => 'cleanup_failed',
-            'BACKUP_DESTINATION_PROBE_MISMATCH' => 'probe_mismatch',
+            'BACKUP_DESTINATION_PROBE_MISMATCH', 'BACKUP_DESTINATION_PROBE_LIST_MISMATCH',
+            'BACKUP_DESTINATION_PROBE_METADATA_MISMATCH' => 'probe_mismatch',
             'AI_CONFIG_KEY_UNAVAILABLE', 'AI_CONFIG_KEY_INVALID', 'AI_CONFIG_SECRET_UNAVAILABLE' => 'encryption_key_unavailable',
             default => 'connection_failed',
         };
