@@ -26,6 +26,8 @@ As áreas de elementos, fundo e propriedades ficam nas abas **Campos**, **Fundo*
 - Se sair antes de salvar, a tela avisa que há alterações pendentes e permite voltar ao editor.
 - O preview usa conteúdo fictício. Não use dados reais de titulares para testar o layout.
 
-## Proposta de privacidade em revisão
+## Privacidade dos fundos
 
-O mockup e a especificação visual propõem classificar cada fundo como arte sem pessoa identificável ou vinculá-lo a um único titular. Fundos com várias pessoas seriam bloqueados; a foto individual usaria o campo dinâmico de foto. Texto fixo não conteria dados pessoais; dados do titular usariam variáveis dinâmicas. A proposta ainda não está implementada nem aprovada; consulte a [especificação da página](../../design-system/pages/editor-designs.md).
+Ao enviar um fundo, escolha **Arte decorativa sem pessoa identificável** ou **Imagem vinculada a um titular**. Imagens com mais de uma pessoa identificável não podem ser usadas como fundo; para uma foto individual, use o elemento dinâmico de foto. Texto fixo não deve conter dados pessoais: use variáveis dinâmicas.
+
+Fundos decorativos ficam associados ao sujeito de privacidade da Sede. Um fundo individual fica associado ao titular escolhido e é armazenado no envelope removível desse sujeito nos snapshots. Fundos legados aparecem como **Selecione a classificação**; classifique cada um antes de gerar novos snapshots. Até essa revisão, a geração de snapshots falha de forma segura. A interface aprovada está descrita na [especificação visual](../../design-system/pages/editor-designs.md).

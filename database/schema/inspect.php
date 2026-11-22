@@ -84,6 +84,7 @@ function colunaDiverge(array $actual, array $expected, string $driver): bool
         'boolean' => $driver === 'mysql' ? 'tinyint' : 'INTEGER',
         'varchar' => 'varchar',
         'text' => $driver === 'mysql' ? 'text' : 'TEXT',
+        'longtext' => $driver === 'mysql' ? 'longtext' : 'TEXT',
         'decimal' => 'decimal',
         'date' => $driver === 'mysql' ? 'date' : 'TEXT',
         'datetime' => $driver === 'mysql' ? 'datetime' : 'TEXT',

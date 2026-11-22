@@ -335,6 +335,32 @@ function privacySubjectLifecycleAnonymizeRecord(PDO $pdo, string $recordType, in
                 'UPDATE mensagens_whatsapp SET telefone = NULL, conteudo = NULL, id_mensagem_api = NULL, arquivo_url = NULL WHERE id = :id'
             )->execute(['id' => $recordId]);
             return;
+        case 'design_fundo':
+            $query = $pdo->prepare('SELECT tenant_id, design_id, lado, asset_url FROM design_fundos_privacidade WHERE id = :id LIMIT 1');
+            $query->execute(['id' => $recordId]);
+            $background = $query->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($background)) return;
+            if (is_string($background['asset_url']) && $background['asset_url'] !== '') {
+                titularAnonymizationDeletePrivateArtifact((int) $background['tenant_id'], $background['asset_url']);
+            }
+            $field = ($background['lado'] ?? null) === 'frente' ? 'bg_frente_url' : 'bg_verso_url';
+            $pdo->prepare('UPDATE designs_carteirinha SET ' . $field . ' = NULL WHERE id = :id AND tenant_id = :tenant')
+                ->execute(['id' => $background['design_id'], 'tenant' => $background['tenant_id']]);
+            $pdo->prepare("UPDATE design_fundos_privacidade SET classificacao = 'anonimizado', titular_id = NULL, asset_url = NULL, atualizado_em = :at WHERE id = :id")
+                ->execute(['at' => $nowText, 'id' => $recordId]);
+            return;
+        case 'import_row':
+            $query = $pdo->prepare('SELECT lote_id FROM importacao_linhas_staging WHERE id = :id LIMIT 1');
+            $query->execute(['id' => $recordId]);
+            $lotId = $query->fetchColumn();
+            $pdo->prepare('DELETE FROM importacao_linhas_staging WHERE id = :id')->execute(['id' => $recordId]);
+            $pdo->prepare("DELETE FROM privacy_subject_records WHERE tipo_registro = 'import_row' AND registro_id = :id")
+                ->execute(['id' => $recordId]);
+            if ($lotId !== false) {
+                $pdo->prepare("UPDATE lotes_importacao SET status_lote = 'expirado', arquivo_original_url = NULL, finalizado_em = :at WHERE id = :id AND status_lote IN ('aguardando_mapa', 'na_fila')")
+                    ->execute(['at' => $nowText, 'id' => $lotId]);
+            }
+            return;
         case 'carteirinha_emitida':
             $query = $pdo->prepare(
                 'SELECT tenant_id, webp_frente_url, webp_verso_url, pdf_individual_url FROM carteirinhas_emitidas WHERE id = :id LIMIT 1'

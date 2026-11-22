@@ -9,6 +9,9 @@ require_once dirname(__DIR__, 2) . '/config/batch_import_confirmation.php';
 require_once dirname(__DIR__, 2) . '/config/card_issuance_worker.php';
 require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
 
+$previousIntegrationKey = getenv('IEPR_INTEGRATION_KEY');
+putenv('IEPR_INTEGRATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+
 foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
     $previousAppEnvironment = getenv('APP_ENV');
@@ -22,6 +25,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $uploadDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-upload-' . $suffix;
     $previousStoragePath = getenv('IEPR_PRIVATE_STORAGE_PATH');
     $previousAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
+    putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
     mkdir($uploadDirectory, 0700, true);
     putenv('IEPR_PRIVATE_STORAGE_PATH=' . $storagePath);
     $fixture = null;
@@ -310,8 +314,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $photoLotSource->execute(['id' => $photoLotId]);
         $photoSourceKey = (string) $photoLotSource->fetchColumn();
         $stagedPhotoArchivePath = batchImportPhotoArchiveResolvePath($fixture['tenant_id'], $photoSourceKey);
-        if (!is_file($stagedPhotoArchivePath)) {
-            throw new RuntimeException($driver . ': the optional photo archive must be staged privately with its import.');
+        $encryptedPhoto = $pdo->prepare('SELECT foto_cifrada FROM importacao_linhas_staging WHERE lote_id = :lot AND foto_cifrada IS NOT NULL ORDER BY indice_linha');
+        $encryptedPhoto->execute(['lot' => $photoLotId]);
+        $photoCiphertext = (string) $encryptedPhoto->fetchColumn();
+        if (is_file($stagedPhotoArchivePath) || $photoCiphertext === '' || str_contains($photoCiphertext, $photoBytes)) {
+            throw new RuntimeException($driver . ': photo bytes must be encrypted per row and the original ZIP discarded.');
         }
         $photoImport = batchImportConfirm(
             $pdo,
@@ -418,48 +425,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $badPhotoZip->close();
         $badPhotoSourcePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'invalid-photo.csv';
         file_put_contents($badPhotoSourcePath, "nome;matricula\nInvalid Photo;BROKEN-1\n");
-        $invalidPhotoLotId = batchImportStageFile(
-            $pdo,
-            $context,
-            $identity,
-            $fixture['tenant_id'],
-            null,
-            $badPhotoSourcePath,
-            'invalid-photo.csv',
-            $metricsNow + 40,
-            $badPhotoZipPath
-        )['lote_id'];
-        $invalidPhotoSource = $pdo->prepare('SELECT arquivo_original_url FROM lotes_importacao WHERE id = :id');
-        $invalidPhotoSource->execute(['id' => $invalidPhotoLotId]);
-        $invalidPhotoSourceKey = (string) $invalidPhotoSource->fetchColumn();
-        $invalidPhotoArchivePath = batchImportPhotoArchiveResolvePath($fixture['tenant_id'], $invalidPhotoSourceKey);
-        $invalidPhotoRejected = false;
-        try {
-            batchImportConfirm(
-                $pdo,
-                $context,
-                $identity,
-                $fixture['tenant_id'],
-                null,
-                $invalidPhotoLotId,
-                ['nome_completo' => 'nome_completo', 'matricula' => 'matricula'],
-                $metricsNow + 50
-            );
-        } catch (DomainException $exception) {
-            $invalidPhotoRejected = $exception->getMessage() === 'IMPORT_PHOTO_ARCHIVE_INVALID';
-        }
-        $invalidPhotoState = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
-        $invalidPhotoState->execute(['id' => $invalidPhotoLotId]);
-        $invalidPhotoHolderCount = $pdo->prepare('SELECT COUNT(*) FROM titulares WHERE lote_origem_id = :lot');
-        $invalidPhotoHolderCount->execute(['lot' => $invalidPhotoLotId]);
-        if (!$invalidPhotoRejected || $invalidPhotoState->fetchColumn() !== 'aguardando_mapa'
-            || (int) $invalidPhotoHolderCount->fetchColumn() !== 0 || !is_file($invalidPhotoArchivePath)) {
-            throw new RuntimeException($driver . ': invalid images must reject confirmation atomically and remain retryable.');
-        }
-        batchImportStagingCancel($pdo, $context, $identity, $fixture['tenant_id'], null, $invalidPhotoLotId);
-        if (is_file($invalidPhotoArchivePath)) {
-            throw new RuntimeException($driver . ': canceling an invalid photo import must remove its staged ZIP.');
-        }
+        batchImportStagingAssertFailure(
+            static fn() => batchImportStageFile($pdo, $context, $identity, $fixture['tenant_id'], null,
+                $badPhotoSourcePath, 'invalid-photo.csv', $metricsNow + 40, $badPhotoZipPath),
+            'IMPORT_PHOTO_ARCHIVE_INVALID'
+        );
 
         $rollbackPhotoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'rollback-photos.zip';
         $rollbackPhotoZip = new ZipArchive();
@@ -622,6 +592,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         }
         foreach ([$lotId, $photoLotId, $invalidPhotoLotId, $rollbackPhotoLotId, $rollbackLotId, $largeLotId] as $cleanupLotId) {
             if ($cleanupLotId !== null) {
+                batchImportStagingEraseRows($pdo, (int) ($fixture['tenant_id'] ?? 0), $cleanupLotId);
                 $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $cleanupLotId]);
             }
         }
@@ -649,6 +620,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $previousAnonymizationKey === false
             ? putenv('IEPR_ANONYMIZATION_KEY')
             : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
+        $previousIntegrationKey === false
+            ? putenv('IEPR_INTEGRATION_KEY')
+            : putenv('IEPR_INTEGRATION_KEY=' . $previousIntegrationKey);
     }
 }
 

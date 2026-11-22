@@ -423,7 +423,7 @@ try {
             || !is_string($pendingAfterRetry['ultimo_sucesso_em'] ?? null)
             || count($retriedSnapshotVersions['Versions'] ?? []) !== 1
             || ($retriedSnapshotPayload['manifest']['snapshot_id'] ?? null) !== $pendingSnapshotId
-            || ($retriedSnapshotPayload['manifest']['schema_version'] ?? null) !== '0020'
+            || ($retriedSnapshotPayload['manifest']['schema_version'] ?? null) !== '0024'
             || !array_key_exists('snapshot_pendente_id', $snapshotDestination) || $snapshotDestination['snapshot_pendente_id'] !== null
             || !array_key_exists('snapshot_pendente_em', $snapshotDestination) || $snapshotDestination['snapshot_pendente_em'] !== null) {
             throw new RuntimeException($driver . ': retry after an ambiguous S3 acknowledgement must confirm the same complete object without creating another version.');
@@ -527,6 +527,10 @@ try {
             || !isset($retentionClient->objects[$pendingSnapshotKey]) || !isset($retentionClient->objects[$recentSnapshotKey])
             || !isset($retentionClient->objects['ieprcard-privacy/keys/synthetic.json'])) {
             throw new RuntimeException($driver . ': snapshot retention must permanently remove only expired snapshots on every configured destination.');
+        }
+        $removedInLastRun = $pdo->query('SELECT retencao_itens_removidos FROM destinos_backup WHERE id = ' . (int) $saved['id'])->fetchColumn();
+        if ((int) $removedInLastRun !== 1) {
+            throw new RuntimeException($driver . ': retention must expose the number of snapshots removed in the latest run.');
         }
         $retentionRemainder = privacySnapshotPurgeExpired(
             $pdo,

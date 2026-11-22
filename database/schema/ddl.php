@@ -32,6 +32,7 @@ function definicaoColuna(string $name, array $definition, string $driver): strin
         'boolean' => $driver === 'mysql' ? 'TINYINT(1)' : 'INTEGER',
         'varchar' => 'VARCHAR(' . validarLimite($definition['length'] ?? null) . ')',
         'text' => 'TEXT',
+        'longtext' => $driver === 'mysql' ? 'LONGTEXT' : 'TEXT',
         'decimal' => 'DECIMAL(' . validarPrecisao($definition['precision'] ?? null) . ',' . validarEscala($definition['scale'] ?? null) . ')',
         'date' => $driver === 'mysql' ? 'DATE' : 'TEXT',
         'datetime' => $driver === 'mysql' ? 'DATETIME' : 'TEXT',

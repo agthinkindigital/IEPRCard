@@ -6,7 +6,18 @@ require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/titular_privacy_keys.php';
 
-const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '56f6a45245d74f22731f2c6b2dc8a0c1163e1e0e472810fa4f1ae63ecb5e4e39';
+const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '823b640e74818588532c745edd4ec3f2d2715eb7a7afd4390facb12b1f48de3c';
+
+function privacySnapshotCurrentSchemaVersion(): string
+{
+    $versions = glob(dirname(__DIR__) . '/database/schema/[0-9][0-9][0-9][0-9]', GLOB_ONLYDIR) ?: [];
+    sort($versions, SORT_STRING);
+    $latest = $versions === [] ? null : basename($versions[array_key_last($versions)]);
+    if (!is_string($latest) || preg_match('/^\d{4}$/D', $latest) !== 1) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_SCHEMA_VERSION_UNAVAILABLE');
+    }
+    return $latest;
+}
 
 /** @param array<string,array<string,mixed>> $catalog @return array<string,list<string>> */
 function privacySnapshotAssertReviewedSchema(array $catalog): array
@@ -87,6 +98,8 @@ function privacySnapshotPersonalFields(): array
         'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url', 'criado_em'],
         'acessos_suporte' => ['token_hash', 'ip_usado', 'usado_em'],
         'mcp_api_keys' => ['nome', 'chave_hash', 'ultimo_uso_em'],
+        'design_fundos_privacidade' => ['classificacao', 'titular_id', 'asset_url'],
+        'importacao_linhas_staging' => ['dados_cifrados', 'foto_cifrada'],
         'carteirinhas_emitidas' => [
             'codigo_validacao_qr', 'snapshot_dados_json', 'webp_frente_url', 'webp_verso_url', 'pdf_individual_url',
             'data_validade', 'total_leituras_qr', 'emitida_em',
@@ -100,6 +113,7 @@ function privacySnapshotArtifactFields(): array
     return [
         'titulares' => ['foto_url'],
         'tenants' => ['assinatura_responsavel_url'],
+        'design_fundos_privacidade' => ['asset_url'],
         'mensagens_whatsapp' => ['arquivo_url'],
         'carteirinhas_emitidas' => ['webp_frente_url', 'webp_verso_url', 'pdf_individual_url'],
     ];
@@ -148,6 +162,13 @@ function privacySnapshotBuildPayload(
             privacySnapshotAssertSupportedArtifacts($table, $row);
             privacySnapshotStripUnrecoverableSecrets($table, $row);
             privacySnapshotMinimizeOperationalRows($table, $row);
+            if ($table === 'designs_carteirinha') {
+                $row['bg_frente_url'] = null;
+                $row['bg_verso_url'] = null;
+            }
+            if ($table === 'lotes_importacao') {
+                $row['arquivo_original_url'] = null;
+            }
             if ($table === 'lotes_importacao') {
                 $row['arquivo_original_url'] = null;
                 $row['pdf_consolidado_url'] = null;
@@ -226,7 +247,7 @@ function privacySnapshotBuildPayload(
     ksort($envelopes, SORT_STRING);
     $manifest = [
         'format' => 'ieprcard-snapshot-v2',
-        'schema_version' => '0020',
+        'schema_version' => privacySnapshotCurrentSchemaVersion(),
         'snapshot_id' => $snapshotId,
         'created_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($createdAt)),
         'table_count' => count($tableData),
@@ -488,6 +509,7 @@ function privacySnapshotPurgeExpired(
         }
         $destinationId = (int) ($destinationRow['id'] ?? 0);
         $errorCode = null;
+        $destinationRemoved = 0;
         try {
             $retentionDays = filter_var($destinationRow['retencao_dias'] ?? null, FILTER_VALIDATE_INT, [
                 'options' => ['min_range' => 1, 'max_range' => 3650],
@@ -560,6 +582,7 @@ function privacySnapshotPurgeExpired(
                     if ($modifiedAt <= $cutoff) {
                         s3CompatibleDeleteObjectPermanently($client, (string) $destination['bucket'], $objectKey);
                         ++$processed;
+                        ++$destinationRemoved;
                         if ($processed >= $limit) {
                             break 2;
                         }
@@ -587,11 +610,11 @@ function privacySnapshotPurgeExpired(
             ++$failed;
         }
         $update = $pdo->prepare(
-            'UPDATE destinos_backup SET retencao_ultima_execucao_em = :run_at, retencao_erro_codigo = :error, '
+            'UPDATE destinos_backup SET retencao_ultima_execucao_em = :run_at, retencao_itens_removidos = :removed, retencao_erro_codigo = :error, '
             . 'atualizado_em = :updated WHERE id = :id'
         );
         $update->execute([
-            'run_at' => gmdate('Y-m-d H:i:s', $now), 'error' => $errorCode,
+            'run_at' => gmdate('Y-m-d H:i:s', $now), 'removed' => $destinationRemoved, 'error' => $errorCode,
             'updated' => gmdate('Y-m-d H:i:s', $now), 'id' => $destinationId,
         ]);
     }
@@ -618,6 +641,8 @@ function privacySnapshotRecordType(string $table): string
         'acessos_suporte' => 'acesso_suporte',
         'mcp_api_keys' => 'mcp_api_key',
         'carteirinhas_emitidas' => 'carteirinha_emitida',
+        'design_fundos_privacidade' => 'design_fundo',
+        'importacao_linhas_staging' => 'import_row',
         default => throw new InvalidArgumentException('PRIVACY_SNAPSHOT_TABLE_POLICY_MISSING'),
     };
 }
@@ -706,11 +731,15 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
 /** Fail closed for artifacts without an envelope format tied to a privacy subject. */
 function privacySnapshotAssertSupportedArtifacts(string $table, array $row): void
 {
+    if ($table === 'design_fundos_privacidade' && isset($row['asset_url'])
+        && !in_array($row['classificacao'] ?? null, ['decorativo', 'titular'], true)) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_DESIGN_CLASSIFICATION_REQUIRED');
+    }
     $privateArtifacts = match ($table) {
         'titulares' => ['foto_url'],
         'tenants' => ['assinatura_responsavel_url'],
-        'designs_carteirinha' => ['bg_frente_url', 'bg_verso_url'],
-        'lotes_importacao' => ['arquivo_original_url', 'pdf_consolidado_url'],
+        'lotes_importacao' => ['pdf_consolidado_url'],
+        'design_fundos_privacidade' => ['asset_url'],
         'mensagens_whatsapp' => ['arquivo_url'],
         'carteirinhas_emitidas' => ['webp_frente_url', 'webp_verso_url', 'pdf_individual_url'],
         default => [],

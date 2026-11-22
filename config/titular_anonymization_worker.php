@@ -111,6 +111,18 @@ function titularAnonymizationProcessOne(
             $privacyReference = titularPrivacyEnsureReference($pdo, $reference['tenant_id'], $reference['titular_id']);
             titularPrivacyEraseKeys($pdo, $privacyReference, $clientFactory);
             titularAnonymizationDeleteHolderArtifacts($pdo, $reference['tenant_id'], $reference['titular_id'], $holder);
+            $designBackgrounds = $pdo->prepare('SELECT id, design_id, lado, asset_url FROM design_fundos_privacidade WHERE tenant_id = :tenant AND titular_id = :titular');
+            $designBackgrounds->execute(['tenant' => $reference['tenant_id'], 'titular' => $reference['titular_id']]);
+            foreach ($designBackgrounds->fetchAll(PDO::FETCH_ASSOC) as $background) {
+                if (is_string($background['asset_url'] ?? null) && $background['asset_url'] !== '') {
+                    titularAnonymizationDeletePrivateArtifact((int) $reference['tenant_id'], $background['asset_url']);
+                }
+                $field = ($background['lado'] ?? null) === 'frente' ? 'bg_frente_url' : 'bg_verso_url';
+                $pdo->prepare('UPDATE designs_carteirinha SET ' . $field . ' = NULL WHERE id = :id AND tenant_id = :tenant')
+                    ->execute(['id' => $background['design_id'], 'tenant' => $reference['tenant_id']]);
+                $pdo->prepare("UPDATE design_fundos_privacidade SET classificacao = 'anonimizado', titular_id = NULL, asset_url = NULL, atualizado_em = :at WHERE id = :id")
+                    ->execute(['at' => $nowText, 'id' => $background['id']]);
+            }
             $cards = $pdo->prepare(
                 "UPDATE carteirinhas_emitidas SET status_carteirinha = 'revogada', snapshot_dados_json = NULL, "
                 . 'webp_frente_url = NULL, webp_verso_url = NULL, pdf_individual_url = NULL '

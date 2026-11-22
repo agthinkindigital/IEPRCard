@@ -76,7 +76,18 @@ $readonly = !$canSave;
                     </div>
                 </div>
                 <details class="advanced" data-editor-panel="settings"><summary>Mapeamento fixo (JSON)</summary><p>Opcional: variáveis podem receber valores fixos ou campos de origem conforme o contrato de mapeamento.</p><textarea id="mapping-editor" spellcheck="false" <?= $readonly ? 'disabled' : '' ?>></textarea><p id="mapping-error" class="field-error" aria-live="polite"></p></details>
-                <div class="background-fields" data-editor-panel="background"><label>Fundo da frente <input type="file" name="fundo_frente" accept="image/png,image/jpeg,image/webp" <?= $readonly ? 'disabled' : '' ?>></label><label>Fundo do verso <input type="file" name="fundo_verso" accept="image/png,image/jpeg,image/webp" <?= $readonly ? 'disabled' : '' ?>></label><p>PNG, JPEG ou WebP · até 10 MB e 4 megapixels. Arquivos ficam em armazenamento privado.</p></div>
+                <div class="background-fields" data-editor-panel="background">
+                    <?php foreach (['frente' => 'Frente', 'verso' => 'Verso'] as $side => $label): ?>
+                    <fieldset><legend>Fundo da <?= $label ?></legend>
+                        <?php $privacy = $backgroundPrivacy[$side] ?? ['classificacao' => '', 'titular_id' => null]; ?>
+                        <label>Classificação<select name="fundo_<?= $side ?>_classificacao" <?= $readonly ? 'disabled' : '' ?>><option value="" <?= !in_array($privacy['classificacao'], ['decorativo', 'titular'], true) ? 'selected' : '' ?>>Selecione a classificação</option><option value="decorativo" <?= $privacy['classificacao'] === 'decorativo' ? 'selected' : '' ?>>Arte decorativa sem pessoa identificável</option><option value="titular" <?= $privacy['classificacao'] === 'titular' ? 'selected' : '' ?>>Imagem vinculada a um titular</option></select></label>
+                        <label>Titular<select name="fundo_<?= $side ?>_titular_id" <?= $readonly ? 'disabled' : '' ?>><option value="">Selecione se vinculada a titular</option><?php foreach ($titularesDisponiveis as $titular): ?><option value="<?= (int) $titular['id'] ?>" <?= $privacy['titular_id'] === (int) $titular['id'] ? 'selected' : '' ?>><?= $h($titular['name']) ?></option><?php endforeach; ?></select></label>
+                        <label>Imagem<input type="file" name="fundo_<?= $side ?>" accept="image/png,image/jpeg,image/webp" <?= $readonly ? 'disabled' : '' ?>></label>
+                    </fieldset>
+                    <?php endforeach; ?>
+                    <p>PNG, JPEG ou WebP · até 10 MB e 4 megapixels. Imagens com mais de uma pessoa identificável não podem ser usadas como fundo. Para foto individual, use o elemento dinâmico de foto do titular.</p>
+                    <p>Texto fixo não deve conter dados pessoais; use variáveis dinâmicas. Arte decorativa é guardada no envelope da Sede; fundo associado fica no envelope criptográfico do titular.</p>
+                </div>
                 <div class="form-actions"><span><?php if ($design !== null && (int) $design['ativo'] === 1): ?>Design ativo não pode ser alterado.<?php elseif ($hasPendingDesignJobs): ?>Aguarde as emissões deste design terminarem para editá-lo.<?php else: ?>Salvar mantém o design como rascunho.<?php endif; ?></span><?php if ($canSave): ?><button class="button primary" type="submit">Salvar design</button><?php endif; ?></div>
             </form>
         </section>

@@ -177,7 +177,11 @@ if ($method === 'POST') {
                 $insert->execute($parameters + ['tenant' => $tenantId, 'orientation' => 'horizontal', 'created' => dbAgora()]);
                 $savedId = (int) $pdo->lastInsertId();
             }
+            designEditorSaveBackgroundPrivacy($pdo, $tenantId, $savedId, $backgrounds, $_POST);
             $pdo->commit();
+            foreach (array_diff($oldKeys, array_values($backgrounds)) as $oldKey) {
+                designEditorDeleteBackground($tenantId, $oldKey);
+            }
             $newBackgroundKeys = [];
             $_SESSION['design_editor_notice'] = 'Rascunho salvo.';
             session_write_close();
@@ -237,6 +241,8 @@ $previewData = $preview['valid'] ? [
     'verso' => 'data:image/webp;base64,' . base64_encode($preview['images']['verso']),
 ] : $backgroundPreview;
 $designs = designEditorList($pdo, $tenantId);
+$titularesDisponiveis = designEditorTitularChoices($pdo, $tenantId);
+$backgroundPrivacy = $design === null ? [] : designEditorBackgroundPrivacy($pdo, (int) $design['id']);
 $canSave = $canMap && (($design === null && $canCreate) || ($design !== null && $canEdit && (int) $design['ativo'] === 0 && !$hasPendingDesignJobs));
 
 require dirname(__DIR__, 2) . '/views/tenant/designs.php';

@@ -9,6 +9,11 @@ require_once dirname(__DIR__, 2) . '/config/batch_import_parser.php';
 require_once dirname(__DIR__, 2) . '/config/batch_import_staging.php';
 require_once dirname(__DIR__, 2) . '/config/titular_read.php';
 
+$previousIntegrationKey = getenv('IEPR_INTEGRATION_KEY');
+$previousAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
+putenv('IEPR_INTEGRATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+
 foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
     $suffix = bin2hex(random_bytes(5));
@@ -130,12 +135,13 @@ foreach (tenantTestConnections() as $driver => $pdo) {
 
         $pdo->prepare("UPDATE lotes_importacao SET criado_em = CURRENT_TIMESTAMP, arquivo_original_url = NULL WHERE id = :id")
             ->execute(['id' => $lotId]);
+        $pdo->prepare('DELETE FROM importacao_linhas_staging WHERE lote_id = :id')->execute(['id' => $lotId]);
         $missingBefore = $pdo->query('SELECT status_lote, arquivo_original_url FROM lotes_importacao WHERE id = ' . (int) $lotId)->fetch(PDO::FETCH_ASSOC);
         $missing = batchImportStagingLer($pdo, $context, $identity, $lotId);
         $missingAfter = $pdo->query('SELECT status_lote, arquivo_original_url FROM lotes_importacao WHERE id = ' . (int) $lotId)->fetch(PDO::FETCH_ASSOC);
         if ($missing['status'] !== 'arquivo_indisponivel' || $missing['amostra'] !== []
-            || $missing['erros'] !== [['codigo' => 'IMPORT_SOURCE_UNAVAILABLE']] || $missingBefore !== $missingAfter) {
-            throw new RuntimeException($driver . ': missing private sources must return only a stable coded state without mutation.');
+            || $missing['erros'] !== [['codigo' => 'IMPORT_STAGING_UNAVAILABLE']] || $missingBefore !== $missingAfter) {
+            throw new RuntimeException($driver . ': missing encrypted staging rows must return only a stable coded state without mutation.');
         }
 
         $pdo->prepare("UPDATE lotes_importacao SET status_lote = 'cancelado' WHERE id = :id")->execute(['id' => $lotId]);
@@ -182,6 +188,9 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         }
     }
 }
+
+$previousIntegrationKey === false ? putenv('IEPR_INTEGRATION_KEY') : putenv('IEPR_INTEGRATION_KEY=' . $previousIntegrationKey);
+$previousAnonymizationKey === false ? putenv('IEPR_ANONYMIZATION_KEY') : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
 
 function titularReadAssertDenied(callable $operation, string $expectedCode): void
 {

@@ -569,7 +569,7 @@ function tenantTitularesDomainMessage(string $error): string
                 <label>ZIP com fotos (opcional)
                     <input type="file" name="fotos_zip" accept=".zip">
                 </label>
-                <p class="upload-help">As fotos devem estar na raiz do ZIP e usar CPF ou matrícula como nome do arquivo. Cada foto precisa corresponder a um titular sem ambiguidade.</p>
+                <p class="upload-help">As fotos devem estar na raiz do ZIP e usar CPF ou matrícula como nome do arquivo. Cada foto precisa corresponder a um titular sem ambiguidade. Ao preparar o lote, os uploads originais são descartados; as linhas ficam cifradas por até 24 horas enquanto você revisa o mapeamento.</p>
                 <button type="submit">Preparar arquivo</button>
             </form>
             <?php else: ?>

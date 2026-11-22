@@ -4,6 +4,75 @@ declare(strict_types=1);
 require_once __DIR__ . '/design_map_contract.php';
 require_once __DIR__ . '/design_mapping.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
+require_once __DIR__ . '/privacy_subjects.php';
+
+/** @return list<array{id:int,name:string}> */
+function designEditorTitularChoices(PDO $pdo, int $tenantId): array
+{
+    $query = $pdo->prepare('SELECT id, nome_completo FROM titulares WHERE tenant_id = :tenant ORDER BY nome_completo, id');
+    $query->execute(['tenant' => $tenantId]);
+    return array_map(static fn(array $row): array => ['id' => (int) $row['id'], 'name' => (string) $row['nome_completo']], $query->fetchAll(PDO::FETCH_ASSOC));
+}
+
+/** @return array<string,array{classificacao:string,titular_id:int|null}> */
+function designEditorBackgroundPrivacy(PDO $pdo, int $designId): array
+{
+    $query = $pdo->prepare('SELECT lado, classificacao, titular_id FROM design_fundos_privacidade WHERE design_id = :design');
+    $query->execute(['design' => $designId]);
+    $result = [];
+    foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $result[(string) $row['lado']] = ['classificacao' => (string) $row['classificacao'], 'titular_id' => $row['titular_id'] === null ? null : (int) $row['titular_id']];
+    }
+    return $result;
+}
+
+/** @param array<string,string> $backgrounds @param array<string,mixed> $input */
+function designEditorSaveBackgroundPrivacy(PDO $pdo, int $tenantId, int $designId, array $backgrounds, array $input): void
+{
+    foreach (['frente', 'verso'] as $side) {
+        $classification = $input['fundo_' . $side . '_classificacao'] ?? '';
+        $holderId = filter_var($input['fundo_' . $side . '_titular_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $key = $backgrounds[$side] ?? '';
+        $exists = $pdo->prepare('SELECT id FROM design_fundos_privacidade WHERE design_id = :design AND lado = :side LIMIT 1');
+        $exists->execute(['design' => $designId, 'side' => $side]);
+        $rowId = $exists->fetchColumn();
+        if ($key === '' && $rowId === false) continue;
+        if (!is_string($classification) || !in_array($classification, ['decorativo', 'titular'], true)) {
+            throw new DomainException('design_background_classification_invalid');
+        }
+        if ($classification === 'titular') {
+            if ($holderId === false) throw new DomainException('design_background_holder_required');
+            $holder = $pdo->prepare('SELECT id FROM titulares WHERE id = :id AND tenant_id = :tenant LIMIT 1');
+            $holder->execute(['id' => $holderId, 'tenant' => $tenantId]);
+            if ($holder->fetchColumn() === false) throw new DomainException('design_background_holder_invalid');
+        } else {
+            $holderId = null;
+        }
+        $now = gmdate('Y-m-d H:i:s');
+        if ($rowId === false) {
+            $insert = $pdo->prepare(
+                'INSERT INTO design_fundos_privacidade (tenant_id, design_id, lado, classificacao, titular_id, asset_url, criado_em, atualizado_em) '
+                . 'VALUES (:tenant, :design, :side, :classification, :holder, :asset, :created, :updated)'
+            );
+            $insert->execute(['tenant' => $tenantId, 'design' => $designId, 'side' => $side, 'classification' => $classification,
+                'holder' => $holderId, 'asset' => $key === '' ? null : $key, 'created' => $now, 'updated' => $now]);
+            $rowId = (int) $pdo->lastInsertId();
+        } else {
+            $update = $pdo->prepare(
+                'UPDATE design_fundos_privacidade SET classificacao = :classification, titular_id = :holder, '
+                . 'asset_url = COALESCE(:asset, asset_url), atualizado_em = :updated WHERE id = :id AND tenant_id = :tenant'
+            );
+            $update->execute(['classification' => $classification, 'holder' => $holderId, 'asset' => $key === '' ? null : $key,
+                'updated' => $now, 'id' => $rowId, 'tenant' => $tenantId]);
+        }
+        $pdo->prepare("DELETE FROM privacy_subject_records WHERE tipo_registro = 'design_fundo' AND registro_id = :id")
+            ->execute(['id' => $rowId]);
+        $subject = $classification === 'titular'
+            ? privacySubjectEnsureTitular($pdo, (int) $holderId, $tenantId)
+            : privacySubjectEnsureForRecord($pdo, 'tenant_contato', $tenantId, $tenantId);
+        privacySubjectLinkRecord($pdo, (int) $subject['id'], 'design_fundo', (int) $rowId);
+    }
+}
 
 /** @return list<array<string,mixed>> */
 function designEditorList(PDO $pdo, int $tenantId): array

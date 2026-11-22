@@ -13,7 +13,7 @@ $titularHttpDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-tit
 mkdir($titularHttpDirectory, 0700, true);
 $titularHttpDatabase = $titularHttpDirectory . DIRECTORY_SEPARATOR . 'titular.sqlite';
 $titularHttpPreviousEnvironment = [];
-foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'TENANT_BASE_DOMAIN', 'PLATFORM_HOSTNAME', 'IEPR_PRIVATE_STORAGE_PATH'] as $key) {
+foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'TENANT_BASE_DOMAIN', 'PLATFORM_HOSTNAME', 'IEPR_PRIVATE_STORAGE_PATH', 'IEPR_INTEGRATION_KEY', 'IEPR_ANONYMIZATION_KEY'] as $key) {
     $value = getenv($key);
     $titularHttpPreviousEnvironment[$key] = $value === false ? null : $value;
 }
@@ -23,6 +23,8 @@ putenv('DB_SQLITE_PATH=' . $titularHttpDatabase);
 putenv('TENANT_BASE_DOMAIN=ieprcard.test');
 putenv('PLATFORM_HOSTNAME=admin.ieprcard.test');
 putenv('IEPR_PRIVATE_STORAGE_PATH=' . $titularHttpDirectory . DIRECTORY_SEPARATOR . 'private');
+putenv('IEPR_INTEGRATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
 
 $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);
 schemaGarantirEstrutura($titularHttpPdo, 'test');
@@ -398,7 +400,7 @@ try {
         || !str_contains((string) $titularHttpBody, 'Importado HTTP')
         || str_contains((string) $titularHttpBody, 'private://')
         || str_contains((string) $titularHttpBody, $titularHttpDirectory . DIRECTORY_SEPARATOR . 'private')) {
-        throw new RuntimeException('The staged import must reopen a bounded preview without exposing private storage details.');
+        throw new RuntimeException('The staged import must reopen a bounded preview without exposing private storage details: ' . (string) $titularHttpBody);
     }
 
     $titularHttpConfirm = http_build_query([
@@ -488,21 +490,10 @@ try {
         throw new RuntimeException('A forged foreign unit filter must be rejected.');
     }
 
-    $titularHttpPhotoZipPath = $titularHttpDirectory . DIRECTORY_SEPARATOR . 'fotos.zip';
-    $titularHttpPhotoZip = new ZipArchive();
-    if ($titularHttpPhotoZip->open($titularHttpPhotoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        throw new RuntimeException('Could not create the optional photo ZIP fixture.');
-    }
-    $titularHttpPhotoZip->addFromString('unused.txt', 'staging cleanup fixture');
-    $titularHttpPhotoZip->close();
     [$titularHttpStatus] = titularHttpMultipartRequest(
         $titularHttpUrl,
         ['action' => 'stage_import', 'csrf_token' => $titularHttpCsrf],
-        [
-            'arquivo' => ['name' => 'cancelar.csv', 'type' => 'text/csv', 'contents' => "nome;matricula\nNaoImportar;N-200\n"],
-            'fotos_zip' => ['name' => 'fotos.zip', 'type' => 'application/zip',
-                'contents' => (string) file_get_contents($titularHttpPhotoZipPath)],
-        ],
+        ['arquivo' => ['name' => 'cancelar.csv', 'type' => 'text/csv', 'contents' => "nome;matricula\nNaoImportar;N-200\n"]],
         'IEPRCARDTENANT=' . $titularHttpSessionId,
         $titularHttpHost
     );
@@ -525,8 +516,14 @@ try {
         $titularHttpFixture['tenant_id'],
         (string) $titularHttpPendingRow['arquivo_original_url']
     );
-    if (!is_string($titularHttpPendingPath) || !is_file($titularHttpPendingPath) || !is_file($titularHttpPendingPhotoPath)) {
-        throw new RuntimeException('Pending source and optional photo ZIP must remain in private storage.');
+    $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);
+    $titularHttpEncryptedPhoto = $titularHttpPdo->prepare('SELECT COUNT(*) FROM importacao_linhas_staging WHERE lote_id = :lot AND foto_cifrada IS NOT NULL');
+    $titularHttpEncryptedPhoto->execute(['lot' => $titularHttpPendingId]);
+    $titularHttpEncryptedPhotoCount = (int) $titularHttpEncryptedPhoto->fetchColumn();
+    unset($titularHttpEncryptedPhoto, $titularHttpPdo);
+    if (!is_string($titularHttpPendingPath) || is_file($titularHttpPendingPath) || is_file($titularHttpPendingPhotoPath)
+        || $titularHttpEncryptedPhotoCount !== 0) {
+        throw new RuntimeException('Pending source files must be removed after each row is encrypted.');
     }
     $titularHttpInvalidMapping = http_build_query([
         'action' => 'confirm_import',

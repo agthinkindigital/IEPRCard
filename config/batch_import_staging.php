@@ -6,6 +6,67 @@ require_once __DIR__ . '/batch_import_parser.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/batch_import_photo_archive.php';
 require_once __DIR__ . '/operational_batch_metrics.php';
+require_once __DIR__ . '/ai_global_config.php';
+require_once __DIR__ . '/privacy_subjects.php';
+require_once __DIR__ . '/titular_privacy_keys.php';
+
+/** @param array<string,mixed> $payload */
+function batchImportStagingSealPayload(array $payload): string
+{
+    return aiGlobalConfigSeal(json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+}
+
+/** @return array<string,mixed> */
+function batchImportStagingOpenPayload(string $ciphertext): array
+{
+    try {
+        $payload = json_decode(aiGlobalConfigOpen($ciphertext), true, 512, JSON_THROW_ON_ERROR);
+    } catch (Throwable $exception) {
+        throw new DomainException('IMPORT_STAGING_DATA_UNAVAILABLE', 0, $exception);
+    }
+    if (!is_array($payload)) throw new DomainException('IMPORT_STAGING_DATA_UNAVAILABLE');
+    return $payload;
+}
+
+/** @return list<array{staging_id:int,subject_id:int,row:array<string,string|null>,photo:?array{extension:string,bytes:string}}> */
+function batchImportStagingReadRows(PDO $pdo, int $tenantId, int $lotId): array
+{
+    $query = $pdo->prepare('SELECT id, privacy_subject_id, dados_cifrados, foto_cifrada, foto_extensao FROM importacao_linhas_staging WHERE tenant_id = :tenant AND lote_id = :lot ORDER BY indice_linha');
+    $query->execute(['tenant' => $tenantId, 'lot' => $lotId]);
+    $rows = [];
+    foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $stored) {
+        $payload = batchImportStagingOpenPayload((string) $stored['dados_cifrados']);
+        $row = $payload['row'] ?? null;
+        if (!is_array($row)) throw new DomainException('IMPORT_STAGING_DATA_UNAVAILABLE');
+        $photo = null;
+        if (is_string($stored['foto_cifrada'] ?? null) && $stored['foto_cifrada'] !== '') {
+            $photoBytes = base64_decode(aiGlobalConfigOpen($stored['foto_cifrada']), true);
+            $extension = $stored['foto_extensao'] ?? null;
+            if (!is_string($photoBytes) || !is_string($extension) || !in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                throw new DomainException('IMPORT_STAGING_DATA_UNAVAILABLE');
+            }
+            $photo = ['extension' => $extension, 'bytes' => $photoBytes];
+        }
+        $rows[] = ['staging_id' => (int) $stored['id'], 'subject_id' => (int) $stored['privacy_subject_id'], 'row' => $row, 'photo' => $photo];
+    }
+    return $rows;
+}
+
+function batchImportStagingEraseRows(PDO $pdo, int $tenantId, int $lotId): void
+{
+    $query = $pdo->prepare('SELECT id, privacy_subject_id FROM importacao_linhas_staging WHERE tenant_id = :tenant AND lote_id = :lot ORDER BY id');
+    $query->execute(['tenant' => $tenantId, 'lot' => $lotId]);
+    foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $subjectId = (int) $row['privacy_subject_id'];
+        privacySubjectEraseBackupKey($pdo, $subjectId);
+        $pdo->prepare("DELETE FROM privacy_subject_records WHERE tipo_registro = 'import_row' AND registro_id = :id")
+            ->execute(['id' => $row['id']]);
+        $pdo->prepare("UPDATE privacy_subjects SET estado = 'anonimizado', anonimizado_em = :at WHERE id = :id")
+            ->execute(['at' => gmdate('Y-m-d H:i:s'), 'id' => $subjectId]);
+    }
+    $pdo->prepare('DELETE FROM importacao_linhas_staging WHERE tenant_id = :tenant AND lote_id = :lot')
+        ->execute(['tenant' => $tenantId, 'lot' => $lotId]);
+}
 
 /** @param array<string, mixed> $identity @param array<string, mixed> $upload
  *  @return array{lote_id:int,columns:list<string>,preview:list<array<string,string|null>>,errors:list<array{linha:int,campo:string,codigo:string}>,total_rows:int}
@@ -106,10 +167,7 @@ function batchImportStageFile(
     }
     $root = batchImportStagingPrivateRoot();
     $tenantDirectory = $root . DIRECTORY_SEPARATOR . (string) $tenantId;
-    if (is_link($tenantDirectory)) {
-        throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
-    }
-    if (!is_dir($tenantDirectory) && !mkdir($tenantDirectory, 0700, true) && !is_dir($tenantDirectory)) {
+    if (is_link($tenantDirectory) || !is_dir($tenantDirectory) && !mkdir($tenantDirectory, 0700, true) && !is_dir($tenantDirectory)) {
         throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
     }
     @chmod($tenantDirectory, 0700);
@@ -117,41 +175,10 @@ function batchImportStageFile(
     if (!is_string($realTenantDirectory) || !batchImportStagingPathWithin($realTenantDirectory, $root)) {
         throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
     }
-    if (DIRECTORY_SEPARATOR === '/' && ((fileperms($realTenantDirectory) ?: 0) & 0077) !== 0) {
-        throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
-    }
+    $photoMatches = $photoArchivePath === null ? [] : batchImportPhotoArchiveReadMatches($photoArchivePath, $parsed['rows']);
     $token = bin2hex(random_bytes(24));
     $key = $tenantId . '/' . $token . '.' . $extension;
-    $destination = $realTenantDirectory . DIRECTORY_SEPARATOR . basename($key);
-    if (!copy($temporaryPath, $destination)) {
-        @unlink($destination);
-        throw new RuntimeException('IMPORT_STAGE_FAILED');
-    }
-    @chmod($destination, 0600);
-    if (DIRECTORY_SEPARATOR === '/' && ((fileperms($destination) ?: 0) & 0077) !== 0) {
-        @unlink($destination);
-        throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
-    }
     $storedSourceKey = 'private://' . $key;
-    $photoDestination = null;
-    if ($photoArchivePath !== null) {
-        try {
-            $photoDestination = batchImportPhotoArchiveResolvePath($tenantId, $storedSourceKey);
-            if (!copy($photoArchivePath, $photoDestination)) {
-                throw new RuntimeException('IMPORT_STAGE_FAILED');
-            }
-            @chmod($photoDestination, 0600);
-            if (DIRECTORY_SEPARATOR === '/' && ((fileperms($photoDestination) ?: 0) & 0077) !== 0) {
-                throw new RuntimeException('IMPORT_STORAGE_UNAVAILABLE');
-            }
-        } catch (Throwable $exception) {
-            @unlink($destination);
-            if (is_string($photoDestination)) {
-                @unlink($photoDestination);
-            }
-            throw $exception;
-        }
-    }
 
     $ownsTransaction = !$pdo->inTransaction();
     try {
@@ -178,6 +205,21 @@ function batchImportStageFile(
         if ($lotId < 1) {
             throw new RuntimeException('IMPORT_STAGE_FAILED');
         }
+        $insertRow = $pdo->prepare(
+            'INSERT INTO importacao_linhas_staging (tenant_id, lote_id, indice_linha, privacy_subject_id, dados_cifrados, foto_cifrada, foto_extensao, criado_em) '
+            . 'VALUES (:tenant, :lot, :index, :subject, :payload, :photo, :extension, :created)'
+        );
+        $createdAt = gmdate('Y-m-d H:i:s', $now ?? time());
+        foreach ($parsed['rows'] as $index => $row) {
+            $subject = privacySubjectCreate($pdo, 'pessoa', $tenantId, $createdAt);
+            $insertRow->execute([
+                'tenant' => $tenantId, 'lot' => $lotId, 'index' => $index + 1,
+                'subject' => $subject['id'], 'payload' => batchImportStagingSealPayload(['row' => $row]),
+                'photo' => isset($photoMatches[$index]) ? aiGlobalConfigSeal(base64_encode($photoMatches[$index]['bytes'])) : null,
+                'extension' => $photoMatches[$index]['extension'] ?? null, 'created' => $createdAt,
+            ]);
+            privacySubjectLinkRecord($pdo, (int) $subject['id'], 'import_row', (int) $pdo->lastInsertId());
+        }
         operationalBatchMetricsRecord($pdo, [
             'demand' => $parsed['total_rows'],
             'processed' => 0,
@@ -191,10 +233,6 @@ function batchImportStageFile(
     } catch (Throwable) {
         if ($ownsTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
-        }
-        @unlink($destination);
-        if (is_string($photoDestination)) {
-            @unlink($photoDestination);
         }
         throw new RuntimeException('IMPORT_STAGE_FAILED');
     }
@@ -236,6 +274,7 @@ function batchImportStagingCancel(
     if (!in_array($lot['status_lote'], ['aguardando_mapa', 'na_fila'], true)) {
         throw new DomainException('IMPORT_LOT_NOT_CANCELLABLE');
     }
+    batchImportStagingEraseRows($pdo, $tenantId, $loteId);
     $update = $pdo->prepare(
         "UPDATE lotes_importacao SET status_lote = 'cancelado', finalizado_em = :finished "
         . 'WHERE id = :id AND status_lote IN (\'aguardando_mapa\', \'na_fila\')'
@@ -283,6 +322,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
                 $update->execute(['finished' => gmdate('Y-m-d H:i:s', $now), 'id' => $id]);
                 $pdo->commit();
                 ++$expired;
+                batchImportStagingEraseRows($pdo, (int) $lot['tenant_id'], $id);
                 batchImportStagingDeleteStoredFile((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
                 batchImportPhotoArchiveDeleteForSource((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
                 $clear = $pdo->prepare(
@@ -307,6 +347,7 @@ function batchImportStagingCleanupExpired(PDO $pdo, int $now, int $limit = 100):
     );
     $terminal->execute(['cutoff' => $cutoff]);
     foreach ($terminal->fetchAll(PDO::FETCH_ASSOC) as $lot) {
+        batchImportStagingEraseRows($pdo, (int) $lot['tenant_id'], (int) $lot['id']);
         batchImportStagingDeleteStoredFile((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
         batchImportPhotoArchiveDeleteForSource((int) $lot['tenant_id'], (string) $lot['arquivo_original_url']);
         $clear = $pdo->prepare('UPDATE lotes_importacao SET arquivo_original_url = NULL WHERE id = :id');

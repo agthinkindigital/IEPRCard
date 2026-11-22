@@ -14,12 +14,12 @@ O mockup [`titulares-importacao-mockup.svg`](../mockups/titulares-importacao-moc
 
 ## Importação em lote
 
-### Proposta de privacidade — aguardando aprovação
+### Staging protegido — aprovado em 2026-11-22
 
 - Ao extrair o arquivo, cada linha e suas fotos correspondentes formam um sujeito provisório separado. Todos os valores da linha, inclusive colunas ainda não mapeadas, permanecem cifrados individualmente durante a revisão.
 - CPF ou matrícula associa as fotos ZIP à linha. Linha ou foto sem associação, ambígua ou duplicada bloqueia a confirmação; não há importação parcial.
 - Depois da extração, o arquivo original e o ZIP são removidos. O staging por linha continua disponível para revisar o mapeamento; confirmar vincula cada sujeito provisório ao titular criado, cancelar ou expirar remove suas chaves e arquivos. A expiração continua em 24 horas.
-- A interface mostra a contagem de linhas protegidas e pendências, sem exibir referências de privacidade nem dados pessoais em estado técnico.
+- A interface mostra a contagem de linhas protegidas e pendências, sem exibir referências de privacidade nem dados pessoais em estado técnico. O fluxo operacional está no [guia de importação](../../docs/userguide/titulares-importacao.md).
 
 - Aceitar CSV, XLS, XLSX ou JSON, até 10 MB e 500 registros. O ZIP de fotos é opcional; requer arquivos no nível raiz com nome-base correspondente ao CPF ou matrícula, em JPG, JPEG, PNG ou WebP. Cada arquivo precisa corresponder a um registro sem ambiguidade.
 - Exibir o escopo de destino de forma clara. O escopo vem da sessão e autorização; não aceitar identificadores de tenant/unidade definidos livremente pelo navegador.

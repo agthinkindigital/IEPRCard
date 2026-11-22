@@ -140,31 +140,15 @@ function batchImportStagingLer(PDO $pdo, TenantContext $context, array $identity
         return $base;
     }
 
-    $sourceKey = $lot['arquivo_original_url'] ?? null;
-    if (!is_string($sourceKey) || $sourceKey === '') {
-        $base['status'] = 'arquivo_indisponivel';
-        $base['erros'] = [['codigo' => 'IMPORT_SOURCE_UNAVAILABLE']];
-        return $base;
-    }
     try {
-        $path = batchImportStagingResolveStoredPath((int) $lot['tenant_id'], $sourceKey);
-        if (!is_string($path) || !is_file($path)) {
+        $stagedRows = batchImportStagingReadRows($pdo, (int) $lot['tenant_id'], (int) $lot['id']);
+        if ($stagedRows === [] || count($stagedRows) !== (int) $lot['total_registros']) {
             $base['status'] = 'arquivo_indisponivel';
-            $base['erros'] = [['codigo' => 'IMPORT_SOURCE_UNAVAILABLE']];
+            $base['erros'] = [['codigo' => 'IMPORT_STAGING_UNAVAILABLE']];
             return $base;
         }
-        $parsed = batchImportParse($path);
-        $base['colunas'] = $parsed['columns'];
-        $base['amostra'] = array_slice($parsed['preview'], 0, 10);
-        $base['erros'] = array_map(
-            static fn (array $error): array => [
-                'linha' => (int) $error['linha'],
-                'campo' => (string) $error['campo'],
-                'codigo' => (string) $error['codigo'],
-            ],
-            $parsed['errors']
-        );
-        $base['total_registros'] = $parsed['total_rows'];
+        $base['amostra'] = array_slice(array_map(static fn(array $staged): array => $staged['row'], $stagedRows), 0, 10);
+        $base['erros'] = [];
     } catch (Throwable) {
         $base['status'] = 'arquivo_indisponivel';
         $base['erros'] = [['codigo' => 'IMPORT_SOURCE_UNAVAILABLE']];

@@ -181,6 +181,6 @@ function privacySubjectRecordTypeAllowed(string $recordType): bool
 {
     return in_array($recordType, [
         'titular', 'usuario', 'tenant_contato', 'whatsapp_contato', 'whatsapp_conversa',
-        'mensagem_whatsapp', 'acesso_suporte', 'mcp_api_key', 'carteirinha_emitida', 'campo_privado',
+        'mensagem_whatsapp', 'acesso_suporte', 'mcp_api_key', 'carteirinha_emitida', 'design_fundo', 'import_row', 'campo_privado',
     ], true);
 }

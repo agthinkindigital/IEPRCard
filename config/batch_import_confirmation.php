@@ -23,6 +23,7 @@ function batchImportConfirm(
     $createdCount = 0;
     $sourceKey = null;
     $photoStoredKeys = [];
+    $stagingRows = [];
     try {
         tenantQuotaRunLocked($pdo, $tenantId, function () use (
             $pdo,
@@ -35,7 +36,8 @@ function batchImportConfirm(
             $now,
             &$createdCount,
             &$sourceKey,
-            &$photoStoredKeys
+            &$photoStoredKeys,
+            &$stagingRows
         ): void {
             $lockClause = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) === 'mysql'
                 ? ' FOR UPDATE'
@@ -58,21 +60,18 @@ function batchImportConfirm(
             if ($sourceKey === null || $sourceKey === '') {
                 throw new DomainException('IMPORT_FILE_INVALID');
             }
-
-            $path = batchImportStagingResolveStoredPath($tenantId, $sourceKey);
-            if (!is_string($path) || !is_file($path)) {
-                throw new DomainException('IMPORT_FILE_INVALID');
-            }
-            try {
-                $parsed = batchImportParse($path);
-            } catch (DomainException $exception) {
-                throw new DomainException('IMPORT_FILE_INVALID', 0, $exception);
-            }
+            $stagingRows = batchImportStagingReadRows($pdo, $tenantId, $loteId);
+            $detectedColumns = json_decode((string) $lot['colunas_detectadas_json'], true);
+            $parsed = [
+                'columns' => is_array($detectedColumns) ? $detectedColumns : [],
+                'rows' => array_map(static fn(array $staged): array => $staged['row'], $stagingRows),
+                'errors' => [],
+                'total_rows' => count($stagingRows),
+            ];
             if ($parsed['errors'] !== [] || $parsed['total_rows'] < 1
                 || $parsed['total_rows'] !== (int) $lot['total_registros']) {
                 throw new DomainException('IMPORT_FILE_INVALID');
             }
-            $detectedColumns = json_decode((string) $lot['colunas_detectadas_json'], true);
             if (!is_array($detectedColumns) || !array_is_list($detectedColumns)
                 || $detectedColumns !== $parsed['columns']) {
                 throw new DomainException('IMPORT_FILE_INVALID');
@@ -95,10 +94,10 @@ function batchImportConfirm(
                 }
                 $records[] = $record;
             }
-            $photoArchivePath = batchImportPhotoArchiveResolvePath($tenantId, $sourceKey);
-            $photoMatches = is_file($photoArchivePath)
-                ? batchImportPhotoArchiveReadMatches($photoArchivePath, $records)
-                : [];
+            $photoMatches = [];
+            foreach ($stagingRows as $rowIndex => $stagedRow) {
+                if (is_array($stagedRow['photo'])) $photoMatches[$rowIndex] = $stagedRow['photo'];
+            }
 
             motorPermissoesCacheLimpar($pdo);
             if (!titularCreateCanManage($pdo, $context, $identity, $tenantId, $subclienteId)) {
@@ -109,6 +108,14 @@ function batchImportConfirm(
 
             foreach ($records as $recordIndex => $record) {
                 $titularId = titularCreateInsert($pdo, $identity, $tenantId, $subclienteId, $record);
+                $unmapped = array_diff_key($parsed['rows'][$recordIndex], array_fill_keys(array_keys($normalizedMapping), true));
+                if ($unmapped !== []) {
+                    $extras = $pdo->prepare('UPDATE titulares SET dados_extras_json = :extras WHERE id = :id AND tenant_id = :tenant');
+                    $extras->execute([
+                        'extras' => json_encode($unmapped, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        'id' => $titularId, 'tenant' => $tenantId,
+                    ]);
+                }
                 $origin = $pdo->prepare(
                     'UPDATE titulares SET lote_origem_id = :lot WHERE id = :id AND tenant_id = :tenant '
                     . 'AND ((subcliente_id = :subclient_match) OR (subcliente_id IS NULL AND :subclient_null IS NULL))'
@@ -145,6 +152,15 @@ function batchImportConfirm(
                         throw new RuntimeException('TITULAR_CREATE_FAILED');
                     }
                 }
+                $stagedRow = $stagingRows[$recordIndex] ?? null;
+                if (!is_array($stagedRow) || (int) ($stagedRow['staging_id'] ?? 0) < 1) {
+                    throw new RuntimeException('IMPORT_STAGING_DATA_UNAVAILABLE');
+                }
+                privacySubjectMergeRecordInto($pdo, 'import_row', (int) $stagedRow['staging_id'], 'titular', $titularId);
+                $pdo->prepare("DELETE FROM privacy_subject_records WHERE tipo_registro = 'import_row' AND registro_id = :id")
+                    ->execute(['id' => $stagedRow['staging_id']]);
+                $pdo->prepare('DELETE FROM importacao_linhas_staging WHERE id = :id AND lote_id = :lot')
+                    ->execute(['id' => $stagedRow['staging_id'], 'lot' => $loteId]);
             }
 
             $mappingJson = json_encode($normalizedMapping, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);

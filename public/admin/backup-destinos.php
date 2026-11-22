@@ -25,6 +25,7 @@ if ($method === 'POST') {
                 'path_style' => backupDestinationPostString($_POST, 'path_style') === '1',
                 'access_key' => backupDestinationPostString($_POST, 'access_key'),
                 'secret_key' => backupDestinationPostString($_POST, 'secret_key'),
+                'retention_days' => backupDestinationPostString($_POST, 'retention_days'),
             ]);
             $_SESSION['backup_destination_notice'] = 'Destino salvo. Ele permanece inativo até passar no teste e ser ativado.';
             session_write_close();
@@ -115,6 +116,28 @@ function backupDestinationPageDate(?string $value): string
     return $timestamp === false ? 'Data indisponível' : date('d/m/Y · H:i', $timestamp);
 }
 
+function backupDestinationPageAge(?string $value): string
+{
+    if ($value === null || $value === '') return 'Nenhum snapshot concluído';
+    $timestamp = strtotime($value . ' UTC');
+    if ($timestamp === false) return 'Data indisponível';
+    $minutes = max(0, (int) floor((time() - $timestamp) / 60));
+    if ($minutes < 1) return 'há menos de 1 minuto';
+    if ($minutes < 60) return 'há ' . $minutes . ' minuto' . ($minutes === 1 ? '' : 's');
+    $hours = (int) floor($minutes / 60);
+    if ($hours < 24) return 'há ' . $hours . ' hora' . ($hours === 1 ? '' : 's');
+    $days = (int) floor($hours / 24);
+    return 'há ' . $days . ' dia' . ($days === 1 ? '' : 's');
+}
+
+function backupDestinationPageSnapshotState(array $destination): string
+{
+    if ($destination['pending_snapshot']) return 'Snapshot pendente; o worker tentará concluir o mesmo envio.';
+    if ($destination['last_error_code'] !== null) return 'Último envio falhou; o worker tentará novamente.';
+    if ($destination['last_success_at'] === null) return 'Ainda não há snapshot concluído.';
+    return 'Último snapshot concluído ' . backupDestinationPageAge($destination['last_success_at']) . '.';
+}
+
 function backupDestinationSafeTestFailure(string $code): string
 {
     return match ($code) {
@@ -170,11 +193,11 @@ function backupDestinationSafeDomainMessage(string $code): string
     <div class="page-heading"><div><h1>Destinos externos</h1><p>Cadastre destinos S3 compatíveis e valide o acesso antes de usá-los.</p></div><a class="primary-button add-button" href="/admin/backup-destinos.php?new=1">Adicionar destino</a></div>
     <?php if ($notice !== ''): ?><p class="notice" role="status"><?= backupDestinationPageEscape($notice) ?></p><?php endif; ?>
     <p class="visually-hidden" id="operation-status" aria-live="polite"></p>
-    <section class="warning-banner" aria-label="Limites da configuração"><span class="warning-icon" aria-hidden="true">!</span><div><strong>Configuração e teste de conexão</strong><p>O teste confirma acesso ao bucket e purga permanente do objeto temporário; não significa que um backup foi executado.</p><p>Snapshots, restauração e agendamento serão liberados em uma etapa própria.</p></div></section>
+    <section class="warning-banner" aria-label="Operação de backup"><span class="warning-icon" aria-hidden="true">!</span><div><strong>Agendamento pelo cron do servidor</strong><p>Configure <code>php cron.php --once</code> para executar pelo menos a cada 15 minutos. O painel mostra o último resultado registrado por destino.</p><p>Um estado pendente é repetido com o mesmo identificador para evitar duplicação.</p></div></section>
     <section class="summary-grid" aria-label="Resumo dos destinos">
         <article class="panel summary-card"><span>Destinos cadastrados</span><strong><?= count($destinations) ?></strong></article>
         <article class="panel summary-card"><span>Conexões verificadas</span><strong><?= $verifiedCount ?> de <?= count($destinations) ?></strong></article>
-        <article class="panel summary-card"><span>Backups executados nesta tela</span><strong>Nenhum</strong></article>
+        <article class="panel summary-card"><span>Snapshots ativos</span><strong><?= count(array_filter($destinations, static fn(array $destination): bool => $destination['enabled'])) ?></strong></article>
     </section>
     <section class="panel destination-panel" id="destinations" aria-labelledby="destinations-title">
         <div class="section-heading"><div><h2 id="destinations-title">Destinos cadastrados</h2><p>O teste usa um objeto temporário e comprova a purga permanente ao terminar.</p></div></div>
@@ -185,7 +208,9 @@ function backupDestinationSafeDomainMessage(string $code): string
                 <div class="destination-main"><div><h3><?= backupDestinationPageEscape($destination['name']) ?></h3><p><?= backupDestinationPageEscape(strtoupper($destination['provider'])) ?> compatível · <?= $destination['enabled'] ? 'ativo' : 'inativo' ?></p></div>
                     <span class="status-chip <?= $destination['test_status'] === 'success' ? 'good' : ($destination['test_status'] === 'failed' ? 'bad' : '') ?>"><?= $destination['test_status'] === 'success' ? 'Conexão ok' : ($destination['test_status'] === 'failed' ? 'Falha no teste' : 'Não testada') ?></span></div>
                 <dl><div><dt>Bucket / endpoint</dt><dd><?= backupDestinationPageEscape($destination['bucket']) ?><small><?= backupDestinationPageEscape($destination['endpoint'] ?? 'Endpoint padrão S3') ?></small></dd></div>
-                    <div><dt>Último teste</dt><dd><?= backupDestinationPageEscape(backupDestinationPageDate($destination['test_status'] === null && $destination['last_success_at'] !== null ? $destination['last_success_at'] : $destination['tested_at'])) ?><small><?= $destination['test_status'] === 'success' ? 'Último teste bem-sucedido' : ($destination['test_status'] === 'failed' ? 'O destino permanece inativo após falha' : ($destination['last_success_at'] !== null ? 'Configuração alterada; teste novo necessário' : 'Ainda sem teste')) ?></small></dd></div></dl>
+                    <div><dt>Último teste</dt><dd><?= backupDestinationPageEscape(backupDestinationPageDate($destination['tested_at'])) ?><small><?= $destination['test_status'] === 'success' ? 'Último teste bem-sucedido' : ($destination['test_status'] === 'failed' ? 'O destino permanece inativo após falha' : 'Ainda sem teste') ?></small></dd></div>
+                    <div><dt>Último snapshot</dt><dd><?= backupDestinationPageEscape(backupDestinationPageAge($destination['last_success_at'])) ?><small><?= backupDestinationPageEscape(backupDestinationPageSnapshotState($destination)) ?></small></dd></div>
+                    <div><dt>Retenção de snapshots</dt><dd><?= (int) $destination['retention_days'] ?> dias<small><?= $destination['retention_error_code'] !== null ? 'Falha na última purga' : ($destination['last_retention_at'] === null ? 'Purga ainda não executada' : backupDestinationPageDate($destination['last_retention_at'])) ?> · <?= (int) $destination['retention_removed_count'] ?> snapshots removidos na última execução</small></dd></div></dl>
                 <?php if ($destination['privacy_keys_present']): ?><p class="locked-notice" role="note">Este destino mantém envelopes de chaves de titulares. Alteração do armazenamento ou remoção fica bloqueada enquanto houver dependências.</p><?php endif; ?>
                 <div class="destination-actions">
                     <form method="post" data-pending-message="Testando conexão e purga permanente…"><input type="hidden" name="csrf_token" value="<?= backupDestinationPageEscape($csrfToken) ?>"><input type="hidden" name="action" value="test"><input type="hidden" name="destination_id" value="<?= (int) $destination['id'] ?>"><button class="secondary-button" type="submit">Testar</button></form>
@@ -208,6 +233,7 @@ function backupDestinationSafeDomainMessage(string $code): string
             <label>Tipo de serviço<select disabled aria-label="Tipo de serviço"><option>Amazon S3 / endpoint compatível</option></select><small>Outros serviços precisam oferecer API S3 validada.</small></label>
             <label>Bucket<input name="bucket" required maxlength="255" value="<?= backupDestinationPageEscape($formDestination['bucket']) ?>" placeholder="iepr-backups"></label>
             <label>Região<input name="region" required maxlength="100" value="<?= backupDestinationPageEscape($formDestination['region']) ?>" placeholder="us-east-1"></label>
+            <label>Retenção de snapshots (dias)<input name="retention_days" type="number" min="1" max="3650" required value="<?= (int) ($formDestination['retention_days'] ?? 30) ?>"><small>Padrão: 30 dias · intervalo permitido: 1 a 3650.</small></label>
             <label class="wide">Endpoint personalizado<input name="endpoint" maxlength="2048" value="<?= backupDestinationPageEscape($formDestination['endpoint'] ?? '') ?>" placeholder="https://... · vazio para endpoint padrão da AWS"></label>
             <label class="path-style"><input type="checkbox" name="path_style" value="1" <?= $formDestination['path_style'] ? 'checked' : '' ?>> Usar endpoint por caminho <small>Necessário para vários serviços compatíveis.</small></label>
             <label>Access key<input name="access_key" type="password" maxlength="256" autocomplete="new-password" placeholder="Deixe vazio para manter a chave atual"></label>
@@ -217,7 +243,7 @@ function backupDestinationSafeDomainMessage(string $code): string
         </form>
     </section>
     <?php endif; ?>
-    <aside class="info-banner" id="help"><span aria-hidden="true">i</span><div><strong>Este painel configura destinos; não executa backups.</strong><p>Não exiba status de snapshot, restore ou cron até essas etapas serem implementadas.</p></div></aside>
+    <aside class="info-banner" id="help"><span aria-hidden="true">i</span><div><strong>O teste de conexão e os snapshots têm estados separados.</strong><p>O horário depende da configuração do cron no servidor. Falhas de retenção e snapshot são resumidas sem expor credenciais ou respostas do provedor.</p></div></aside>
 </main>
 </body>
 </html>

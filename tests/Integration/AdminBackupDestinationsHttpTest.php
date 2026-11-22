@@ -36,8 +36,14 @@ $saved = backupDestinationSave($pdo, $identity, [
     'name' => 'Synthetic destination', 'bucket' => 'synthetic-backups', 'region' => 'us-east-1',
     'endpoint' => '', 'path_style' => false, 'access_key' => 'synthetic-access', 'secret_key' => 'synthetic-secret',
 ]);
-$pdo->prepare("UPDATE destinos_backup SET ultimo_teste_status = 'success' WHERE id = :id")
-    ->execute(['id' => $saved['id']]);
+$pdo->prepare(
+    "UPDATE destinos_backup SET ultimo_teste_status = 'success', ultimo_sucesso_em = :success, "
+    . 'retencao_ultima_execucao_em = :retention, retencao_itens_removidos = 3 WHERE id = :id'
+)->execute([
+    'success' => gmdate('Y-m-d H:i:s', time() - 300),
+    'retention' => gmdate('Y-m-d H:i:s', time() - 600),
+    'id' => $saved['id'],
+]);
 $protected = backupDestinationSave($pdo, $identity, [
     'name' => 'Protected destination', 'bucket' => 'protected-backups', 'region' => 'us-east-1',
     'endpoint' => '', 'path_style' => false, 'access_key' => 'protected-access', 'secret_key' => 'protected-secret',
@@ -98,6 +104,8 @@ try {
     [$status, $page] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'GET', null, $cookie);
     if ($status !== 200 || !str_contains((string) $page, 'Destinos externos')
         || !str_contains((string) $page, 'Protected destination') || !str_contains((string) $page, 'envelopes de chaves')
+        || !str_contains((string) $page, 'Retenção de snapshots') || !str_contains((string) $page, '3 snapshots removidos')
+        || !str_contains((string) $page, 'Último snapshot') || !str_contains((string) $page, 'há 5 minutos')
         || str_contains((string) $page, 'synthetic-secret') || str_contains((string) $page, 'protected-secret')
         || str_contains((string) $page, 'credentials_cifradas')) {
         throw new RuntimeException('Admin page must render safe destination status without credentials.');
@@ -117,15 +125,17 @@ try {
     $newForm = http_build_query([
         'csrf_token' => $csrf, 'action' => 'save', 'destination_id' => '0', 'name' => 'Created through HTTP',
         'bucket' => 'created-backups', 'region' => 'us-east-1', 'endpoint' => '', 'path_style' => '0',
-        'access_key' => 'http-synthetic-access', 'secret_key' => 'http-synthetic-secret',
+        'access_key' => 'http-synthetic-access', 'secret_key' => 'http-synthetic-secret', 'retention_days' => '45',
     ]);
     [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'POST', $newForm, $cookie);
     if ($status !== 303) throw new RuntimeException('Superadmin must be able to create an encrypted destination.');
     $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
     $createdId = (int) $pdo->query("SELECT id FROM destinos_backup WHERE nome = 'Created through HTTP'")->fetchColumn();
-    $ciphertext = (string) $pdo->query('SELECT credentials_cifradas FROM destinos_backup WHERE id = ' . $createdId)->fetchColumn();
-    if ($createdId < 1 || $ciphertext === 'http-synthetic-secret' || $ciphertext === '') {
-        throw new RuntimeException('Destination secrets must be encrypted in storage.');
+    $created = $pdo->query('SELECT credentials_cifradas, retencao_dias FROM destinos_backup WHERE id = ' . $createdId)->fetch(PDO::FETCH_ASSOC);
+    $ciphertext = is_array($created) ? (string) $created['credentials_cifradas'] : '';
+    if ($createdId < 1 || $ciphertext === 'http-synthetic-secret' || $ciphertext === ''
+        || !is_array($created) || (int) $created['retencao_dias'] !== 45) {
+        throw new RuntimeException('Destination secrets must be encrypted and configured retention must persist.');
     }
     $pdo->exec("UPDATE destinos_backup SET ultimo_teste_status = 'success' WHERE id = " . $createdId);
     unset($pdo);
@@ -138,7 +148,7 @@ try {
     $updateForm = http_build_query([
         'csrf_token' => $csrf, 'action' => 'save', 'destination_id' => (string) $createdId, 'name' => 'Renamed destination',
         'bucket' => 'created-backups', 'region' => 'us-east-1', 'endpoint' => '', 'path_style' => '0',
-        'access_key' => '', 'secret_key' => '',
+        'access_key' => '', 'secret_key' => '', 'retention_days' => '45',
     ]);
     [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'POST', $updateForm, $cookie);
     $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);

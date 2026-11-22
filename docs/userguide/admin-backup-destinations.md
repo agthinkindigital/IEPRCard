@@ -31,6 +31,6 @@ Os erros exibidos são resumidos e não incluem credenciais nem respostas brutas
 
 O fluxo e o mockup correspondente foram aprovados em 2026-11-22. A implementação depende da conclusão da [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e segue o contrato de recuperação do [ADR-0012](../adr/0012-ci-deploy-e-backup.md).
 
-## Retenção por destino — proposta aguardando aprovação
+## Retenção por destino
 
-A retenção é de 30 dias por padrão e pode ser definida entre 1 e 3650 dias para cada destino. O cron remove snapshots vencidos, inclusive todas as versões S3 e delete markers, e registra horário e falha da execução. A proposta de expor esses controles, o retry pendente e seus estados nesta tela aguarda aprovação do mantenedor; o backend já aplica o prazo armazenado para cada destino. Envelopes de chaves ativos e tombstones/ledger não são removidos por essa rotina.
+A retenção é de 30 dias por padrão e pode ser definida entre 1 e 3650 dias para cada destino. Configure o cron do servidor para executar `php cron.php --once` pelo menos a cada 15 minutos. A tela separa o estado do teste de conexão do último snapshot, da fila pendente e da última execução de purga. O contador mostra quantos snapshots foram removidos na última execução, por destino. A purga remove snapshots vencidos e versões S3; envelopes de chaves ativos e tombstones/ledger ficam fora dessa rotina.

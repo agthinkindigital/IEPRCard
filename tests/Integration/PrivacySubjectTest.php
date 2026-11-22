@@ -193,6 +193,18 @@ try {
     $pdo->prepare('UPDATE titulares SET foto_url = :url WHERE id = :id')->execute([
         'url' => $artifactKey, 'id' => $legacyHolderId,
     ]);
+    $pdo->prepare('UPDATE designs_carteirinha SET bg_frente_url = :url WHERE id = :id')->execute([
+        'url' => $artifactKey, 'id' => $designId,
+    ]);
+    $pdo->prepare(
+        "INSERT INTO design_fundos_privacidade (tenant_id, design_id, lado, classificacao, titular_id, asset_url, criado_em, atualizado_em) "
+        . "VALUES (:tenant, :design, 'frente', 'titular', :holder, :asset, :created, :updated)"
+    )->execute([
+        'tenant' => $tenantId, 'design' => $designId, 'holder' => $legacyHolderId, 'asset' => $artifactKey,
+        'created' => '2026-11-22 11:55:00', 'updated' => '2026-11-22 11:55:00',
+    ]);
+    $designBackgroundId = (int) $pdo->lastInsertId();
+    privacySubjectLinkRecord($pdo, (int) $holderPrivacySubject['id'], 'design_fundo', $designBackgroundId);
     $pdo->prepare(
         'INSERT INTO auditoria_processos (tenant_id, ator_usuario_id, ator_tipo, acao, entidade_id, antes_json, criado_em) '
         . 'VALUES (:tenant, :actor, :actor_type, :action, :entity_id, :before, :created)'
@@ -352,6 +364,14 @@ try {
         || base64_decode((string) ($artifact['contents_base64'] ?? ''), true) !== $artifactBytes
         || str_contains((string) ($snapshot['tables']['titulares'][0]['foto_url'] ?? ''), $artifactName)) {
         throw new RuntimeException('Private artifact bytes must be encrypted inside the linked subject envelope, without retaining storage paths.');
+    }
+    $designArtifactRecord = array_values(array_filter($holderEnvelope['records'] ?? [], static fn(array $record): bool => ($record['table'] ?? null) === 'design_fundos_privacidade'))[0] ?? null;
+    $designArtifact = is_array($designArtifactRecord) ? ($designArtifactRecord['artifacts'][0] ?? null) : null;
+    $designRows = array_values(array_filter($snapshot['tables']['designs_carteirinha'], static fn(array $row): bool => (int) ($row['id'] ?? 0) === $designId));
+    if (!is_array($designArtifact) || ($designArtifact['field'] ?? null) !== 'asset_url'
+        || base64_decode((string) ($designArtifact['contents_base64'] ?? ''), true) !== $artifactBytes
+        || ($designRows[0]['bg_frente_url'] ?? null) !== null) {
+        throw new RuntimeException('Titular-linked design backgrounds must live only in the titular envelope and lose the live storage path in snapshots.');
     }
 
     $subject = privacySubjectCreate($pdo, 'pessoa', $tenantId, '2026-11-22 12:00:00');

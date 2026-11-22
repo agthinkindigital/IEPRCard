@@ -100,7 +100,7 @@ $expectedMvpTables = [
     'reservas_cota', 'mcp_api_keys', 'mcp_audit_logs', 'configuracoes_operacionais',
     'metricas_lotes_diarias', 'solicitacoes_anonimizacao', 'destinos_backup', 'configuracoes_instalacao',
     'whatsapp_config_global', 'whatsapp_instancias', 'webhook_gowa_eventos', 'titular_chaves_backup', 'whatsapp_conversas',
-    'privacy_subjects', 'privacy_subject_records',
+    'privacy_subjects', 'privacy_subject_records', 'design_fundos_privacidade', 'importacao_linhas_staging',
 ];
 $schemaPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
 schemaGarantirEstrutura($schemaPdo, 'test');
@@ -147,7 +147,7 @@ $migrationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory
 $firstMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $secondMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $migrationDrift = schemaInspecionar($migrationPdo);
-if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile', '0017_privacy_subjects', '0018_privacy_subject_requests', '0019_backup_snapshot_retention', '0020_backup_snapshot_resume', '0021_privacy_tenant_subject_backfill'] || $secondMigrationRun !== $firstMigrationRun
+if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile', '0017_privacy_subjects', '0018_privacy_subject_requests', '0019_backup_snapshot_retention', '0020_backup_snapshot_resume', '0021_privacy_tenant_subject_backfill', '0022_backup_snapshot_retention_count', '0023_design_background_privacy', '0024_import_row_staging'] || $secondMigrationRun !== $firstMigrationRun
     || array_filter($migrationDrift) !== []) {
     throw new RuntimeException('Versioned migrations must apply explicitly, be repeatable, and produce the canonical SQLite schema: ' . json_encode([$firstMigrationRun, $secondMigrationRun, $migrationDrift]));
 }
@@ -158,7 +158,7 @@ $productionPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memor
 $productionDrift = schemaGarantirEstrutura($productionPdo, 'production');
 $productionTables = $productionPdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")->fetchAll(PDO::FETCH_COLUMN);
 
-if ($productionTables !== [] || count($productionDrift['missing_tables'] ?? []) !== 37) {
+if ($productionTables !== [] || count($productionDrift['missing_tables'] ?? []) !== count($expectedMvpTables)) {
     throw new RuntimeException('Production drift checks must report missing tables without executing DDL.');
 }
 

@@ -129,8 +129,9 @@ function backupDestinationReadAll(PDO $pdo, array $identity): array
 {
     backupDestinationAssertSuperadmin($pdo, $identity);
     $rows = $pdo->query(
-        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, retencao_dias, retencao_ultima_execucao_em, '
+        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, retencao_dias, retencao_ultima_execucao_em, retencao_itens_removidos, '
         . 'retencao_erro_codigo, ativo, ultimo_teste_status, ultimo_teste_em, ultimo_sucesso_em, ultimo_erro_codigo, atualizado_em, '
+        . 'snapshot_pendente_id, snapshot_pendente_em, '
         . 'EXISTS (SELECT 1 FROM titular_chaves_backup k WHERE k.destino_id = destinos_backup.id) AS privacy_keys_present '
         . 'FROM destinos_backup ORDER BY id'
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -144,8 +145,9 @@ function backupDestinationReadOne(PDO $pdo, array $identity, int $id): array
 {
     backupDestinationAssertSuperadmin($pdo, $identity);
     $statement = $pdo->prepare(
-        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, retencao_dias, retencao_ultima_execucao_em, '
+        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, retencao_dias, retencao_ultima_execucao_em, retencao_itens_removidos, '
         . 'retencao_erro_codigo, ativo, ultimo_teste_status, ultimo_teste_em, ultimo_sucesso_em, ultimo_erro_codigo, atualizado_em, '
+        . 'snapshot_pendente_id, snapshot_pendente_em, '
         . 'EXISTS (SELECT 1 FROM titular_chaves_backup k WHERE k.destino_id = destinos_backup.id) AS privacy_keys_present '
         . 'FROM destinos_backup WHERE id = :id'
     );

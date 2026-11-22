@@ -194,6 +194,7 @@ try {
     [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpMultipartRequest($designEditorHttpUrl, $designEditorHttpCookie, $designEditorHttpHost, [
         'csrf_token' => $designEditorHttpCsrf, 'nome_layout' => 'Rascunho validado',
         'mapa_campos_json' => $designEditorHttpDefaults, 'mapeamento_fixo_json' => $designEditorHttpMapping,
+        'fundo_frente_classificacao' => 'decorativo',
     ], ['fundo_frente' => ['name' => 'card.png', 'mime' => 'image/png', 'bytes' => $designEditorHttpBackgroundBytes]]);
     if ($designEditorHttpStatus !== 303) throw new RuntimeException('Valid design draft should save and redirect; received HTTP ' . $designEditorHttpStatus . '.');
     $designEditorHttpCheck = dbConnect($designEditorHttpConfiguration);
@@ -212,6 +213,13 @@ try {
         || (int) $designEditorHttpAsset['ativo'] !== 0) {
         throw new RuntimeException('Backgrounds must be MIME-validated, private, tenant-keyed and saved with inactive drafts.');
     }
+    $designEditorHttpPrivacy = $designEditorHttpCheck->prepare('SELECT classificacao, titular_id, asset_url FROM design_fundos_privacidade WHERE design_id = :design AND lado = :side');
+    $designEditorHttpPrivacy->execute(['design' => $designEditorHttpDraftId, 'side' => 'frente']);
+    $designEditorHttpPrivacyRow = $designEditorHttpPrivacy->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($designEditorHttpPrivacyRow) || $designEditorHttpPrivacyRow['classificacao'] !== 'decorativo'
+        || $designEditorHttpPrivacyRow['titular_id'] !== null || $designEditorHttpPrivacyRow['asset_url'] !== $designEditorHttpAsset['bg_frente_url']) {
+        throw new RuntimeException('Each design background must retain its privacy classification and subject-linked private asset reference.');
+    }
     [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpRequest(
         $designEditorHttpUrl . '?id=' . $designEditorHttpDraftId . '&asset=frente',
         $designEditorHttpCookie,
@@ -225,6 +233,7 @@ try {
         'csrf_token' => $designEditorHttpCsrf, 'design_id' => $designEditorHttpDraftId,
         'nome_layout' => 'Rascunho validado', 'mapa_campos_json' => $designEditorHttpDefaults,
         'mapeamento_fixo_json' => $designEditorHttpMapping,
+        'fundo_frente_classificacao' => 'decorativo',
     ]));
     if ($designEditorHttpStatus !== 303) throw new RuntimeException('An unchanged inactive design should remain safely editable.');
     $designEditorHttpPendingJobDb = dbConnect($designEditorHttpConfiguration);

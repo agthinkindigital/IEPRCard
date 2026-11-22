@@ -10,6 +10,11 @@ require_once dirname(__DIR__, 2) . '/config/titular_provisioning.php';
 require_once dirname(__DIR__, 2) . '/config/batch_import_parser.php';
 require_once dirname(__DIR__, 2) . '/config/batch_import_staging.php';
 
+$previousIntegrationKey = getenv('IEPR_INTEGRATION_KEY');
+$previousAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
+putenv('IEPR_INTEGRATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+
 foreach (tenantTestConnections() as $driver => $pdo) {
     schemaAplicarMigracoes($pdo, 'test');
     $suffix = bin2hex(random_bytes(5));
@@ -56,14 +61,18 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             || str_contains((string) $lot['colunas_detectadas_json'], 'Ana Import')
             || json_decode((string) $lot['colunas_detectadas_json'], true) !== ['nome_completo', 'whatsapp']
             || (int) $lot['total_registros'] !== 1 || $lot['status_lote'] !== 'aguardando_mapa'
-            || !is_string($storedFile) || !is_file($storedFile)) {
-            throw new RuntimeException($driver . ': staging must persist only scoped metadata and a private opaque file key.');
+            || !is_string($storedFile) || is_file($storedFile)) {
+            throw new RuntimeException($driver . ': staging must persist scoped metadata and no uploaded source file.');
         }
-        $outsidePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'outside.csv';
-        $backupPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'staged-backup.csv';
-        batchImportStagingTestAssertNoSymlinkFollowed(
-            $fixture['tenant_id'], (string) $lot['arquivo_original_url'], (string) $storedFile, $outsidePath, $backupPath, $driver
-        );
+        $stagedRowQuery = $pdo->prepare('SELECT dados_cifrados, privacy_subject_id FROM importacao_linhas_staging WHERE lote_id = :lot');
+        $stagedRowQuery->execute(['lot' => $lotId]);
+        $stagedRow = $stagedRowQuery->fetch(PDO::FETCH_ASSOC);
+        $stagedPayload = is_array($stagedRow) ? batchImportStagingOpenPayload((string) $stagedRow['dados_cifrados']) : [];
+        $stagedSubject = is_array($stagedRow) ? privacySubjectFindForRecord($pdo, 'import_row', (int) $pdo->query('SELECT id FROM importacao_linhas_staging WHERE lote_id = ' . $lotId)->fetchColumn()) : null;
+        if (!is_array($stagedRow) || str_contains((string) $stagedRow['dados_cifrados'], 'Ana Import')
+            || ($stagedPayload['row']['nome_completo'] ?? null) !== 'Ana Import' || !is_array($stagedSubject)) {
+            throw new RuntimeException($driver . ': every staged row must be encrypted and linked to its provisional privacy subject.');
+        }
         batchImportStagingAssertFailure(
             static fn() => batchImportStageUploadedFile(
                 $pdo, $context, $identity, $fixture['tenant_id'], null,
@@ -105,8 +114,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'IMPORT_JSON_INVALID'
         );
         $fileCount = glob($storagePath . DIRECTORY_SEPARATOR . $fixture['tenant_id'] . DIRECTORY_SEPARATOR . '*') ?: [];
-        if (count($fileCount) !== 1) {
-            throw new RuntimeException($driver . ': fatal parser errors must remove the staged source file.');
+        if (count($fileCount) !== 0) {
+            throw new RuntimeException($driver . ': parser errors must leave no private upload copies.');
         }
         $configuredStoragePath = getenv('IEPR_PRIVATE_STORAGE_PATH');
         putenv('IEPR_PRIVATE_STORAGE_PATH=' . dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public');
@@ -137,8 +146,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo->exec("DROP TRIGGER {$trigger}");
         }
         $remainingFiles = glob($storagePath . DIRECTORY_SEPARATOR . $fixture['tenant_id'] . DIRECTORY_SEPARATOR . '*') ?: [];
-        if (count($remainingFiles) !== 1) {
-            throw new RuntimeException($driver . ': a failed lot insert must remove its staged file.');
+        if (count($remainingFiles) !== 0) {
+            throw new RuntimeException($driver . ': failed staging must leave no private upload copies.');
         }
 
         $jsonPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'php-json-upload-' . $suffix . '.tmp';
@@ -170,8 +179,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             : null;
         if ($xlsStaged['preview'][0]['title'] !== 'The Hobbit' || !is_array($xlsLot)
             || $xlsLot['origem_tipo'] !== 'xls' || !is_string($xlsStoredPath)
-            || pathinfo($xlsStoredPath, PATHINFO_EXTENSION) !== 'xls' || !is_file($xlsStoredPath)) {
-            throw new RuntimeException($driver . ': XLS uploads must be staged privately with an opaque XLS source key.');
+            || pathinfo($xlsStoredPath, PATHINFO_EXTENSION) !== 'xls' || is_file($xlsStoredPath)) {
+            throw new RuntimeException($driver . ': XLS uploads must be parsed without retaining the uploaded source.');
         }
         batchImportStagingCancel(
             $pdo, $context, $identity, $fixture['tenant_id'], null, $xlsStaged['lote_id']
@@ -201,27 +210,21 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             ),
             'IMPORT_LOT_NOT_FOUND'
         );
-        if (!is_file((string) $storedFile)) {
-            throw new RuntimeException($driver . ': a cross-scope cancel request must not remove a source file.');
+        if ((int) $pdo->query('SELECT COUNT(*) FROM importacao_linhas_staging WHERE lote_id = ' . $lotId)->fetchColumn() !== 1) {
+            throw new RuntimeException($driver . ': a cross-scope cancel request must not erase staged rows.');
         }
         batchImportStagingCancel($pdo, $context, $identity, $fixture['tenant_id'], null, $lotId);
         $lotQuery = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
         $lotQuery->execute(['id' => $lotId]);
-        if ($lotQuery->fetchColumn() !== 'cancelado' || is_file((string) $storedFile)) {
-            throw new RuntimeException($driver . ': cancellation must be scoped and remove the private source.');
+        if ($lotQuery->fetchColumn() !== 'cancelado'
+            || (int) $pdo->query('SELECT COUNT(*) FROM importacao_linhas_staging WHERE lote_id = ' . $lotId)->fetchColumn() !== 0) {
+            throw new RuntimeException($driver . ': cancellation must erase the per-row encrypted staging data.');
         }
 
         $expiredPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired.xls';
         if (!copy(dirname(__DIR__) . '/fixtures/simplexls-books.xls', $expiredPath)) {
             throw new RuntimeException($driver . ': could not copy expiring XLS staging fixture.');
         }
-        $expiredPhotoZipPath = $uploadDirectory . DIRECTORY_SEPARATOR . 'expired-photos.zip';
-        $expiredPhotoZip = new ZipArchive();
-        if ($expiredPhotoZip->open($expiredPhotoZipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Could not create the expiring photo archive fixture.');
-        }
-        $expiredPhotoZip->addFromString('unused.txt', 'cleanup only');
-        $expiredPhotoZip->close();
         $expired = batchImportStageFile(
             $pdo,
             $context,
@@ -230,8 +233,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             null,
             $expiredPath,
             basename($expiredPath),
-            1_700_000_000,
-            $expiredPhotoZipPath
+            1_700_000_000
         );
         $createdLotIds[] = $expired['lote_id'];
         $expiredQuery = $pdo->prepare('SELECT arquivo_original_url FROM lotes_importacao WHERE id = :id');
@@ -239,9 +241,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $expiredSourceKey = (string) $expiredQuery->fetchColumn();
         $expiredFile = batchImportStagingResolveStoredPath($fixture['tenant_id'], $expiredSourceKey);
         $expiredPhotoFile = batchImportPhotoArchiveResolvePath($fixture['tenant_id'], $expiredSourceKey);
-        if (!is_file($expiredPhotoFile)) {
-            throw new RuntimeException($driver . ': an attached photo ZIP must stay private in staging until expiry.');
-        }
+        if (is_file($expiredPhotoFile)) throw new RuntimeException($driver . ': photo archives must not be retained after extraction.');
         $activePath = $uploadDirectory . DIRECTORY_SEPARATOR . 'active.csv';
         file_put_contents($activePath, "nome\nActive Import\n");
         $active = batchImportStageFile(
@@ -266,10 +266,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         );
         $cleanupAt = 1_700_000_000 + 86400;
         if (batchImportStagingCleanupExpired($pdo, $cleanupAt - 1) !== 0
-            || !is_string($expiredFile) || !is_file($expiredFile)
+            || !is_string($expiredFile) || is_file($expiredFile)
             || batchImportStagingCleanupExpired($pdo, $cleanupAt) !== 1
             || !is_string($expiredFile) || is_file($expiredFile) || is_file($expiredPhotoFile)
-            || !is_string($activeFile) || !is_file($activeFile)) {
+            || !is_string($activeFile) || is_file($activeFile)) {
             throw new RuntimeException($driver . ': cleanup must expire stale pending lots and leave processing lots intact.');
         }
         $expiredStatus = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id');
@@ -299,12 +299,20 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdo->prepare('DELETE FROM plano_feature_flags WHERE plano_id = :plan')->execute(['plan' => $planId]);
             $pdo->prepare('DELETE FROM planos WHERE id = :plan')->execute(['plan' => $planId]);
         }
+        foreach ($createdLotIds as $cleanupLotId) {
+            batchImportStagingEraseRows($pdo, (int) ($fixture['tenant_id'] ?? 0), $cleanupLotId);
+        }
         batchImportStagingTestRemoveTree($storagePath);
         batchImportStagingTestRemoveTree($uploadDirectory);
         $previousStoragePath === false
             ? putenv('IEPR_PRIVATE_STORAGE_PATH')
             : putenv('IEPR_PRIVATE_STORAGE_PATH=' . $previousStoragePath);
+        $previousAnonymizationKey === false
+            ? putenv('IEPR_ANONYMIZATION_KEY')
+            : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
     }
 }
+
+$previousIntegrationKey === false ? putenv('IEPR_INTEGRATION_KEY') : putenv('IEPR_INTEGRATION_KEY=' . $previousIntegrationKey);
 
 return 'pass';
