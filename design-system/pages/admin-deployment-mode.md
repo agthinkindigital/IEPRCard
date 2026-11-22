@@ -18,4 +18,4 @@ O mockup [`admin-deployment-mode-mockup.svg`](../mockups/admin-deployment-mode-m
 
 O perfil não concede acesso por si só. Hospedado mantém o host validado cruzado com a sessão; Local Host limita a instalação à Sede configurada e deriva o escopo do usuário autenticado. Host Local só é aceito com conexão loopback; URLs locais não ficam acessíveis pela internet. Nenhum `tenant_id` enviado por query, formulário ou cabeçalho vira autorização. Em viewport estreita, cartões e campos ficam em coluna única sem rolagem horizontal. Controles usam rótulos persistentes, foco visível e texto junto aos estados.
 
-O mockup e esta especificação são uma proposta e aguardam aprovação explícita antes da Issue de interface ou implementação.
+Mockup e guia funcional aprovados pelo mantenedor em 2026-11-22. A Issue [#87](https://github.com/agthinkindigital/IEPRCard/issues/87) implementa a interface após o backend [#86](https://github.com/agthinkindigital/IEPRCard/issues/86).

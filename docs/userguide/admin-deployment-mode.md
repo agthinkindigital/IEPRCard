@@ -24,4 +24,4 @@ Trocar o perfil não move nem apaga dados. No modo local, somente a Sede selecio
 - Acesso sem perfil: somente o setup necessário ao superadmin fica disponível.
 - Conta sem papel de superadmin, sessão expirada ou CSRF inválido: alteração negada.
 
-O mockup correspondente ainda aguarda aprovação explícita. O perfil Local Host não substitui a comprovação de DNS/TLS necessária para validar o modo Hospedado.
+Mockup e guia foram aprovados em 2026-11-22. A implementação está dividida no GitHub entre o serviço/roteamento [#86](https://github.com/agthinkindigital/IEPRCard/issues/86) e a tela superadmin [#87](https://github.com/agthinkindigital/IEPRCard/issues/87). O perfil Local Host não substitui a comprovação de DNS/TLS necessária para validar o modo Hospedado.
