@@ -35,4 +35,4 @@ O mockup está em [`whatsapp-ia-mockup.svg`](../mockups/whatsapp-ia-mockup.svg) 
 
 ## Gate
 
-Este mockup e o guia funcional aguardam aprovação explícita. Nenhuma tela ou configuração será implementada antes dessa aprovação. O contrato definitivo de armazenamento cifrado das credenciais e a chave da instalação devem permanecer fora da interface pública e dos logs.
+Mockup e guia funcional aprovados pelo mantenedor em 2026-11-22. A tela de configuração está fatiada na [#83](https://github.com/agthinkindigital/IEPRCard/issues/83); o fluxo backend de conversa e consentimento está na [#81](https://github.com/agthinkindigital/IEPRCard/issues/81). O contrato de armazenamento cifrado das credenciais e a chave da instalação permanecem definidos em [ADR-0008](../../docs/adr/0008-webhooks-idempotentes-e-segredos.md), fora da interface pública e dos logs.

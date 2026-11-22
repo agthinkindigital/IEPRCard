@@ -627,7 +627,7 @@ O alvo arquitetural usa eventos de domínio e outbox transacional, com efeitos e
 
 ### 6.2. Webhooks: critérios para integrações aprovadas e referência financeira futura
 
-- MVP: autenticar e deduplicar cada webhook implementado. Para o GOWA VIP de referência, que não assina o POST, ADR-0008 define bearer token aleatório por instância com hash, rotação e idempotência por mensagem. Atualmente não há webhook de WhatsApp ativo no código.
+- MVP: autenticar e deduplicar cada webhook implementado. Para o GOWA VIP de referência, que não assina o POST, ADR-0008 define bearer token aleatório por instância com hash, rotação e idempotência por mensagem. A borda `/webhook-gowa.php`, o callback `/webhook-gowa-validate.php` e o provisionamento foram concluídos na [#78](https://github.com/agthinkindigital/IEPRCard/issues/78); a aplicação ainda aguarda o consumidor consentido da [#81](https://github.com/agthinkindigital/IEPRCard/issues/81). A configuração administrativa aprovada está fatiada na [#83](https://github.com/agthinkindigital/IEPRCard/issues/83). A redação do bearer em access logs reais é gate operacional da [#51](https://github.com/agthinkindigital/IEPRCard/issues/51).
 - Fase financeira futura: validar Asaas com token via `hash_equals()` e Mercado Pago com HMAC conforme contrato vigente; não provisionar nem integrar esses webhooks no MVP. Ver ADR-0008.
 - Idempotência por identificador do provedor e armazenamento persistente apropriado para cada integração ativa.
 - Resposta `2xx` rápida: processamento pesado vai para outbox, evitando timeout do provedor.
