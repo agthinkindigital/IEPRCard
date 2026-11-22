@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1900" viewBox="0 0 1440 1900" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2040" viewBox="0 0 1440 2040" role="img" aria-labelledby="title description">
   <title id="title">Titulares: consulta, cadastro e importação</title>
-  <desc id="description">Duas telas administrativas: lista com cadastro individual aberto e importação de arquivo com mapeamento e prévia de dados fictícios.</desc>
+  <desc id="description">Proposta para consulta, cadastro individual e importação com staging cifrado por linha, vínculos de titular e prévia fictícia.</desc>
   <defs>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
     <style>
@@ -108,9 +108,9 @@
 
   <!-- Import wizard -->
   <text x="40" y="928" font-size="13" font-weight="700" fill="#475569">2 · IMPORTAÇÃO EM LOTE — ARQUIVO REVISADO E COLUNAS MAPEADAS</text>
-  <rect x="24" y="948" width="1392" height="920" rx="12" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
-  <rect x="24" y="948" width="220" height="920" rx="12" fill="#FFFFFF"/>
-  <path d="M244 948v920" class="line"/>
+  <rect x="24" y="948" width="1392" height="1050" rx="12" fill="#FFFFFF" stroke="#DCE3EC" filter="url(#shadow)"/>
+  <rect x="24" y="948" width="220" height="1050" rx="12" fill="#FFFFFF"/>
+  <path d="M244 948v1050" class="line"/>
   <rect x="44" y="970" width="34" height="34" rx="8" fill="#1D4ED8"/>
   <path d="M52 987h18M61 978v18" stroke="#FFFFFF" stroke-width="2.5"/>
   <text x="88" y="986" font-size="16" font-weight="700" fill="#0F172A">IEPRCard</text>
@@ -130,12 +130,15 @@
   <g>
     <circle cx="300" cy="1120" r="15" fill="#166534"/><text x="300" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">1</text>
     <text x="326" y="1125" class="small" font-weight="700" fill="#166534">Arquivo</text>
-    <path d="M390 1120h78" stroke="#166534" stroke-width="2"/>
-    <circle cx="488" cy="1120" r="15" fill="#1D4ED8"/><text x="488" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
-    <text x="514" y="1125" class="small" font-weight="700" fill="#1D4ED8">Mapeamento</text>
-    <path d="M615 1120h80" class="line" stroke-width="2"/>
-    <circle cx="715" cy="1120" r="15" fill="#E2E8F0"/><text x="715" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">3</text>
-    <text x="741" y="1125" class="small muted">Confirmar</text>
+    <path d="M390 1120h105" stroke="#166534" stroke-width="2"/>
+    <circle cx="515" cy="1120" r="15" fill="#1D4ED8"/><text x="515" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
+    <text x="541" y="1125" class="small" font-weight="700" fill="#1D4ED8">Mapeamento</text>
+    <path d="M642 1120h130" class="line" stroke-width="2"/>
+    <circle cx="792" cy="1120" r="15" fill="#E2E8F0"/><text x="792" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">3</text>
+    <text x="818" y="1125" class="small muted">Vínculos</text>
+    <path d="M886 1120h165" class="line" stroke-width="2"/>
+    <circle cx="1071" cy="1120" r="15" fill="#E2E8F0"/><text x="1071" y="1125" text-anchor="middle" font-size="12" font-weight="700" fill="#475569">4</text>
+    <text x="1097" y="1125" class="small muted">Confirmar</text>
   </g>
 
   <rect x="276" y="1152" width="1110" height="74" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
@@ -169,14 +172,18 @@
     <text x="748" y="1498" class="small" fill="#0F172A">Nome completo *</text><text x="748" y="1548" class="small" fill="#0F172A">CPF</text>
     <text x="748" y="1598" class="small" fill="#0F172A">Matrícula</text><text x="748" y="1648" class="small" fill="#0F172A">WhatsApp</text>
   </g>
-  <rect x="276" y="1680" width="1110" height="96" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
-  <text x="296" y="1712" class="body" font-weight="700" fill="#0F172A">Prévia: 4 de 248 registros</text>
-  <text x="296" y="1736" class="small muted">Os exemplos abaixo são fictícios. A confirmação valida o lote inteiro; não há importação parcial.</text>
-  <text x="296" y="1762" class="small" fill="#475569">Ana Costa · ***.***.**-42 · M-1042</text>
-  <text x="720" y="1762" class="small" fill="#475569">Bruno Lima · ***.***.**-08 · M-1080</text>
-  <rect x="1000" y="1800" width="148" height="42" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
-  <text x="1074" y="1826" text-anchor="middle" class="small" font-weight="600" fill="#0F172A">Cancelar lote</text>
-  <rect x="1160" y="1800" width="226" height="42" rx="7" fill="#1D4ED8"/>
-  <text x="1273" y="1826" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Revisar e confirmar</text>
-  <text x="276" y="1847" class="small" fill="#92400E">Após confirmar, os registros são criados juntos. Se houver erro ou limite insuficiente, nenhum é importado.</text>
+  <rect x="276" y="1680" width="1110" height="112" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="296" y="1707" class="body" font-weight="700" fill="#1E3A8A">Vínculo e proteção por linha</text>
+  <text x="296" y="1732" class="small" fill="#1E40AF">248 linhas · 248 sujeitos provisórios · 0 pendências · fotos associadas pela linha correspondente</text>
+  <text x="296" y="1754" class="small muted">Cada linha e suas fotos ficam cifradas separadamente até confirmar, cancelar ou expirar o lote.</text>
+  <text x="296" y="1776" class="small muted">Arquivo original e ZIP são removidos após extração; valores de todas as colunas permanecem no staging cifrado.</text>
+
+  <rect x="276" y="1804" width="1110" height="82" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <text x="296" y="1832" class="body" font-weight="700" fill="#0F172A">Prévia fictícia: 4 de 248 registros</text>
+  <text x="296" y="1857" class="small muted">A confirmação valida o lote inteiro; erro, ambiguidade ou cota insuficiente rejeita todos os registros.</text>
+  <rect x="1000" y="1902" width="148" height="42" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="1074" y="1928" text-anchor="middle" class="small" font-weight="600" fill="#0F172A">Cancelar lote</text>
+  <rect x="1160" y="1902" width="226" height="42" rx="7" fill="#1D4ED8"/>
+  <text x="1273" y="1928" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Revisar vínculos</text>
+  <text x="276" y="1968" class="small" fill="#92400E">Proposta para aprovação · estágio por linha e vínculo ao titular ainda não implementados.</text>
 </svg>

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1060" viewBox="0 0 1680 1060" role="img" aria-labelledby="title description">
   <title id="title">Editor de designs de carteirinha do IEPRCard</title>
-  <desc id="description">Mockup responsivo do editor de layouts, com lista de campos, tela de arte em frente e verso, propriedades acessíveis por teclado e barra de salvamento fixa no celular.</desc>
+  <desc id="description">Proposta responsiva do editor de layouts, com classificação de fundos e uso de campos dinâmicos para dados pessoais.</desc>
   <defs>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
       <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#0F172A" flood-opacity="0.08"/>
@@ -121,13 +121,17 @@
     <text x="475" y="536" font-size="8" fill="#64748B">Prévia ilustrativa com dados fictícios</text>
     <text x="452" y="591" font-size="11" fill="#475569">Arraste para mover ou selecione e ajuste pelos campos ao lado.</text>
     <text x="452" y="613" font-size="10" fill="#64748B">Tab e setas do teclado também podem mover o elemento selecionado.</text>
-    <rect x="452" y="656" width="424" height="102" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
+    <rect x="452" y="656" width="424" height="180" rx="8" fill="#FFFFFF" stroke="#DCE3EC"/>
     <text x="470" y="682" font-size="11" font-weight="700" fill="#0F172A">Fundo da frente</text>
     <rect x="470" y="696" width="286" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
     <text x="484" y="722" font-size="11" fill="#475569">Selecionar imagem de fundo</text>
     <rect x="766" y="696" width="92" height="42" rx="6" fill="#FFFFFF" stroke="#94A3B8"/>
     <text x="812" y="722" text-anchor="middle" font-size="11" font-weight="600" fill="#334155">Remover</text>
-    <text x="470" y="780" font-size="10" fill="#64748B">Use imagens próprias; o preview não carrega dados reais de titulares.</text>
+    <rect x="470" y="754" width="16" height="16" rx="3" fill="#FFFFFF" stroke="#64748B"/>
+    <path d="M473 762l4 4 7-8" fill="none" stroke="#166534" stroke-width="2"/>
+    <text x="494" y="766" font-size="10" font-weight="600" fill="#166534">Arte sem pessoa identificável</text>
+    <text x="470" y="790" font-size="9" fill="#475569">Se houver uma pessoa, vincule ao titular antes de salvar.</text>
+    <text x="470" y="808" font-size="9" fill="#92400E">Imagem com várias pessoas não pode ser usada como fundo.</text>
 
     <!-- Property panel -->
     <rect x="900" y="132" width="300" height="892" fill="#FFFFFF"/>
@@ -173,8 +177,9 @@
     <rect x="922" y="864" width="256" height="52" rx="7" fill="#EFF6FF"/>
     <text x="936" y="886" font-size="10" font-weight="600" fill="#1E40AF">Dica de acessibilidade</text>
     <text x="936" y="902" font-size="10" fill="#1E40AF">A posição também pode ser digitada.</text>
-    <text x="922" y="955" font-size="10" fill="#64748B">Alterações ficam em rascunho até salvar.</text>
-    <text x="922" y="976" font-size="10" fill="#64748B">O preview usa amostra fictícia.</text>
+    <text x="922" y="955" font-size="10" font-weight="600" fill="#1E40AF">Dados pessoais usam campos dinâmicos.</text>
+    <text x="922" y="976" font-size="9" fill="#475569">Texto fixo não deve conter dados pessoais.</text>
+    <text x="922" y="997" font-size="9" fill="#64748B">O preview usa amostra fictícia; salvar cria um rascunho.</text>
 
     <!-- Mobile application frame -->
     <g filter="url(#shadow)">
@@ -221,6 +226,10 @@
     <rect x="1250" y="654" width="350" height="54" rx="8" fill="#EFF6FF"/>
     <text x="1264" y="676" font-size="10" font-weight="700" fill="#1E40AF">Ajuste preciso</text>
     <text x="1264" y="694" font-size="9" fill="#1E40AF">Use os controles X/Y em vez de arrastar.</text>
+    <rect x="1250" y="720" width="350" height="82" rx="8" fill="#FFFBEB" stroke="#FDE68A"/>
+    <text x="1264" y="742" font-size="10" font-weight="700" fill="#92400E">Privacidade do fundo</text>
+    <text x="1264" y="761" font-size="9" fill="#78350F">Marque arte sem pessoas ou vincule uma pessoa</text>
+    <text x="1264" y="777" font-size="9" fill="#78350F">a um titular. Fundos com várias pessoas são bloqueados.</text>
     <rect x="1232" y="815" width="386" height="91" rx="0" fill="#FFFFFF" stroke="#DCE3EC"/>
     <text x="1250" y="839" font-size="9" fill="#64748B">Alterações ficam em rascunho até salvar.</text>
     <rect x="1250" y="851" width="350" height="40" rx="7" fill="#1D4ED8"/>

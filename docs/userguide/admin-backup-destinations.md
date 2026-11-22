@@ -15,7 +15,7 @@ Este painel é restrito ao superadmin e configura destinos externos com API S3, 
 ## Editar, ativar e remover
 
 - Para trocar as chaves, digite as novas. Deixe os campos vazios para conservar as chaves atuais.
-- **Ativo** prepara o destino para ser usado por um worker de backup. Até a rotina de snapshots e o agendamento serem liberados, isso não significa que cópias estejam sendo enviadas.
+- **Ativo** permite ao cron enviar snapshots periódicos para o destino. O horário do último teste mede conexão; consulte o estado de snapshot separadamente.
 - **Testar** comprova conexão e purga permanente de um objeto temporário. A data exibida é do teste, não de um backup.
 - **Remover** pede confirmação com o nome do destino e exclui somente essa configuração.
 
@@ -30,3 +30,7 @@ Os erros exibidos são resumidos e não incluem credenciais nem respostas brutas
 5. A liberação exige revisão humana posterior do resultado. O fluxo não restaura diretamente sobre produção.
 
 O fluxo e o mockup correspondente foram aprovados em 2026-11-22. A implementação depende da conclusão da [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e segue o contrato de recuperação do [ADR-0012](../adr/0012-ci-deploy-e-backup.md).
+
+## Retenção por destino — proposta aguardando aprovação
+
+A retenção é de 30 dias por padrão e pode ser definida entre 1 e 3650 dias para cada destino. O cron remove snapshots vencidos, inclusive todas as versões S3 e delete markers, e registra horário e falha da execução. A proposta de expor esses controles e estados nesta tela aguarda aprovação do mantenedor; o backend já aplica o prazo armazenado para cada destino. Envelopes de chaves ativos e tombstones/ledger não são removidos por essa rotina.

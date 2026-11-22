@@ -25,3 +25,7 @@ As áreas de elementos, fundo e propriedades ficam nas abas **Campos**, **Fundo*
 - Mantenha textos e QR dentro da área segura para evitar corte na impressão.
 - Se sair antes de salvar, a tela avisa que há alterações pendentes e permite voltar ao editor.
 - O preview usa conteúdo fictício. Não use dados reais de titulares para testar o layout.
+
+## Proposta de privacidade em revisão
+
+O mockup e a especificação visual propõem classificar cada fundo como arte sem pessoa identificável ou vinculá-lo a um único titular. Fundos com várias pessoas seriam bloqueados; a foto individual usaria o campo dinâmico de foto. Texto fixo não conteria dados pessoais; dados do titular usariam variáveis dinâmicas. A proposta ainda não está implementada nem aprovada; consulte a [especificação da página](../../design-system/pages/editor-designs.md).

@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2240" viewBox="0 0 1440 2240" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="2320" viewBox="0 0 1440 2320" role="img" aria-labelledby="title description">
   <title id="title">Destinos externos de backup — configuração administrativa</title>
-  <desc id="description">Mockup desktop da lista e formulário de destinos S3, seguido da adaptação mobile. Testes de conexão não são apresentados como backups executados.</desc>
+  <desc id="description">Proposta de extensão do painel desktop e mobile para configurar retenção e acompanhar a purga de snapshots, separando esse estado do teste de conexão.</desc>
   <defs>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
     <style>
@@ -17,7 +17,7 @@
     </style>
   </defs>
   <rect width="1440" height="2240" fill="#F6F8FB"/>
-  <text x="32" y="30" class="label muted">IEPRCARD · MOCKUP ADMINISTRATIVO · DADOS E CREDENCIAIS FICTÍCIOS</text>
+  <text x="32" y="30" class="label muted">IEPRCARD · MOCKUP ADMINISTRATIVO · PROPOSTA DE RETENÇÃO · DADOS FICTÍCIOS</text>
 
   <!-- Lista de destinos desktop -->
   <rect x="24" y="48" width="1392" height="752" rx="14" class="panel" filter="url(#shadow)"/>
@@ -52,8 +52,8 @@
   <circle cx="298" cy="224" r="12" fill="#FEF3C7" stroke="#D97706"/>
   <text x="298" y="229" text-anchor="middle" class="small" font-weight="700" fill="#92400E">!</text>
   <text x="322" y="222" class="small" font-weight="700" fill="#78350F">Configuração e teste de conexão</text>
-  <text x="322" y="246" class="small" fill="#78350F">Um teste confirma acesso ao bucket; não significa que um backup foi executado.</text>
-  <text x="322" y="264" class="tiny" fill="#78350F">Snapshots, restauração e agendamento serão liberados em uma etapa própria.</text>
+  <text x="322" y="246" class="small" fill="#78350F">O teste confirma leitura, escrita, listagem e purga de um objeto temporário.</text>
+  <text x="322" y="264" class="tiny" fill="#78350F">Backup e retenção têm estados próprios; o teste não comprova que um snapshot foi enviado.</text>
 
   <rect x="272" y="296" width="350" height="82" rx="10" class="panel"/>
   <text x="296" y="325" class="small muted">Destinos cadastrados</text>
@@ -62,8 +62,8 @@
   <text x="662" y="325" class="small muted">Conexões verificadas</text>
   <text x="662" y="356" font-size="23" font-weight="700" fill="#166534">1 de 2</text>
   <rect x="1004" y="296" width="380" height="82" rx="10" class="panel"/>
-  <text x="1028" y="325" class="small muted">Backups executados nesta tela</text>
-  <text x="1028" y="356" font-size="23" font-weight="700" fill="#0F172A">Nenhum</text>
+  <text x="1028" y="325" class="small muted">Último snapshot enviado</text>
+  <text x="1028" y="356" font-size="20" font-weight="700" fill="#0F172A">22/11/2026 · 10:45</text>
 
   <rect x="272" y="398" width="1112" height="352" rx="10" class="panel"/>
   <text x="296" y="432" font-size="17" font-weight="700" fill="#0F172A">Destinos cadastrados</text>
@@ -101,7 +101,7 @@
   <text x="296" y="742" class="tiny muted">Estados e datas usam rótulos, além de cores.</text>
 
   <!-- Formulário de destino -->
-  <rect x="24" y="824" width="1392" height="760" rx="14" class="panel" filter="url(#shadow)"/>
+  <rect x="24" y="824" width="1392" height="870" rx="14" class="panel" filter="url(#shadow)"/>
   <rect x="24" y="824" width="1392" height="64" rx="14" fill="#FFFFFF"/>
   <path d="M24 888h1392" class="separator"/>
   <text x="64" y="865" class="label muted">ESTADO DE EDIÇÃO · CÓPIA PRINCIPAL</text>
@@ -138,35 +138,44 @@
   <rect x="720" y="1288" width="620" height="44" rx="7" class="field"/>
   <text x="736" y="1316" class="small muted">Deixe vazio para manter a chave atual</text>
 
-  <rect x="64" y="1360" width="1276" height="76" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
-  <text x="84" y="1389" class="small" font-weight="700" fill="#1E3A8A">Privacidade das credenciais</text>
-  <text x="84" y="1415" class="small" fill="#1E3A8A">Depois de salvar, a tela mostra apenas se estão cadastradas. Para trocar, informe novas chaves; deixe os campos vazios para manter as atuais.</text>
-  <rect x="64" y="1462" width="210" height="44" rx="7" fill="#FFFFFF" stroke="#1D4ED8"/>
-  <text x="169" y="1490" text-anchor="middle" class="small" font-weight="700" fill="#1D4ED8">Testar conexão</text>
-  <rect x="1128" y="1462" width="212" height="44" rx="7" fill="#1D4ED8"/>
-  <text x="1234" y="1490" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Salvar alterações</text>
-  <rect x="64" y="1522" width="1276" height="42" rx="7" fill="#DCFCE7" stroke="#86EFAC"/>
-  <text x="84" y="1548" class="small" font-weight="700" fill="#166534">Último teste bem-sucedido: o objeto temporário foi enviado, lido e removido.</text>
+  <text x="64" y="1360" class="label" fill="#0F172A">RETENÇÃO DE SNAPSHOTS</text>
+  <rect x="64" y="1372" width="280" height="44" rx="7" class="field"/>
+  <text x="80" y="1400" class="small" fill="#0F172A">30 dias</text>
+  <text x="64" y="1437" class="tiny muted">Aceita de 1 a 3650 dias. Envelopes ativos e tombstones são preservados.</text>
+  <rect x="376" y="1372" width="964" height="64" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="396" y="1398" class="small" font-weight="700" fill="#0F172A">Última purga: 22/11/2026 · 11:00</text>
+  <text x="396" y="1421" class="tiny muted">Resultado: 3 snapshots removidos · sem falhas · versões e delete markers excluídos</text>
+
+  <rect x="64" y="1460" width="1276" height="76" rx="8" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="84" y="1489" class="small" font-weight="700" fill="#1E3A8A">Privacidade das credenciais</text>
+  <text x="84" y="1515" class="small" fill="#1E3A8A">Depois de salvar, a tela mostra apenas se estão cadastradas. Para trocar, informe novas chaves; deixe os campos vazios para manter as atuais.</text>
+  <rect x="64" y="1552" width="210" height="44" rx="7" fill="#FFFFFF" stroke="#1D4ED8"/>
+  <text x="169" y="1580" text-anchor="middle" class="small" font-weight="700" fill="#1D4ED8">Testar conexão</text>
+  <rect x="1128" y="1552" width="212" height="44" rx="7" fill="#1D4ED8"/>
+  <text x="1234" y="1580" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Salvar alterações</text>
+  <rect x="64" y="1612" width="1276" height="42" rx="7" fill="#DCFCE7" stroke="#86EFAC"/>
+  <text x="84" y="1638" class="small" font-weight="700" fill="#166534">Último teste bem-sucedido: o objeto temporário foi enviado, listado, lido e removido.</text>
 
   <!-- Adaptação mobile -->
-  <text x="40" y="1638" class="label muted">ADAPTAÇÃO MOBILE · VIEWPORT 390 PX</text>
-  <rect x="40" y="1660" width="390" height="550" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
-  <rect x="58" y="1678" width="354" height="514" rx="16" fill="#F6F8FB"/>
-  <rect x="58" y="1678" width="354" height="54" rx="16" fill="#FFFFFF"/>
-  <rect x="76" y="1690" width="30" height="30" rx="7" fill="#1D4ED8"/>
-  <text x="116" y="1711" font-size="16" font-weight="700" fill="#0F172A">IEPRCard</text>
-  <text x="76" y="1764" class="tiny muted">ADMINISTRAÇÃO / BACKUP EXTERNO</text>
-  <text x="76" y="1800" font-size="22" font-weight="700" fill="#0F172A">Destinos externos</text>
-  <text x="76" y="1824" class="tiny muted">Teste de conexão não significa backup executado.</text>
-  <rect x="76" y="1846" width="318" height="142" rx="10" class="panel"/>
-  <text x="94" y="1874" class="body" font-weight="700" fill="#0F172A">Cópia principal</text>
-  <text x="94" y="1898" class="tiny muted">S3 compatível · iepr-prod-backups</text>
-  <rect x="94" y="1912" width="102" height="24" rx="12" fill="#DCFCE7"/>
-  <text x="145" y="1929" text-anchor="middle" class="tiny" font-weight="700" fill="#166534">Conexão ok</text>
-  <text x="94" y="1956" class="tiny muted">Teste bem-sucedido em 22/11/2026 10:42</text>
-  <text x="94" y="1978" class="tiny" font-weight="700" fill="#1D4ED8">Testar · Editar · Remover</text>
-  <rect x="76" y="2004" width="318" height="44" rx="7" fill="#1D4ED8"/>
-  <text x="235" y="2032" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Adicionar destino</text>
-  <text x="76" y="2080" class="tiny muted">Tabela e formulário passam para cartões e coluna única.</text>
-  <text x="76" y="2100" class="tiny muted">Sem rolagem horizontal; ações permanecem identificadas.</text>
+  <text x="40" y="1730" class="label muted">ADAPTAÇÃO MOBILE · VIEWPORT 390 PX</text>
+  <rect x="40" y="1752" width="390" height="550" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="58" y="1770" width="354" height="514" rx="16" fill="#F6F8FB"/>
+  <rect x="58" y="1770" width="354" height="54" rx="16" fill="#FFFFFF"/>
+  <rect x="76" y="1782" width="30" height="30" rx="7" fill="#1D4ED8"/>
+  <text x="116" y="1803" font-size="16" font-weight="700" fill="#0F172A">IEPRCard</text>
+  <text x="76" y="1856" class="tiny muted">ADMINISTRAÇÃO / BACKUP EXTERNO</text>
+  <text x="76" y="1892" font-size="22" font-weight="700" fill="#0F172A">Destinos externos</text>
+  <text x="76" y="1916" class="tiny muted">Backup e retenção têm status separados do teste.</text>
+  <rect x="76" y="1938" width="318" height="174" rx="10" class="panel"/>
+  <text x="94" y="1966" class="body" font-weight="700" fill="#0F172A">Cópia principal</text>
+  <text x="94" y="1990" class="tiny muted">S3 · iepr-prod-backups · ativo</text>
+  <rect x="94" y="2004" width="102" height="24" rx="12" fill="#DCFCE7"/>
+  <text x="145" y="2021" text-anchor="middle" class="tiny" font-weight="700" fill="#166534">Conexão ok</text>
+  <text x="94" y="2048" class="tiny muted">Snapshot: 22/11/2026 10:45</text>
+  <text x="94" y="2072" class="tiny muted">Retenção 30 dias · purga sem falhas</text>
+  <text x="94" y="2096" class="tiny" font-weight="700" fill="#1D4ED8">Testar · Editar · Remover</text>
+  <rect x="76" y="2128" width="318" height="44" rx="7" fill="#1D4ED8"/>
+  <text x="235" y="2156" text-anchor="middle" class="small" font-weight="700" fill="#FFFFFF">Adicionar destino</text>
+  <text x="76" y="2204" class="tiny muted">Tabela e formulário passam para cartões e coluna única.</text>
+  <text x="76" y="2224" class="tiny muted">Sem rolagem horizontal; status usa rótulo e texto.</text>
 </svg>

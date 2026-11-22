@@ -28,3 +28,7 @@ O formulário individual não recebe foto. Para associar fotos, use o arquivo ZI
 - Se a página não confirmar o resultado, consulte o estado do lote antes de tentar de novo. O estado final é registrado no banco para impedir uma segunda confirmação.
 
 O formato e as regras técnicas de mapeamento seguem [`docs/06-design-e-mapeamento.md`](../06-design-e-mapeamento.md). A tela não deve incluir dados pessoais em mensagens técnicas ou registros de auditoria.
+
+## Proposta de privacidade em revisão
+
+O mockup e a especificação visual propõem cifrar cada linha importada e suas fotos em staging individual, incluindo colunas ainda não mapeadas, e remover o arquivo original e o ZIP após a extração. Ao confirmar, cada staging seria vinculado ao titular criado; cancelamento ou expiração em 24 horas destruiria as chaves e removeria os arquivos. Linhas ou fotos sem vínculo inequívoco bloqueariam a confirmação integral. Este fluxo ainda não está implementado e aguarda aprovação; consulte a [especificação da página](../../design-system/pages/titulares-importacao.md).
