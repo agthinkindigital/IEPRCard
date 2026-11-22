@@ -175,6 +175,7 @@ try {
             "INSERT INTO tenants (tipo, nome_organizacao, status_conta) VALUES ('cliente', :name, 'ativo')"
         )->execute(['name' => 'S3 privacy test tenant ' . $driver]);
         $privacyTenantId = (int) $pdo->lastInsertId();
+        privacySubjectEnsureForRecord($pdo, 'tenant_contato', $privacyTenantId, $privacyTenantId);
         $pdo->prepare(
             'INSERT INTO titulares (tenant_id, nome_completo, cpf, ativo, criado_em) '
             . 'VALUES (:tenant, :name, :cpf, 1, :created)'
@@ -312,7 +313,12 @@ try {
             || !is_string($snapshotBytes) || !str_contains($snapshotBytes, 'ieprcard-snapshot-v2')
             || str_contains($snapshotBytes, 'Synthetic S3 privacy holder')
             || str_contains($snapshotBytes, $superadminEmail)) {
-            throw new RuntimeException($driver . ': S3 snapshot upload must store a checksummed gzip payload without plaintext PII.');
+            throw new RuntimeException($driver . ': S3 snapshot upload must store a checksummed gzip payload without plaintext PII ('
+                . 'processed=' . (int) ($snapshotUpload['processed'] ?? -1)
+                . ', failed=' . (int) ($snapshotUpload['failed'] ?? -1)
+                . ', bytes=' . (is_string($snapshotBytes) ? strlen($snapshotBytes) : 0)
+                . ', holder_plain=' . (is_string($snapshotBytes) && str_contains($snapshotBytes, 'Synthetic S3 privacy holder') ? 'yes' : 'no')
+                . ', admin_plain=' . (is_string($snapshotBytes) && str_contains($snapshotBytes, $superadminEmail) ? 'yes' : 'no') . ').');
         }
         $snapshotKey = (string) ($privacySnapshotClient?->uploads[0]['Key'] ?? '');
         if ($snapshotKey === '') {

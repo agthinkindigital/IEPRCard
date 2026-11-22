@@ -16,7 +16,9 @@ function privacySnapshotPersonalFields(): array
             'token_unico_carteira', 'foto_url', 'dados_extras_json',
         ],
         'usuarios' => ['nome', 'email', 'senha_hash', 'ultimo_login_em'],
-        'tenants' => ['nome_responsavel', 'cargo_responsavel', 'assinatura_responsavel_url'],
+        'tenants' => [
+            'nome_organizacao', 'slug_subdominio', 'nome_responsavel', 'cargo_responsavel', 'assinatura_responsavel_url',
+        ],
         'whatsapp_conversas' => [
             'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'dados_cifrados',
         ],

@@ -29,6 +29,9 @@ try {
     }
     $pdo->exec("INSERT INTO tenants (tipo, nome_organizacao, nome_responsavel, status_conta) VALUES ('cliente', 'Synthetic org', 'Legacy owner', 'ativo')");
     $tenantId = (int) $pdo->lastInsertId();
+    $pdo->prepare('UPDATE tenants SET nome_organizacao = :name, slug_subdominio = :slug WHERE id = :id')->execute([
+        'name' => 'Synthetic privacy organization', 'slug' => 'synthetic-private-subdomain', 'id' => $tenantId,
+    ]);
     $pdo->prepare(
         "INSERT INTO usuarios (tenant_id, papel_sistema, nome, email, senha_hash, ativo, criado_em) "
         . "VALUES (:tenant, 'titular_cliente', 'Legacy owner', 'legacy-owner@example.test', 'synthetic-hash', 1, :created)"
@@ -177,6 +180,7 @@ try {
         'Legacy owner', 'legacy-owner@example.test', 'synthetic message', '+5511999990000', 'Legacy holder',
         'external-private-message-id', '2026-11-22 11:59:00',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
+        'Synthetic privacy organization', 'synthetic-private-subdomain',
         'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
         $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
     ] as $pii) {
@@ -193,6 +197,11 @@ try {
         || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:13:14')
         || !str_contains($conversationSubjectPlaintext, '2026-11-22 11:23:45')) {
         throw new RuntimeException('WhatsApp consent and revocation data must be encrypted in its removable subject envelope.');
+    }
+    $ownerSubjectPlaintext = $subjectPlaintexts[(int) $ownerSubject['id']] ?? '';
+    if (!str_contains($ownerSubjectPlaintext, 'Synthetic privacy organization')
+        || !str_contains($ownerSubjectPlaintext, 'synthetic-private-subdomain')) {
+        throw new RuntimeException('Tenant organization identity must remain recoverable only from its removable subject envelope.');
     }
     $holderSubjectId = (int) $legacyRow['privacy_subject_id'];
     $holderEnvelope = json_decode((string) ($subjectPlaintexts[$holderSubjectId] ?? ''), true);
