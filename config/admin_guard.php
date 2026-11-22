@@ -5,10 +5,29 @@ require_once __DIR__ . '/conn.php';
 require_once __DIR__ . '/admin_auth.php';
 require_once __DIR__ . '/admin_security_headers.php';
 require_once __DIR__ . '/tenant_resolver.php';
+require_once __DIR__ . '/installation_profile.php';
 
 function adminExigirHostDaPlataforma(): void
 {
-    if (tenantResolverIsPlatformHost((string) ($_SERVER['HTTP_HOST'] ?? ''))) {
+    try {
+        $profile = installationProfileCurrent(dbConnection());
+    } catch (Throwable) {
+        $profile = null;
+    }
+    if (is_array($profile) && $profile['modo'] === 'local_host'
+        && installationProfileIsLoopbackRequest()) {
+        return;
+    }
+    if (is_array($profile) && $profile['modo'] === 'hospedado'
+        && tenantResolverIsPlatformHost((string) ($_SERVER['HTTP_HOST'] ?? ''), [
+            'PLATFORM_HOSTNAME' => (string) ($profile['hostname_plataforma'] ?? ''),
+        ])) {
+        return;
+    }
+    if ($profile === null && installationProfileIsLoopbackRequest()) {
+        return;
+    }
+    if ($profile === null && tenantResolverIsPlatformHost((string) ($_SERVER['HTTP_HOST'] ?? ''))) {
         return;
     }
 

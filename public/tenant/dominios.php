@@ -5,25 +5,30 @@ require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/config/tenant_resolver.php';
 require_once dirname(__DIR__, 2) . '/config/tenant_auth.php';
 require_once dirname(__DIR__, 2) . '/config/domain_onboarding.php';
+require_once dirname(__DIR__, 2) . '/config/installation_profile.php';
 
 header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 
 $pdo = dbConnection();
+if (!tenantAuthStartSession()) {
+    http_response_code(401);
+    exit('Acesso restrito à sessão da instituição.');
+}
 $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
 $context = tenantResolverResolve($pdo, $host);
 if ($context === null || $context->tipo !== 'cliente' || $context->tenantId === null) {
     http_response_code(404);
     exit('Página não encontrada.');
 }
-if (!tenantAuthStartSession()) {
-    http_response_code(401);
-    exit('Acesso restrito à sessão da instituição.');
-}
 $identity = tenantAuthCurrentUser($pdo, $context);
 if ($identity === null) {
     http_response_code(401);
     exit('Acesso restrito à sessão da instituição.');
+}
+if ((installationProfileCurrent($pdo)['modo'] ?? null) === 'local_host') {
+    http_response_code(404);
+    exit('Página não encontrada.');
 }
 header('Cache-Control: no-store, private');
 if ($identity['papel_sistema'] !== 'titular_cliente' || $identity['subcliente_id'] !== null) {

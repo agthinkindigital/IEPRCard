@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/motor_permissoes.php';
+require_once __DIR__ . '/installation_profile.php';
 
 /** @param array<string,mixed> $identity @param array<string,mixed> $input @param array<string,string>|null $configuration @return array{tenant_id:int,owner_user_id:int} */
 function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity, array $input, ?array $configuration = null): array
@@ -12,6 +13,15 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
     if ($context->tipo !== 'admin' || $context->tenantId !== null || $context->subclienteId !== null
         || !pode($pdo, $context, $identity, 'admin.clientes')) {
         throw new DomainException('TENANT_PROVISION_DENIED');
+    }
+    if ($configuration === null) {
+        $installation = installationProfileCurrent($pdo);
+        if (is_array($installation) && $installation['modo'] === 'hospedado') {
+            $configuration = [
+                'PLATFORM_HOSTNAME' => (string) ($installation['hostname_plataforma'] ?? ''),
+                'TENANT_BASE_DOMAIN' => (string) ($installation['dominio_base'] ?? ''),
+            ];
+        }
     }
 
     $organization = tenantProvisionName($input['nome_organizacao'] ?? null, 180);

@@ -3,9 +3,16 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once dirname(__DIR__, 2) . '/config/domain_onboarding.php';
+require_once dirname(__DIR__, 2) . '/config/installation_profile.php';
 
 foreach (tenantTestConnections() as $driver => $pdo) {
     $fixture = tenantTestSeed($pdo);
+    $adminInsert = $pdo->prepare(
+        "INSERT INTO usuarios (tenant_id, subcliente_id, perfil_acesso_id, criado_por_usuario_id, papel_sistema, nome, email, senha_hash, ativo) "
+        . "VALUES (NULL, NULL, NULL, NULL, 'superadmin', 'Domain Test Admin', :email, :hash, 1)"
+    );
+    $adminInsert->execute(['email' => 'domain-' . bin2hex(random_bytes(4)) . '@example.test', 'hash' => password_hash('safe-test-password', PASSWORD_DEFAULT)]);
+    $adminId = (int) $pdo->lastInsertId();
     $config = ['PLATFORM_HOSTNAME' => 'admin.ieprcard.example', 'TENANT_BASE_DOMAIN' => 'ieprcard.example'];
     $rootContext = tenantResolverResolve($pdo, $fixture['slug'] . '.ieprcard.example', $config);
     $rootIdentity = ['id' => 1, 'papel_sistema' => 'titular_cliente', 'tenant_id' => $fixture['tenant_id'], 'subcliente_id' => null];
@@ -82,6 +89,14 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         static fn () => domainOnboardingCreate($pdo, $rootContext, $rootIdentity, $hostname, $config),
         $driver . ': an already claimed hostname must be unavailable.'
     );
+
+    installationProfileSave($pdo, ['modo' => 'local_host', 'tenant_local_id' => $fixture['tenant_id']], $adminId);
+    $reject(
+        static fn () => domainOnboardingCreate($pdo, $rootContext, $rootIdentity, 'local-mode.example.net', $config),
+        $driver . ': Local Host must reject custom-domain creation even when a caller supplies Hosted configuration.'
+    );
+    $pdo->prepare('DELETE FROM configuracoes_instalacao WHERE ator_usuario_id = :actor')->execute(['actor' => $adminId]);
+    $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $adminId]);
 
     tenantTestCleanup($pdo, $fixture);
     fwrite(STDOUT, 'PASS: ' . $driver . ' custom domain DNS onboarding and one-time verification.' . "\n");

@@ -84,7 +84,7 @@ if ($actualSchemaTables !== $expectedSchemaTables) {
 }
 
 $migrations = schemaAplicarMigracoes($connection, 'test');
-    if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation'] || array_filter(schemaInspecionar($connection)) !== []) {
+    if ($migrations !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile'] || array_filter(schemaInspecionar($connection)) !== []) {
     throw new RuntimeException('MySQL/MariaDB versioned migrations must be repeatable and leave no schema drift.');
 }
 

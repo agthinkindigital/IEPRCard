@@ -61,6 +61,29 @@ function tenantResolverIsPlatformHost(string $requestHost, ?array $configuration
 function tenantResolverResolve(PDO $pdo, string $requestHost, ?array $configuration = null): ?TenantContext
 {
     $host = tenantResolverNormalizeHost($requestHost);
+    $profile = null;
+    if (function_exists('installationProfileCurrent')) {
+        $profile = installationProfileCurrent($pdo);
+    } else {
+        require_once __DIR__ . '/installation_profile.php';
+        $profile = installationProfileCurrent($pdo);
+    }
+    if (is_array($profile)) {
+        if ($profile['modo'] === 'local_host') {
+            $host = installationProfileNormalizeHostHeader($requestHost);
+            $serverHost = installationProfileNormalizeHostHeader((string) ($_SERVER['HTTP_HOST'] ?? ''));
+            if (!installationProfileIsLoopbackRequest() || $serverHost === null || $host === null || !hash_equals($serverHost, $host)) {
+                return null;
+            }
+            return installationProfileTenantContext($pdo, $profile);
+        }
+        if ($profile['modo'] === 'hospedado') {
+            $configuration = [
+                'PLATFORM_HOSTNAME' => (string) ($profile['hostname_plataforma'] ?? ''),
+                'TENANT_BASE_DOMAIN' => (string) ($profile['dominio_base'] ?? ''),
+            ];
+        }
+    }
     if ($host === null) {
         return null;
     }

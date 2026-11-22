@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/config/conn.php';
 require_once dirname(__DIR__) . '/config/tenant_resolver.php';
+require_once dirname(__DIR__) . '/config/installation_profile.php';
 require_once dirname(__DIR__) . '/config/admin_auth.php';
 require_once dirname(__DIR__) . '/config/tenant_auth.php';
 require_once dirname(__DIR__) . '/config/motor_permissoes.php';
@@ -109,6 +110,13 @@ if (!in_array($method, ['GET', 'POST'], true)) {
 
 try {
     $pdo = dbConnection();
+    $installation = installationProfileCurrent($pdo);
+    if (is_array($installation) && $installation['modo'] === 'local_host'
+        && isset($_COOKIE['IEPRCARDADMIN']) && is_string($_COOKIE['IEPRCARDADMIN'])) {
+        adminAuthStartSession();
+    } elseif (is_array($installation) && $installation['modo'] === 'local_host') {
+        tenantAuthStartSession();
+    }
     $context = tenantResolverResolve($pdo, (string) ($_SERVER['HTTP_HOST'] ?? ''));
     if (!$context instanceof TenantContext) {
         http_response_code(404);

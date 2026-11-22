@@ -13,14 +13,14 @@ header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 
 $pdo = dbConnection();
+if (!tenantAuthStartSession()) {
+    http_response_code(401);
+    exit('Acesso restrito à sessão da instituição.');
+}
 $context = tenantResolverResolve($pdo, (string) ($_SERVER['HTTP_HOST'] ?? ''));
 if ($context === null || $context->tipo !== 'cliente' || $context->tenantId === null) {
     http_response_code(404);
     exit('Página não encontrada.');
-}
-if (!tenantAuthStartSession()) {
-    http_response_code(401);
-    exit('Acesso restrito à sessão da instituição.');
 }
 $identity = tenantAuthCurrentUser($pdo, $context);
 if ($identity === null) {

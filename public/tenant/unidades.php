@@ -11,14 +11,14 @@ header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 
 $pdo = dbConnection();
+if (!tenantAuthStartSession()) {
+    http_response_code(401);
+    exit('Acesso restrito à sessão da instituição.');
+}
 $context = tenantResolverResolve($pdo, (string) ($_SERVER['HTTP_HOST'] ?? ''));
 if ($context === null || $context->tipo !== 'cliente' || $context->tenantId === null) {
     http_response_code(404);
     exit('Página não encontrada.');
-}
-if (!tenantAuthStartSession()) {
-    http_response_code(401);
-    exit('Acesso restrito à sessão da instituição.');
 }
 $identity = tenantAuthCurrentUser($pdo, $context);
 if ($identity === null) {
@@ -43,7 +43,14 @@ if (!is_array($root)) {
     exit('Página não encontrada.');
 }
 $slug = (string) $root['slug_subdominio'];
-$baseDomain = (string) (getenv('TENANT_BASE_DOMAIN') ?: '');
+$installation = installationProfileCurrent($pdo);
+$localHostMode = ($installation['modo'] ?? null) === 'local_host';
+$baseDomain = $localHostMode
+    ? ''
+    : (string) (($installation['dominio_base'] ?? null) ?: (getenv('TENANT_BASE_DOMAIN') ?: ''));
+$hostSuffixLabel = $localHostMode
+    ? 'acesso Local Host'
+    : ($baseDomain !== '' ? $baseDomain : 'domínio da plataforma não configurado');
 $limit = filter_var($root['limite_subclientes'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
 $limit = $limit === false ? null : (int) $limit;
 $countQuery = $pdo->prepare("SELECT COUNT(*) FROM tenants WHERE parent_id = :tenant AND tipo = 'subcliente'");
@@ -187,7 +194,7 @@ function tenantUnitsAllocation(mixed $limit): string
                     <tbody>
                     <?php foreach ($units as $unit): ?>
                         <?php [$statusLabel, $statusClass] = tenantUnitsStatus((string) $unit['status_conta']); ?>
-                        <?php $hostname = (string) $unit['slug_subdominio'] . '.' . $slug . ($baseDomain !== '' ? '.' . $baseDomain : ' · domínio da plataforma não configurado'); ?>
+                        <?php $hostname = $localHostMode ? 'Disponível no acesso Local Host' : ((string) $unit['slug_subdominio'] . '.' . $slug . ($baseDomain !== '' ? '.' . $baseDomain : ' · domínio da plataforma não configurado')); ?>
                         <?php $holderLimit = tenantUnitsAllocation($unit['limite_titulares']); ?>
                         <tr>
                             <td data-label="Unidade"><strong><?= tenantUnitsEscape((string) $unit['nome_organizacao']) ?></strong><small><?= tenantUnitsEscape($hostname) ?></small></td>
@@ -211,7 +218,7 @@ function tenantUnitsAllocation(mixed $limit): string
             <input type="hidden" name="action" value="create">
             <label for="unit-name">Nome da unidade</label><input id="unit-name" name="nome_organizacao" type="text" maxlength="180" required>
             <label for="unit-slug">Identificador de subdomínio</label>
-            <div class="slug-input"><input id="unit-slug" name="slug_subdominio" type="text" pattern="[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?" maxlength="63" autocapitalize="none" autocomplete="off" required><span>.<?= tenantUnitsEscape($slug) ?>.<?= $baseDomain !== '' ? tenantUnitsEscape($baseDomain) : 'domínio da plataforma não configurado' ?></span></div>
+            <div class="slug-input"><input id="unit-slug" name="slug_subdominio" type="text" pattern="[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?" maxlength="63" autocapitalize="none" autocomplete="off" required><span>.<?= tenantUnitsEscape($slug) ?>.<?= tenantUnitsEscape($hostSuffixLabel) ?></span></div>
             <small>Use letras minúsculas, números e hífen; comece e termine com letra ou número.</small>
             <button type="submit">Criar unidade</button>
         </form>

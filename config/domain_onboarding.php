@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/tenant_resolver.php';
+require_once __DIR__ . '/installation_profile.php';
 
 /** @param array<string, string> $configuration
  *  @return array{id:int,hostname:string,token:string,txt_name:string,txt_value:string}
@@ -15,6 +16,16 @@ function domainOnboardingCreate(
     ?int $timestamp = null
 ): array
 {
+    $installation = installationProfileCurrent($pdo);
+    if (($installation['modo'] ?? null) === 'local_host') {
+        throw new DomainException('DOMAIN_UNAVAILABLE');
+    }
+    if ($configuration === [] && is_array($installation) && $installation['modo'] === 'hospedado') {
+        $configuration = [
+            'PLATFORM_HOSTNAME' => (string) ($installation['hostname_plataforma'] ?? ''),
+            'TENANT_BASE_DOMAIN' => (string) ($installation['dominio_base'] ?? ''),
+        ];
+    }
     $normalized = tenantResolverNormalizeHost($hostname);
     $tenantId = $context->tenantId;
     if ($context->tipo !== 'cliente' || $tenantId === null
