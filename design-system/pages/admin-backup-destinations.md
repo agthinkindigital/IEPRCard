@@ -34,6 +34,6 @@ O mockup proposto [`admin-backup-restore-mockup.svg`](../mockups/admin-backup-re
 
 O mockup e o guia funcional foram aprovados pelo mantenedor em 2026-11-22. Regras de recuperação, privacidade e retenção permanecem no ADR-0012; a implementação depende da conclusão da #84.
 
-## Retenção de snapshots por destino — proposta aguardando aprovação
+## Retenção de snapshots por destino — aprovada em 2026-11-22
 
-O backend da #84 passou a reter snapshots por destino, com padrão de 30 dias e faixa de 1 a 3650 dias. A proposta amplia este painel para editar o prazo e exibir a última purga, quantidade removida, retry pendente e falha segura por destino. O estado de backup continua separado do teste de conexão. A purga abrange versões e delete markers, sem remover envelopes de chaves ativos nem tombstones/ledger; o contrato está no ADR-0012. A interface não deve ser implementada antes da aprovação desta extensão do mockup e deste fluxo.
+O painel permite configurar retenção por destino, com padrão de 30 dias e faixa de 1 a 3650 dias, e exibe a última purga, quantidade removida e falha segura. O estado de backup permanece separado do teste de conexão. A purga abrange versões e delete markers, sem remover envelopes de chaves ativos nem tombstones/ledger; o contrato está no ADR-0012. O mantenedor aprovou esta extensão, junto às propostas de privacidade dos fundos de design e de staging de importação, em 2026-11-22. A implementação das três interfaces foi publicada em DEV no commit `fc0add6`.
