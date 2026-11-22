@@ -93,9 +93,10 @@ function authSessionRequestIsHttps(): bool
     return ($https !== '' && $https !== 'off') || (string) ($_SERVER['SERVER_PORT'] ?? '') === '443';
 }
 
-function authSessionAllowAttempt(string $clientIp, ?int $timestamp = null, ?string $storagePath = null): bool
+function authSessionAllowAttempt(string $clientIp, ?int $timestamp = null, ?string $storagePath = null, int $limit = 60): bool
 {
-    if (filter_var($clientIp, FILTER_VALIDATE_IP) === false || $storagePath === null || $storagePath === '') {
+    if (filter_var($clientIp, FILTER_VALIDATE_IP) === false || $storagePath === null || $storagePath === ''
+        || $limit < 1 || $limit > 1_000_000) {
         return false;
     }
 
@@ -137,7 +138,7 @@ function authSessionAllowAttempt(string $clientIp, ?int $timestamp = null, ?stri
 
         $key = hash('sha256', $clientIp);
         $count = $entries[$key]['count'] ?? 0;
-        $allowed = $count < 60;
+        $allowed = $count < $limit;
         if ($allowed) {
             $entries[$key] = ['window' => $currentWindow, 'count' => $count + 1];
         }

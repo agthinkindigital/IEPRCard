@@ -1,6 +1,6 @@
 # Atendimento e IA — guia funcional
 
-Este guia descreve a proposta de configuração global de IA pelo Administrador SaaS e o consentimento apresentado ao titular no WhatsApp. O mockup associado é [`whatsapp-ia-mockup.svg`](../../design-system/mockups/whatsapp-ia-mockup.svg); a especificação visual fica em [`design-system/pages/whatsapp-ia.md`](../../design-system/pages/whatsapp-ia.md). A implementação depende de aprovação do mantenedor.
+Este guia descreve a configuração global de IA pelo Administrador SaaS e o consentimento apresentado ao titular no WhatsApp. O mockup associado é [`whatsapp-ia-mockup.svg`](../../design-system/mockups/whatsapp-ia-mockup.svg); a especificação visual fica em [`design-system/pages/whatsapp-ia.md`](../../design-system/pages/whatsapp-ia.md). Os artefatos foram aprovados em 2026-11-22; a implementação está fatiada nas Issues [#81](https://github.com/agthinkindigital/IEPRCard/issues/81) (conversa e consentimento) e [#83](https://github.com/agthinkindigital/IEPRCard/issues/83) (painel superadmin).
 
 ## Configurar conexão — superadmin
 
