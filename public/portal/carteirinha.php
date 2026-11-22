@@ -26,7 +26,7 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') {
 
 $cardId = filter_var($_GET['carteirinha_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $side = $_GET['lado'] ?? null;
-if ($cardId === false || !in_array($side, ['frente', 'verso'], true)) {
+if ($cardId === false || !in_array($side, ['frente', 'verso', 'pdf'], true)) {
     $respondNotFound();
 }
 
@@ -44,6 +44,25 @@ try {
     if (!$context instanceof TenantContext) {
         $respondNotFound();
     }
+    if ($side === 'pdf') {
+        $identity = portalAuthCurrentHolder($pdo, $context);
+        $asset = is_array($identity) ? portalAuthPdfAsset($pdo, $identity, (int) $cardId) : null;
+        if (!is_array($asset)) {
+            $respondNotFound();
+        }
+        $bytes = cardIssuanceWorkerReadAsset($asset['tenant_id'], $asset['stored_key']);
+        if (strlen($bytes) < 8 || !str_starts_with($bytes, '%PDF-')) {
+            $respondNotFound(503);
+        }
+        header('Cache-Control: private, no-store, max-age=0', true);
+        header('Pragma: no-cache', true);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="carteirinha.pdf"');
+        header('Content-Length: ' . strlen($bytes));
+        echo $bytes;
+        return;
+    }
+
     $cards = portalAuthCards($pdo, $context);
     $card = null;
     foreach ($cards as $candidate) {

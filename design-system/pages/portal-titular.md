@@ -16,7 +16,7 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 - Mostrar a organização/unidade emissora e a vinculação à Sede conforme os dados permitidos para o vínculo.
 - Exibir frente e verso com controle explícito de lado; não expor CPF na área de consulta.
 - Se houver mais de uma emissão ativa e acessível, permitir selecionar uma delas; caso contrário, não mostrar seletor.
-- Não exibir ação de baixar PDF enquanto não existir contrato de permissão efetiva no schema e no backend. A função está fora da interface atual.
+- A ação de baixar PDF fica fora da interface atual. O contrato backend exige habilitação da Sede e, para titulares de unidades, delegação explícita de `carteirinha.pdf`; atualizar mockup e guia e obter aprovação antes de expor a ação.
 - A validação QR abre uma página pública separada; nenhum dado administrativo ou identificador interno é enviado ao navegador.
 
 ## Validação pública
@@ -35,4 +35,4 @@ O mockup [`portal-titular-mockup.svg`](../mockups/portal-titular-mockup.svg) re�
 
 ## Dependências para implementação
 
-Mockup e guia aprovados pelo mantenedor em 2026-11-20. A página QR pública e o portal autenticado foram implementados na [#68](https://github.com/agthinkindigital/IEPRCard/issues/68) e [#69](https://github.com/agthinkindigital/IEPRCard/issues/69). Os serviços de autenticação/consulta, entrega privada WebP e validação QR estão nas [#66](https://github.com/agthinkindigital/IEPRCard/issues/66), [#67](https://github.com/agthinkindigital/IEPRCard/issues/67) e [#65](https://github.com/agthinkindigital/IEPRCard/issues/65). O contrato de permissão para download PDF ainda não existe no schema; por isso, o portal não oferece PDF.
+Mockup e guia aprovados pelo mantenedor em 2026-11-20. A página QR pública e o portal autenticado foram implementados na [#68](https://github.com/agthinkindigital/IEPRCard/issues/68) e [#69](https://github.com/agthinkindigital/IEPRCard/issues/69). Os serviços de autenticação/consulta, entrega privada WebP e validação QR estão nas [#66](https://github.com/agthinkindigital/IEPRCard/issues/66), [#67](https://github.com/agthinkindigital/IEPRCard/issues/67) e [#65](https://github.com/agthinkindigital/IEPRCard/issues/65). O backend do PDF está sendo implementado na [#76](https://github.com/agthinkindigital/IEPRCard/issues/76); a interface ainda requer mockup e guia atualizados e aprovação explícita.

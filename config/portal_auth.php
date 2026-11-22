@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/tenant_auth.php';
+require_once __DIR__ . '/portal_auth_pdf.php';
 
 /**
  * @return array{id:int,tenant_id:int,subcliente_id:?int,papel_sistema:string}|null

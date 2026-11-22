@@ -52,6 +52,14 @@ schemaGarantirEstrutura($pdo, 'test');
 schemaAplicarMigracoes($pdo, 'test');
 $fixture = tenantTestSeed($pdo);
 $suffix = bin2hex(random_bytes(4));
+$pdo->prepare('INSERT INTO planos (nome, ativo) VALUES (:name, 1)')->execute(['name' => 'Portal artifact ' . $suffix]);
+$planId = (int) $pdo->lastInsertId();
+$pdo->prepare('UPDATE tenants SET plano_id = :plan WHERE id = :tenant')->execute([
+    'plan' => $planId,
+    'tenant' => $fixture['tenant_id'],
+]);
+$pdo->prepare('INSERT INTO plano_feature_flags (plano_id, feature_key, habilitado) VALUES (:plan, :key, 1)')
+    ->execute(['plan' => $planId, 'key' => 'carteirinha.pdf']);
 $pdo->prepare(
     'INSERT INTO designs_carteirinha (tenant_id, nome_layout, orientacao, criado_em) VALUES (:tenant, :name, :orientation, :created)'
 )->execute(['tenant' => $fixture['tenant_id'], 'name' => 'Portal artifact ' . $suffix, 'orientation' => 'horizontal', 'created' => gmdate('Y-m-d H:i:s')]);
@@ -83,14 +91,19 @@ foreach ([$holderId, $foreignHolderId] as $id) {
         file_put_contents($subdir . DIRECTORY_SEPARATOR . $token . '.webp', $bytes);
         $keys[$id][$side] = 'private://' . $fixture['tenant_id'] . '/' . $token . '.webp';
     }
+    $pdfToken = substr(hash('sha256', $id . ':pdf:' . $suffix), 0, 48);
+    $pdfBytes = "%PDF-1.4\nprivate portal artifact\n%%EOF\n";
+    file_put_contents($subdir . DIRECTORY_SEPARATOR . $pdfToken . '.pdf', $pdfBytes);
+    $keys[$id]['pdf'] = 'private://' . $fixture['tenant_id'] . '/' . $pdfToken . '.pdf';
     $pdo->prepare(
         'INSERT INTO carteirinhas_emitidas '
-        . '(tenant_id, subcliente_id, titular_id, design_id, codigo_validacao_qr, status_carteirinha, data_validade, webp_frente_url, webp_verso_url, emitida_em) '
-        . 'VALUES (:tenant, :unit, :holder, :design, :qr, :status, :validity, :front, :back, :created)'
+        . '(tenant_id, subcliente_id, titular_id, design_id, codigo_validacao_qr, status_carteirinha, data_validade, webp_frente_url, webp_verso_url, pdf_individual_url, emitida_em) '
+        . 'VALUES (:tenant, :unit, :holder, :design, :qr, :status, :validity, :front, :back, :pdf, :created)'
     )->execute([
         'tenant' => $fixture['tenant_id'], 'unit' => $fixture['subcliente_id'], 'holder' => $id, 'design' => $designId,
         'qr' => bin2hex(random_bytes(32)), 'status' => 'ativa', 'validity' => gmdate('Y-m-d', strtotime('+1 year')),
-        'front' => $keys[$id]['front'], 'back' => $keys[$id]['back'], 'created' => gmdate('Y-m-d H:i:s'),
+        'front' => $keys[$id]['front'], 'back' => $keys[$id]['back'], 'pdf' => $keys[$id]['pdf'],
+        'created' => gmdate('Y-m-d H:i:s'),
     ]);
     $cardIds[$id] = (int) $pdo->lastInsertId();
 }
@@ -154,6 +167,32 @@ try {
     if ($status !== 200 || $body !== "RIFF" . pack('V', 4) . "WEBP") {
         throw new RuntimeException('The authenticated holder must be able to retrieve the card back.');
     }
+    [$status] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/pdf', $sessionCookie);
+    if ($status !== 404) throw new RuntimeException('Titular PDF access must be denied by default.');
+    $pdo = dbConnect($testDbConfiguration);
+    $pdo->prepare('UPDATE tenants SET pdf_portal_habilitado = 1, permissoes_unidade_json = :permissions WHERE id = :tenant')
+        ->execute(['permissions' => '[]', 'tenant' => $fixture['tenant_id']]);
+    unset($pdo);
+    [$status] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/pdf', $sessionCookie);
+    if ($status !== 404) throw new RuntimeException('A unit without explicit PDF delegation must remain denied.');
+    $pdo = dbConnect($testDbConfiguration);
+    $pdo->prepare('UPDATE tenants SET permissoes_unidade_json = :permissions WHERE id = :tenant')->execute([
+        'permissions' => '["carteirinha.pdf"]',
+        'tenant' => $fixture['tenant_id'],
+    ]);
+    unset($pdo);
+    [$status, $body, $headers] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/pdf', $sessionCookie);
+    if ($status !== 200 || $body !== "%PDF-1.4\nprivate portal artifact\n%%EOF\n"
+        || portalArtifactHeaderValue($headers, 'Content-Type') !== 'application/pdf'
+        || portalArtifactHeaderValue($headers, 'Content-Disposition') !== 'attachment; filename="carteirinha.pdf"'
+        || !str_contains((string) portalArtifactHeaderValue($headers, 'Cache-Control'), 'no-store')
+        || portalArtifactHeaderValue($headers, 'X-Content-Type-Options') !== 'nosniff') {
+        throw new RuntimeException('An enabled and delegated holder must receive only their private PDF with safe headers.');
+    }
+    [$status] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/pdf');
+    if ($status !== 404) throw new RuntimeException('An unauthenticated request must not retrieve a PDF artifact.');
+    [$status] = $request('/portal/carteirinha/' . $cardIds[$foreignHolderId] . '/pdf', $sessionCookie);
+    if ($status !== 404) throw new RuntimeException('A holder must not retrieve another holder PDF by changing the card ID.');
     [$status] = $request('/portal/carteirinha/' . $cardIds[$foreignHolderId] . '/frente', $sessionCookie);
     if ($status !== 404) throw new RuntimeException('A card belonging to another holder must remain undiscoverable.');
     [$status, , $headers] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/frente');
@@ -173,6 +212,12 @@ try {
     unset($pdo);
     [$status, $body] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/frente', $sessionCookie);
     if ($status !== 503 || $body !== '') throw new RuntimeException('Missing private storage must fail generically without file details.');
+    $pdo = dbConnect($testDbConfiguration);
+    $pdo->prepare('UPDATE carteirinhas_emitidas SET pdf_individual_url = :key WHERE id = :id')
+        ->execute(['key' => 'private://' . $fixture['tenant_id'] . '/' . str_repeat('b', 48) . '.pdf', 'id' => $cardIds[$holderId]]);
+    unset($pdo);
+    [$status, $body] = $request('/portal/carteirinha/' . $cardIds[$holderId] . '/pdf', $sessionCookie);
+    if ($status !== 503 || $body !== '') throw new RuntimeException('Missing private PDF storage must fail generically without file details.');
     fwrite(STDOUT, 'PASS: private titular WebP artifacts are served through authenticated HTTP (' . $testDbConfiguration['DB_DRIVER'] . ") with no-store headers.\n");
 } finally {
     proc_terminate($process);
@@ -195,6 +240,9 @@ try {
     $cleanupPdo->prepare('DELETE FROM titulares WHERE id IN (:holder_a, :holder_b)')
         ->execute(['holder_a' => $holderId, 'holder_b' => $foreignHolderId]);
     $cleanupPdo->prepare('DELETE FROM designs_carteirinha WHERE id = :id')->execute(['id' => $designId]);
+    $cleanupPdo->prepare('UPDATE tenants SET plano_id = NULL WHERE id = :tenant')->execute(['tenant' => $fixture['tenant_id']]);
+    $cleanupPdo->prepare('DELETE FROM plano_feature_flags WHERE plano_id = :plan')->execute(['plan' => $planId]);
+    $cleanupPdo->prepare('DELETE FROM planos WHERE id = :plan')->execute(['plan' => $planId]);
     tenantTestCleanup($cleanupPdo, $fixture);
     unset($cleanupPdo);
     foreach (glob($directory . DIRECTORY_SEPARATOR . '*') ?: [] as $path) {
