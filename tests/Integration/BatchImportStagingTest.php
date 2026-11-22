@@ -307,12 +307,12 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $previousStoragePath === false
             ? putenv('IEPR_PRIVATE_STORAGE_PATH')
             : putenv('IEPR_PRIVATE_STORAGE_PATH=' . $previousStoragePath);
-        $previousAnonymizationKey === false
-            ? putenv('IEPR_ANONYMIZATION_KEY')
-            : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
     }
 }
 
 $previousIntegrationKey === false ? putenv('IEPR_INTEGRATION_KEY') : putenv('IEPR_INTEGRATION_KEY=' . $previousIntegrationKey);
+$previousAnonymizationKey === false
+    ? putenv('IEPR_ANONYMIZATION_KEY')
+    : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
 
 return 'pass';

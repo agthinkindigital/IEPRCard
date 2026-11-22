@@ -230,11 +230,11 @@ function batchImportStageFile(
         if ($ownsTransaction) {
             $pdo->commit();
         }
-    } catch (Throwable) {
+    } catch (Throwable $exception) {
         if ($ownsTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
-        throw new RuntimeException('IMPORT_STAGE_FAILED');
+        throw new RuntimeException('IMPORT_STAGE_FAILED', 0, $exception);
     }
 
     return [

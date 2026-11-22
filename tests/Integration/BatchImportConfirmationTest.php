@@ -10,6 +10,7 @@ require_once dirname(__DIR__, 2) . '/config/card_issuance_worker.php';
 require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
 
 $previousIntegrationKey = getenv('IEPR_INTEGRATION_KEY');
+$previousAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
 putenv('IEPR_INTEGRATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
 
 foreach (tenantTestConnections() as $driver => $pdo) {
@@ -24,7 +25,6 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     $storagePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-' . $suffix;
     $uploadDirectory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-import-confirm-upload-' . $suffix;
     $previousStoragePath = getenv('IEPR_PRIVATE_STORAGE_PATH');
-    $previousAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
     putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
     mkdir($uploadDirectory, 0700, true);
     putenv('IEPR_PRIVATE_STORAGE_PATH=' . $storagePath);
@@ -617,13 +617,14 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         $previousStoragePath === false
             ? putenv('IEPR_PRIVATE_STORAGE_PATH')
             : putenv('IEPR_PRIVATE_STORAGE_PATH=' . $previousStoragePath);
-        $previousAnonymizationKey === false
-            ? putenv('IEPR_ANONYMIZATION_KEY')
-            : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
-        $previousIntegrationKey === false
-            ? putenv('IEPR_INTEGRATION_KEY')
-            : putenv('IEPR_INTEGRATION_KEY=' . $previousIntegrationKey);
     }
 }
+
+$previousIntegrationKey === false
+    ? putenv('IEPR_INTEGRATION_KEY')
+    : putenv('IEPR_INTEGRATION_KEY=' . $previousIntegrationKey);
+$previousAnonymizationKey === false
+    ? putenv('IEPR_ANONYMIZATION_KEY')
+    : putenv('IEPR_ANONYMIZATION_KEY=' . $previousAnonymizationKey);
 
 return 'pass';
