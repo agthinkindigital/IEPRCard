@@ -10,7 +10,7 @@
 | Grupo | Permissões |
 | --- | --- |
 | Titulares | `titular.ver`, `titular.criar`, `titular.editar`, `titular.excluir`, `titular.importar`, `titular.exportar` |
-| Carteirinhas | `carteirinha.gerar`, `carteirinha.lote`, `carteirinha.reimprimir`, `carteirinha.suspender`, `carteirinha.liberar_acesso` |
+| Carteirinhas | `carteirinha.gerar`, `carteirinha.lote`, `carteirinha.reimprimir`, `carteirinha.suspender`, `carteirinha.liberar_acesso`, `carteirinha.pdf` |
 | Designs | `design.ver`, `design.criar`, `design.editar`, `design.mapear`, `design.publicar` |
 | Unidades | `subcliente.ver`, `subcliente.criar`, `subcliente.editar`, `subcliente.desativar` |
 | Equipe | `usuario.ver`, `usuario.criar`, `usuario.permissoes` |
@@ -31,6 +31,9 @@
 | Financeiro / plano | Sim (global) | Sim (próprio) | Configurável (ver) | Não | Não | Pagamentos próprios |
 | Telemetria | Global | Rede | Sede | Unidade | Unidade (se delegado) | Não |
 | Auditoria | Global | Rede | Não | Unidade (leitura) | Não | Não |
+| Download de PDF pelo titular | Habilita para os titulares da própria Sede | Habilita para titulares da Sede e delega explicitamente para unidades | Conforme habilitação da Sede | Somente se a Sede delegou à unidade | Somente se a Sede delegou à unidade | Apenas o próprio PDF ativo quando liberado |
+
+O PDF do titular é negado por padrão. A Sede pode habilitar o recurso para os próprios titulares; uma unidade só pode disponibilizá-lo depois de delegação explícita da Sede por `carteirinha.pdf`. O titular autenticado só baixa PDF ativo pertencente a si. A implementação e o gate visual do portal pertencem à [E04](https://github.com/agthinkindigital/IEPRCard/issues/4).
 
 ## Contrato executável
 
