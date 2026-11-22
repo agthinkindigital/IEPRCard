@@ -128,6 +128,9 @@ try {
             'destination' => $saved['id'], 'reference' => $protectedReference,
             'created' => gmdate('Y-m-d H:i:s'), 'updated' => gmdate('Y-m-d H:i:s'),
         ]);
+        if ((backupDestinationReadOne($pdo, $identity, (int) $saved['id'])['privacy_keys_present'] ?? false) !== true) {
+            throw new RuntimeException($driver . ': the admin read model must signal when holder key envelopes lock a destination.');
+        }
         try {
             backupDestinationSave($pdo, $identity, array_merge($input, [
                 'id' => (int) $saved['id'], 'bucket' => 'changed-bucket', 'access_key' => '', 'secret_key' => '',

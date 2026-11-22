@@ -165,6 +165,7 @@ function backupDestinationShape(array $row): array
         'tested_at' => $row['ultimo_teste_em'] === null ? null : (string) $row['ultimo_teste_em'],
         'last_success_at' => $row['ultimo_sucesso_em'] === null ? null : (string) $row['ultimo_sucesso_em'],
         'last_error_code' => $row['ultimo_erro_codigo'] === null ? null : (string) $row['ultimo_erro_codigo'],
+        'privacy_keys_present' => (bool) ($row['privacy_keys_present'] ?? false),
         'updated_at' => $row['atualizado_em'] === null ? null : (string) $row['atualizado_em'],
     ];
 }
