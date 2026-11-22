@@ -271,7 +271,7 @@ try {
         '2026-11-22 11:47:14', '2027-11-22', '2026-11-22 11:49:16',
         'person-owned-private-domain.example.test',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
-        'Synthetic privacy organization', 'synthetic-private-subdomain',
+        'Synthetic privacy organization', 'Synthetic tenant without contact', 'synthetic-private-subdomain',
         'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
         $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
     ] as $pii) {
@@ -305,6 +305,10 @@ try {
         || !str_contains($ownerSubjectPlaintext, 'synthetic-private-subdomain')
         || !str_contains($ownerSubjectPlaintext, 'person-owned-private-domain.example.test')) {
         throw new RuntimeException('Tenant identity and custom hostnames must remain recoverable only from the removable subject envelope.');
+    }
+    $unownedTenantPlaintext = $subjectPlaintexts[(int) $tenantWithoutContactSubject['id']] ?? '';
+    if (!str_contains($unownedTenantPlaintext, 'Synthetic tenant without contact')) {
+        throw new RuntimeException('An organization without a responsible contact must remain recoverable only from its removable privacy subject envelope.');
     }
     $snapshotDomains = array_values(array_filter(
         $snapshot['tables']['dominios_tenant'],
