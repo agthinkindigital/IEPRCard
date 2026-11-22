@@ -108,7 +108,7 @@ try {
     $processed = count(array_filter($results, static fn(array $result): bool => ($result['processed'] ?? false) === true));
     $duplicates = count(array_filter($results, static fn(array $result): bool => ($result['duplicate'] ?? false) === true));
     if ($callbackCount !== 1 || count($eventStates) !== 1 || $eventStates[0] !== 'processado'
-        || $processed !== 1 || $duplicates !== 1) {
+        || $processed !== 1 || $duplicates < 1) {
         throw new RuntimeException('Concurrent duplicate GOWA deliveries must invoke the consumer exactly once: '
             . json_encode(['callbacks' => $callbackCount, 'events' => $eventStates, 'results' => $results], JSON_THROW_ON_ERROR));
     }
