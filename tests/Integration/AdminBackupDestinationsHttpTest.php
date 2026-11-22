@@ -71,7 +71,12 @@ if (!is_resource($process)) throw new RuntimeException('Could not start the PHP 
 
 try {
     $baseUrl = 'http://127.0.0.1:' . $port;
-    [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php');
+    $status = 0;
+    for ($attempt = 0; $attempt < 40; $attempt++) {
+        [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php');
+        if ($status !== 0) break;
+        usleep(100_000);
+    }
     if ($status !== 303) throw new RuntimeException('Unauthenticated access must redirect to admin login.');
     [$tenantHostStatus] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'GET', null, null, 'tenant.example.test');
     if ($tenantHostStatus !== 404) throw new RuntimeException('The destination admin page must be hidden on tenant hosts.');
