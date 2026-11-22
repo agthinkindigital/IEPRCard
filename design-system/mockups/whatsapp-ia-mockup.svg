@@ -53,7 +53,7 @@
   <text x="380" y="578" class="small muted">•••••••••••••••••••••••••••</text>
   <text x="364" y="625" class="label">Modelo</text>
   <rect x="364" y="638" width="432" height="42" rx="7" class="field"/>
-  <text x="380" y="665" class="small muted">Selecione ou informe um modelo</text>
+  <text x="380" y="665" class="small muted">Modelo de texto configurado</text>
   <text x="364" y="714" class="tiny muted">Conexão aprovada · chave protegida e mascarada</text>
 
   <rect x="848" y="462" width="484" height="278" rx="10" class="card"/>
@@ -82,7 +82,7 @@
   <text x="364" y="1060" class="small">Para solicitar sua carteirinha, usaremos os dados</text>
   <text x="364" y="1084" class="small">e a imagem que você enviar. Com sua autorização,</text>
   <text x="364" y="1108" class="small">texto e imagem poderão ser processados por OpenAI,</text>
-  <text x="364" y="1132" class="small">configurada pela plataforma. Deseja continuar?</text>
+  <text x="364" y="1132" class="small">configurado pela plataforma. Deseja continuar?</text>
   <rect x="364" y="1148" width="212" height="30" rx="7" fill="#1D4ED8"/>
   <text x="379" y="1169" class="tiny" fill="#FFFFFF" font-weight="650">Concordo e continuar</text>
   <rect x="586" y="1148" width="166" height="30" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
