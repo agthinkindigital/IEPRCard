@@ -231,6 +231,35 @@ try {
         $subjectPlaintexts[$subjectId] = $plaintext;
         return 'v1:test-cipher:' . hash('sha256', $subjectId . ':' . $plaintext);
     }, '2026-11-22T12:00:00Z');
+    $expectedSchemaInventory = [];
+    foreach (\IEPRCard\Database\Schema\catalogoCanonico() as $table => $definition) {
+        $columns = $definition['columns'] ?? [];
+        ksort($columns, SORT_STRING);
+        $expectedSchemaInventory[$table] = array_keys($columns);
+    }
+    ksort($expectedSchemaInventory, SORT_STRING);
+    if (($snapshot['manifest']['schema_inventory'] ?? null) !== $expectedSchemaInventory) {
+        throw new RuntimeException('Snapshot manifest must enumerate every reviewed table and field in the canonical schema.');
+    }
+    $expectedPayloadChecksum = hash('sha256', json_encode([
+        'tables' => $snapshot['tables'],
+        'subject_envelopes' => $snapshot['subject_envelopes'],
+        'schema_inventory' => $snapshot['manifest']['schema_inventory'],
+        'schema_inventory_sha256' => $snapshot['manifest']['schema_inventory_sha256'] ?? null,
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    if (!hash_equals($expectedPayloadChecksum, (string) ($snapshot['manifest']['payload_sha256'] ?? ''))) {
+        throw new RuntimeException('Snapshot integrity checksum must cover the schema inventory and encrypted data.');
+    }
+    $unreviewedCatalog = \IEPRCard\Database\Schema\catalogoCanonico();
+    $unreviewedCatalog['titulares']['columns']['campo_pessoal_novo'] = ['type' => 'text'];
+    try {
+        privacySnapshotAssertReviewedSchema($unreviewedCatalog);
+        throw new RuntimeException('A snapshot must fail closed when its schema inventory changes without review.');
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_SCHEMA_REVIEW_REQUIRED') {
+            throw $exception;
+        }
+    }
     $snapshotJson = json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     foreach ([
         'Legacy owner', 'legacy-owner@example.test', 'synthetic message', '+5511999990000', 'Legacy holder',
@@ -355,6 +384,16 @@ try {
         privacySubjectLinkRecord($pdo, $subjectId, 'campo_arbitrario', 502);
         throw new RuntimeException('Unsupported record types must be rejected.');
     } catch (InvalidArgumentException) {
+    }
+
+    $pdo->exec('ALTER TABLE titulares ADD COLUMN campo_privado_nao_inventariado TEXT');
+    try {
+        privacySnapshotBuildPayload($pdo, static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext));
+        throw new RuntimeException('Snapshots must fail closed when the active database has columns outside the reviewed schema.');
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED') {
+            throw $exception;
+        }
     }
 
     fwrite(STDOUT, "PASS: opaque privacy subjects group PII records without persisting PII.\n");

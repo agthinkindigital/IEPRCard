@@ -6,6 +6,67 @@ require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/titular_privacy_keys.php';
 
+const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '08556899bab9db97c3edb2c95bcc9e654f5d3a93bfae5da0a297692371c0b104';
+
+/** @param array<string,array<string,mixed>> $catalog @return array<string,list<string>> */
+function privacySnapshotAssertReviewedSchema(array $catalog): array
+{
+    ksort($catalog, SORT_STRING);
+    $canonicalColumns = [];
+    $inventory = [];
+    foreach ($catalog as $table => $definition) {
+        $columns = $definition['columns'] ?? null;
+        if (!is_array($columns) || $columns === []) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_SCHEMA_REVIEW_REQUIRED');
+        }
+        ksort($columns, SORT_STRING);
+        $canonicalColumns[$table] = $columns;
+        $inventory[$table] = array_keys($columns);
+    }
+    $signature = hash('sha256', json_encode(
+        $canonicalColumns,
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    ));
+    if (!hash_equals(PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256, $signature)) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_SCHEMA_REVIEW_REQUIRED');
+    }
+    foreach (privacySnapshotPersonalFields() as $table => $fields) {
+        if (!isset($inventory[$table]) || array_diff($fields, $inventory[$table]) !== []) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_SCHEMA_REVIEW_REQUIRED');
+        }
+    }
+    foreach (privacySnapshotArtifactFields() as $table => $fields) {
+        if (!isset($inventory[$table]) || array_diff($fields, $inventory[$table]) !== []) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_SCHEMA_REVIEW_REQUIRED');
+        }
+    }
+    return $inventory;
+}
+
+/** @param array<string,list<string>> $inventory */
+function privacySnapshotAssertDatabaseSchema(PDO $pdo, array $inventory): void
+{
+    $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    foreach ($inventory as $table => $expectedColumns) {
+        if ($driver === 'sqlite') {
+            $statement = $pdo->query('PRAGMA table_info(' . privacySnapshotQuoteIdentifier($table, $driver) . ')');
+            $actualColumns = array_column($statement->fetchAll(PDO::FETCH_ASSOC), 'name');
+        } elseif ($driver === 'mysql') {
+            $statement = $pdo->prepare(
+                'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table'
+            );
+            $statement->execute(['table' => $table]);
+            $actualColumns = $statement->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED');
+        }
+        sort($actualColumns, SORT_STRING);
+        if ($actualColumns !== $expectedColumns) {
+            throw new RuntimeException('PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED');
+        }
+    }
+}
+
 /** @return array<string,list<string>> */
 function privacySnapshotPersonalFields(): array
 {
@@ -62,10 +123,12 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
         $recordsByKey[(string) $record['tipo_registro'] . ':' . (string) $record['registro_id']] = (int) $record['privacy_subject_id'];
     }
 
+    $catalog = \IEPRCard\Database\Schema\catalogoCanonico();
+    $schemaInventory = privacySnapshotAssertReviewedSchema($catalog);
+    privacySnapshotAssertDatabaseSchema($pdo, $schemaInventory);
     $policies = privacySnapshotPersonalFields();
     $tableData = [];
     $subjectData = [];
-    $catalog = \IEPRCard\Database\Schema\catalogoCanonico();
     foreach ($catalog as $table => $_definition) {
         if (in_array($table, ['titular_chaves_backup'], true)) {
             $tableData[$table] = [];
@@ -158,12 +221,16 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
         'snapshot_id' => bin2hex(random_bytes(16)),
         'created_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($createdAt)),
         'table_count' => count($tableData),
+        'schema_inventory' => $schemaInventory,
+        'schema_inventory_sha256' => PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256,
         'subject_count' => count($envelopes),
         'ledger_version' => 1,
     ];
     $manifest['payload_sha256'] = hash('sha256', json_encode([
         'tables' => $tableData,
         'subject_envelopes' => $envelopes,
+        'schema_inventory' => $schemaInventory,
+        'schema_inventory_sha256' => PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256,
     ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     return ['manifest' => $manifest, 'tables' => $tableData, 'subject_envelopes' => $envelopes];
 }
