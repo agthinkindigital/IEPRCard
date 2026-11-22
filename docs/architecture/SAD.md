@@ -627,7 +627,7 @@ O alvo arquitetural usa eventos de domínio e outbox transacional, com efeitos e
 
 ### 6.2. Webhooks: critérios para integrações aprovadas e referência financeira futura
 
-- MVP: validar assinatura e idempotência para cada webhook que venha a ser implementado e aprovado. Atualmente não há webhook de WhatsApp ativo no código.
+- MVP: autenticar e deduplicar cada webhook implementado. Para o GOWA VIP de referência, que não assina o POST, ADR-0008 define bearer token aleatório por instância com hash, rotação e idempotência por mensagem. Atualmente não há webhook de WhatsApp ativo no código.
 - Fase financeira futura: validar Asaas com token via `hash_equals()` e Mercado Pago com HMAC conforme contrato vigente; não provisionar nem integrar esses webhooks no MVP. Ver ADR-0008.
 - Idempotência por identificador do provedor e armazenamento persistente apropriado para cada integração ativa.
 - Resposta `2xx` rápida: processamento pesado vai para outbox, evitando timeout do provedor.

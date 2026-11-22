@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1500" viewBox="0 0 1440 1500" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1700" viewBox="0 0 1440 1700" role="img" aria-labelledby="title desc">
   <title id="title">Configuração de atendimento WhatsApp e IA</title>
   <desc id="desc">Mockup administrativo global para selecionar OpenAI ou Gemini, configurar chaves sem exibi-las depois de salvas e revisar o aviso de consentimento do titular.</desc>
   <defs>
@@ -8,15 +8,15 @@
       .card{fill:#FFFFFF;stroke:#DCE3EC;stroke-width:1.5}.bg{fill:#F6F8FB}.line{stroke:#DCE3EC;stroke-width:1.5}.blue{fill:#1D4ED8}.lightblue{fill:#EFF6FF}.green{fill:#166534}.lightgreen{fill:#F0FDF4}.amber{fill:#92400E}.lightamber{fill:#FFFBEB}.red{fill:#B91C1C}.field{fill:#FFFFFF;stroke:#94A3B8;stroke-width:1.4}.selected{stroke:#1D4ED8;stroke-width:2.5}
     </style>
   </defs>
-  <rect width="1440" height="1500" fill="#E8EDF4"/>
-  <rect x="42" y="36" width="1356" height="1428" rx="18" class="bg"/>
+  <rect width="1440" height="1700" fill="#E8EDF4"/>
+  <rect x="42" y="36" width="1356" height="1628" rx="18" class="bg"/>
   <rect x="42" y="36" width="1356" height="72" rx="18" fill="#FFFFFF"/>
   <path d="M42 107H1398" class="line"/>
   <rect x="70" y="54" width="36" height="36" rx="9" fill="#1D4ED8"/>
   <text x="82" y="79" font-size="19" font-weight="750" fill="#FFFFFF">I</text>
   <text x="118" y="80" class="label">IEPRCard</text>
   <text x="1165" y="78" class="small muted">Admin SaaS · Leonardo</text>
-  <rect x="42" y="108" width="238" height="1356" fill="#FFFFFF"/>
+  <rect x="42" y="108" width="238" height="1526" fill="#FFFFFF"/>
   <path d="M280 108V1464" class="line"/>
   <text x="68" y="151" class="tiny muted" font-weight="700">ADMINISTRAÇÃO</text>
   <text x="82" y="202" class="small muted">Visão geral</text>
@@ -37,8 +37,22 @@
   <circle cx="342" cy="305" r="13" fill="#92400E"/>
   <text x="338" y="311" font-size="16" font-weight="700" fill="#FFFFFF">!</text>
   <text x="370" y="296" class="label amber">Configuração global da plataforma</text>
-  <text x="370" y="322" class="small amber">Aplica-se aos clientes que usam o atendimento. As chamadas são cobradas na conta do provedor configurado.</text>
+  <text x="370" y="322" class="small amber">Aplica-se aos clientes que usam o atendimento. O consumo de IA é cobrado na conta global configurada.</text>
 
+  <rect x="312" y="374" width="1048" height="190" rx="12" class="card"/>
+  <text x="340" y="414" class="section">Canal WhatsApp · GOWA VIP</text>
+  <text x="340" y="440" class="small muted">Conexão global da plataforma; cada instância recebe um webhook exclusivo.</text>
+  <text x="340" y="477" class="label">URL da API</text>
+  <rect x="340" y="488" width="390" height="40" rx="7" class="field"/>
+  <text x="354" y="514" class="small muted">https://api.example.net</text>
+  <text x="750" y="477" class="label">Token de API</text>
+  <rect x="750" y="488" width="390" height="40" rx="7" class="field"/>
+  <text x="764" y="514" class="small muted">••••••••••••••••••••••</text>
+  <rect x="1160" y="488" width="172" height="40" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5"/>
+  <text x="1191" y="514" class="small" font-weight="650">Testar GOWA</text>
+  <text x="340" y="550" class="tiny green">Conexão aprovada · token protegido e mascarado</text>
+
+  <g transform="translate(0 190)">
   <rect x="312" y="374" width="1048" height="400" rx="12" class="card"/>
   <text x="340" y="415" class="section">Provedor de IA</text>
   <text x="340" y="441" class="small muted">Cadastre as chaves disponíveis e escolha um provedor principal para novas conversas.</text>
@@ -97,7 +111,8 @@
   <text x="340" y="1307" class="small blue">Após salvar, os segredos ficam mascarados. O teste usa uma mensagem sintética, nunca dados de titular.</text>
   <rect x="312" y="1360" width="1048" height="1" fill="#DCE3EC"/>
   <rect x="1000" y="1380" width="172" height="48" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.5"/>
-  <text x="1034" y="1410" class="body" font-weight="650">Testar conexão</text>
+  <text x="1034" y="1410" class="body" font-weight="650">Testar IA</text>
   <rect x="1184" y="1380" width="176" height="48" rx="8" fill="#1D4ED8"/>
-  <text x="1220" y="1410" class="body" fill="#FFFFFF" font-weight="650">Salvar configuração</text>
+  <text x="1202" y="1410" class="body" fill="#FFFFFF" font-weight="650">Salvar configuração</text>
+  </g>
 </svg>

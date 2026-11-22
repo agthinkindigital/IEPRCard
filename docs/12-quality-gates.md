@@ -25,7 +25,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 
 * **GATE 4 — WhatsApp sem cobrança & Telemetria (Após Épicos 5 e 6):**
-* [ ] Fluxos WhatsApp/IA incluídos no MVP processam eventos com validação de assinatura e idempotência, sem checkout ou dependência de pagamento.
+* [ ] Fluxos WhatsApp/IA incluídos no MVP autenticam e deduplicam eventos: assinatura do provedor ou, para o GOWA atual, bearer secreto aleatório por instância com hash, rotação e idempotência, conforme ADR-0008; sem checkout ou dependência de pagamento.
 * [ ] `TDD-06` passa 100%; painéis de telemetria exibem os recortes permitidos para Admin, Cliente e Subcliente.
 * [ ] `TDD-05`, webhooks Asaas/Mercado Pago e requisitos de liquidação ficam fora deste gate e só serão retomados ao priorizar o módulo financeiro futuro.
 

@@ -4,17 +4,19 @@ O mockup está em [`whatsapp-ia-mockup.svg`](../mockups/whatsapp-ia-mockup.svg) 
 
 ## Perfil e escopo
 
-- A tela é exclusiva do superadmin e configura as credenciais globais de OpenAI e Google Gemini.
+- A tela é exclusiva do superadmin e configura a conexão global GOWA VIP e as credenciais globais de OpenAI e Google Gemini.
+- GOWA VIP é o gateway WhatsApp do MVP; a URL da API e o token global conectam a plataforma. Cada instância de cliente recebe URL de webhook própria e segredo aleatório exclusivo.
 - A seleção vale para conversas dos clientes que usam o atendimento; clientes não consultam nem substituem chaves.
 - Um provedor fica principal por vez. Fallback automático fica desligado no MVP para evitar encaminhamento de dados a outro serviço sem escolha explícita.
 - As chamadas usam a conta do provedor configurado pela plataforma; a tela informa que o consumo é cobrado nessa conta.
 
 ## Configuração segura
 
-- A chave de API é entrada de senha, nunca renderizada novamente após salvar. Mostrar apenas situação configurada/ausente e ação para substituir/remover.
-- Não preencher exemplos com credenciais. O teste de conexão envia somente conteúdo sintético sem titular.
+- Tokens GOWA e chaves de IA são entradas de senha, nunca renderizadas novamente após salvar. Mostrar apenas situação configurada/ausente e ação para substituir/remover.
+- Não preencher exemplos com credenciais reais. O teste GOWA verifica apenas a conexão da API; o teste de IA usa conteúdo sintético sem titular.
 - Selecionar um modelo permitido pelo adaptador. Falha, chave inválida e limite do provedor aparecem sem mostrar resposta bruta, chave, prompt ou dados pessoais.
-- Salvar exige CSRF e revalidação server-side do superadmin; se `IEPR_INTEGRATION_KEY` estiver ausente, bloquear a configuração e mostrar instrução operacional sem revelar detalhes do segredo. O contrato de chave fica em [ADR-0008](../../docs/adr/0008-webhooks-idempotentes-e-segredos.md).
+- Salvar exige CSRF e revalidação server-side do superadmin; se `IEPR_INTEGRATION_KEY` estiver ausente, bloquear a configuração e mostrar instrução operacional sem revelar detalhes do segredo. O contrato de chave e webhook fica em [ADR-0008](../../docs/adr/0008-webhooks-idempotentes-e-segredos.md).
+- A URL de webhook por instância contém um segredo bearer aleatório, revelado apenas no provisionamento/rotação; depois, o sistema mostra somente o estado. Nunca registrar URL/token em logs ou telemetria.
 
 ## Fluxo de conversa
 

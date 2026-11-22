@@ -2,14 +2,17 @@
 
 Este guia descreve a proposta de configuração global de IA pelo Administrador SaaS e o consentimento apresentado ao titular no WhatsApp. O mockup associado é [`whatsapp-ia-mockup.svg`](../../design-system/mockups/whatsapp-ia-mockup.svg); a especificação visual fica em [`design-system/pages/whatsapp-ia.md`](../../design-system/pages/whatsapp-ia.md). A implementação depende de aprovação do mantenedor.
 
-## Configurar provedor — superadmin
+## Configurar conexão — superadmin
 
 1. Antes de abrir a tela, configure `IEPR_INTEGRATION_KEY` no ambiente do processo PHP. Gere uma chave aleatória de 32 bytes em Base64 e não reutilize a chave de anonimização.
 2. Acesse **Administração → Atendimento e IA**. Essa tela é exclusiva do superadmin.
-3. Cadastre a chave e o modelo para OpenAI e/ou Google Gemini. Os clientes não cadastram chaves próprias.
-4. Use **Testar conexão** para validar a configuração com uma chamada sintética, sem dados de titulares.
-5. Escolha um provedor configurado para novas conversas e salve. No MVP, um provedor é selecionado e não há fallback automático.
-6. A plataforma usará sua conta desse provedor, e o consumo será cobrado nessa conta. Após salvar, a chave não volta a ser exibida; para trocá-la, informe uma nova.
+3. Informe a URL da API GOWA VIP e seu token global; use **Testar GOWA** para validar somente a conexão. A credencial global permite que a plataforma crie e atualize instâncias de WhatsApp.
+4. Cadastre a chave e o modelo para OpenAI e/ou Google Gemini. Os clientes não cadastram chaves próprias.
+5. Use **Testar conexão** para validar IA com uma chamada sintética, sem dados de titulares.
+6. Escolha um provedor de IA configurado para novas conversas e salve. No MVP, um provedor é selecionado e não há fallback automático.
+7. A plataforma usará sua conta GOWA e a conta do provedor de IA ativo; o consumo de IA será cobrado nessa conta global. Após salvar, os tokens/chaves não voltam a ser exibidos; para trocá-los, informe novos valores.
+
+Cada instância de cliente recebe uma URL de webhook exclusiva com segredo aleatório. O segredo é enviado ao GOWA ao provisionar/rotacionar; a tela mostra apenas o estado e nunca o token novamente. A rotação invalida a URL anterior. A autenticação por token de URL é o mecanismo compatível com o GOWA das referências fornecidas; ver [ADR-0008](../adr/0008-webhooks-idempotentes-e-segredos.md).
 
 Se o teste falhar, revise a chave, o modelo permitido e a conectividade externa. A configuração ativa anterior permanece selecionada até que uma nova escolha válida seja salva.
 
