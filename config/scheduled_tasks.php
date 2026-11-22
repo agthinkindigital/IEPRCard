@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/privacy_snapshot.php';
+
 /** @param array<string, callable():array<string, int>> $tasks @return array{ok:bool,tasks:array<string, array<string, mixed>>} */
 function scheduledTasksRun(array $tasks): array
 {
@@ -92,6 +94,9 @@ function scheduledTasksBuild(PDO $pdo, int $maxIssuanceJobs = 1, int $maintenanc
         'titular_anonymization' => static function () use ($pdo, $maintenanceLimit): array {
             $result = titularAnonymizationProcessDue($pdo, null, $maintenanceLimit);
             return ['processed' => $result['processed'], 'failed' => $result['failed']];
+        },
+        'privacy_backup' => static function () use ($pdo): array {
+            return privacySnapshotRunDue($pdo);
         },
     ];
 }

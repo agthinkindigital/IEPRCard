@@ -5,6 +5,8 @@ require_once dirname(__DIR__, 2) . '/config/conn.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/backup_destinations.php';
 require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
+require_once dirname(__DIR__, 2) . '/config/titular_privacy_keys.php';
+require_once dirname(__DIR__, 2) . '/config/privacy_snapshot.php';
 
 $backupDestinationsConnections = ['SQLite' => dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:'])];
 $backupDestinationsMysql = [
@@ -78,6 +80,8 @@ try {
             . "VALUES ('superadmin', 'Backup Test', :email, :hash, 1)"
         )->execute(['email' => $superadminEmail, 'hash' => password_hash('synthetic-test-password', PASSWORD_DEFAULT)]);
         $superadminId = (int) $pdo->lastInsertId();
+        $superadminSubject = privacySubjectCreate($pdo, 'pessoa');
+        privacySubjectLinkRecord($pdo, $superadminSubject['id'], 'usuario', $superadminId);
         $identity = ['id' => $superadminId, 'papel_sistema' => 'superadmin', 'tenant_id' => null, 'subcliente_id' => null];
         $input = [
             'name' => 'Local S3 ' . $driver,
@@ -234,6 +238,66 @@ try {
             throw new RuntimeException($driver . ': SDK-backed erasure must permanently purge key versions and retain only a pseudonymous tombstone.');
         }
         s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $tombstoneKey);
+
+        $genericSubject = privacySubjectCreate($pdo, 'pessoa', $privacyTenantId);
+        privacySubjectLinkRecord($pdo, $genericSubject['id'], 'usuario', 987654);
+        $genericPlaintext = 'Synthetic private account PII';
+        $genericCiphertext = privacySubjectEncryptSnapshotData($pdo, $genericSubject['id'], $genericPlaintext);
+        $genericKey = titularPrivacyObjectKey('keys', $genericSubject['reference'], titularAnonymizationEncryptionKey());
+        if (!str_starts_with($genericCiphertext, 'v1:') || str_contains($genericCiphertext, $genericPlaintext)
+            || $privacyClient->headObject(['Bucket' => $saved['bucket'], 'Key' => $genericKey]) === null) {
+            throw new RuntimeException($driver . ': generic privacy subjects must receive independent external keys and ciphertext.');
+        }
+        $genericErasure = privacySubjectEraseBackupKey($pdo, $genericSubject['id']);
+        $genericKeyVersions = $privacyClient->listObjectVersions([
+            'Bucket' => $saved['bucket'], 'Prefix' => $genericKey, 'MaxKeys' => 100,
+        ]);
+        $genericTombstoneKey = titularPrivacyObjectKey('tombstones', $genericSubject['reference'], titularAnonymizationEncryptionKey());
+        s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $genericTombstoneKey);
+        if (($genericErasure['destinations'] ?? 0) !== 1 || ($genericKeyVersions['Versions'] ?? []) !== []
+            || ($genericKeyVersions['DeleteMarkers'] ?? []) !== []) {
+            throw new RuntimeException($driver . ': generic privacy subject erasure must permanently remove every key version.');
+        }
+        try {
+            privacySubjectEncryptSnapshotData($pdo, $genericSubject['id'], 'must not be re-keyed');
+            throw new RuntimeException($driver . ': erased privacy subjects must not be re-keyed.');
+        } catch (RuntimeException $exception) {
+            if ($exception->getMessage() !== 'ANONYMIZATION_SUBJECT_ERASED') {
+                throw $exception;
+            }
+        }
+
+        $privacySnapshotClient = null;
+        $snapshotUpload = privacySnapshotUpload(
+            $pdo,
+            [(int) $saved['id']],
+            static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext),
+            static function (array $destination, array $credentials) use (&$privacySnapshotClient, $privacyClient): object {
+                $privacySnapshotClient = new class($privacyClient) {
+                    public array $uploads = [];
+                    public function __construct(private object $client) {}
+                    public function putObject(array $input): mixed {
+                        $this->uploads[] = $input;
+                        return $this->client->putObject($input);
+                    }
+                };
+                return $privacySnapshotClient;
+            }
+        );
+        $snapshotBody = $privacySnapshotClient?->uploads[0]['Body'] ?? null;
+        $snapshotBytes = is_string($snapshotBody) ? gzdecode($snapshotBody) : false;
+        if (($snapshotUpload['processed'] ?? 0) !== 1 || ($snapshotUpload['failed'] ?? 0) !== 0
+            || !is_string($snapshotBytes) || !str_contains($snapshotBytes, 'ieprcard-snapshot-v1')
+            || str_contains($snapshotBytes, 'Synthetic S3 privacy holder')
+            || str_contains($snapshotBytes, $superadminEmail)) {
+            throw new RuntimeException($driver . ': S3 snapshot upload must store a checksummed gzip payload without plaintext PII.');
+        }
+        $snapshotKey = (string) ($privacySnapshotClient?->uploads[0]['Key'] ?? '');
+        if ($snapshotKey === '') {
+            throw new RuntimeException($driver . ': snapshot upload must use an object key.');
+        }
+        s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $snapshotKey);
+
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $privacyHolderId]);
         $pdo->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $privacyTenantId]);
 

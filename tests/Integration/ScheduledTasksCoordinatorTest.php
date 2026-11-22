@@ -71,7 +71,7 @@ fwrite(STDOUT, "PASS: scheduled task reported failure summary.\n");
 $pdo = new PDO('sqlite::memory:');
 $definitions = scheduledTasksBuild($pdo);
 if (array_keys($definitions) !== [
-    'card_issuance', 'whatsapp_delivery', 'whatsapp_conversation_cleanup', 'import_staging_cleanup', 'titular_anonymization',
+    'card_issuance', 'whatsapp_delivery', 'whatsapp_conversation_cleanup', 'import_staging_cleanup', 'titular_anonymization', 'privacy_backup',
 ]) {
     throw new RuntimeException('The coordinator must register only the implemented tasks in deterministic order.');
 }

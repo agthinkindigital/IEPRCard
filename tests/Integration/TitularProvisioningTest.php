@@ -126,10 +126,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         ]);
         $created = $pdo->prepare(
             'SELECT tenant_id, subcliente_id, categoria_id, nome_completo, cpf, matricula, cargo_funcao, '
-            . 'acesso_app_liberado, senha_portal_hash, token_unico_carteira, foto_url FROM titulares WHERE id = :id'
+            . 'acesso_app_liberado, senha_portal_hash, token_unico_carteira, foto_url, referencia_privacidade FROM titulares WHERE id = :id'
         );
         $created->execute(['id' => $createdHolderId]);
         $holder = $created->fetch(PDO::FETCH_ASSOC);
+        $holderPrivacySubject = privacySubjectFindForRecord($pdo, 'titular', $createdHolderId);
         $audit = $pdo->prepare(
             "SELECT ator_usuario_id, acao, entidade, entidade_id, depois_json FROM auditoria_processos "
             . "WHERE tenant_id = :tenant AND acao = 'titular.created' ORDER BY id DESC LIMIT 1"
@@ -142,6 +143,8 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             || $holder['matricula'] !== 'A-001' || $holder['cargo_funcao'] !== 'Membro'
             || (int) $holder['acesso_app_liberado'] !== 0 || $holder['senha_portal_hash'] !== null
             || $holder['token_unico_carteira'] !== null || $holder['foto_url'] !== null
+            || !is_array($holderPrivacySubject)
+            || !hash_equals((string) $holder['referencia_privacidade'], (string) $holderPrivacySubject['reference'])
             || !is_array($auditRow) || (int) $auditRow['ator_usuario_id'] !== $ownerId
             || $auditRow['entidade'] !== 'titulares' || (int) $auditRow['entidade_id'] !== $createdHolderId
             || str_contains((string) $auditRow['depois_json'], 'Ana')

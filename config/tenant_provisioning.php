@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/motor_permissoes.php';
 require_once __DIR__ . '/installation_profile.php';
+require_once __DIR__ . '/privacy_subjects.php';
 
 /** @param array<string,mixed> $identity @param array<string,mixed> $input @param array<string,string>|null $configuration @return array{tenant_id:int,owner_user_id:int} */
 function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity, array $input, ?array $configuration = null): array
@@ -95,6 +96,9 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
             'created_at' => $now,
         ]);
         $ownerUserId = (int) $pdo->lastInsertId();
+        $ownerSubject = privacySubjectCreate($pdo, 'pessoa', $tenantId, $now);
+        privacySubjectLinkRecord($pdo, $ownerSubject['id'], 'usuario', $ownerUserId);
+        privacySubjectLinkRecord($pdo, $ownerSubject['id'], 'tenant_contato', $tenantId);
 
         $auditAfter = json_encode([
             'plano_id' => (int) $planId,

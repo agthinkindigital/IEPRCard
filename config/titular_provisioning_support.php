@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/privacy_subjects.php';
+
 /** @param list<array<string, mixed>> $inputs @return list<array{nome_completo:string,cpf:?string,matricula:?string,cargo_funcao:?string,categoria_id:?int,whatsapp:?string,foto_url:?string}> */
 function titularCreateBatchNormalize(array $inputs): array
 {
@@ -125,6 +127,7 @@ function titularCreateInsert(PDO $pdo, array $identity, int $tenantId, ?int $sub
         'created_at' => gmdate('Y-m-d H:i:s'),
     ]);
     $titularId = (int) $pdo->lastInsertId();
+    privacySubjectEnsureTitular($pdo, $titularId, $tenantId);
     $audit = $pdo->prepare(
         'INSERT INTO auditoria_processos (tenant_id, subcliente_id, ator_usuario_id, ator_tipo, acao, entidade, '
         . 'entidade_id, antes_json, depois_json, criado_em) VALUES (:tenant, :subclient, :actor, :actor_type, '

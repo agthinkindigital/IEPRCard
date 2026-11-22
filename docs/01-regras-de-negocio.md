@@ -126,9 +126,10 @@ Para garantir que o Cliente tenha visão total organizada da sua rede e o Subcli
 
 ## 7. Ciclo de Vida dos Dados Pessoais
 
-- Enquanto o titular estiver ativo e o vínculo vigente, os dados necessários à operação da carteirinha podem ser mantidos com acesso restrito.
-- Após a inativação ou expiração do vínculo, anonimizar os dados pessoais em até 12 meses. Ao receber uma solicitação de exclusão, concluir a anonimização em até 72 horas.
-- A regra cobre dados cadastrais e cópias derivadas: fotos, snapshots, PDFs/WebPs, tokens, cache e índices. Auditoria e métricas podem permanecer somente sem identificadores que permitam reidentificação.
+- Enquanto a pessoa mantiver uma conta ou vínculo ativo e os dados forem necessários à operação, mantê-los com acesso restrito. Isso inclui titulares, usuários/equipe e responsáveis de tenant.
+- Após inativação, expiração ou substituição do vínculo/dado, anonimizar em até 12 meses. Ao receber uma solicitação de exclusão, concluir a anonimização em até 72 horas.
+- A regra cobre dados cadastrais e cópias derivadas: fotos, conversas e mensagens WhatsApp, snapshots, PDFs/WebPs, tokens, cache, índices e campos livres capazes de identificar alguém. Conversas WhatsApp sem vínculo a titular mantêm a expiração curta definida pelo fluxo (atualmente 24 horas); não são estendidas pela retenção geral.
+- Auditoria, telemetria e métricas podem permanecer somente sem identificadores que permitam reidentificação. Conteúdo livre nesses registros é proibido ou deve passar pela proteção do sujeito de privacidade correspondente.
 - A política de backup e a proteção contra restauração de dados anonimizados estão definidas em `docs/adr/0012-ci-deploy-e-backup.md`.
 
 ## Telas do MVP

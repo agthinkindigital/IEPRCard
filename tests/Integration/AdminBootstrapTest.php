@@ -58,6 +58,9 @@ try {
     }
 
     $id = adminAuthProvisionInitialSuperadmin($pdo, '  Admin Inicial  ', 'FIRST@EXAMPLE.TEST', 'a-long-initial-password', $lockPath);
+    if (!is_array(privacySubjectFindForRecord($pdo, 'usuario', $id))) {
+        throw new RuntimeException('The initial superadmin account must be linked to a PII-removable privacy subject.');
+    }
     $admin = adminAuthAuthenticate($pdo, 'first@example.test', 'a-long-initial-password');
     if ($id < 1 || $admin === null || $admin['papel_sistema'] !== 'superadmin') {
         throw new RuntimeException('Bootstrap must create an active global superadmin with a verifiable password hash.');

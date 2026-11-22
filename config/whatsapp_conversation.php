@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/ai_global_config.php';
 require_once __DIR__ . '/whatsapp_gateway_api.php';
+require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/phone.php';
 require_once __DIR__ . '/titular_provisioning.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
@@ -105,6 +106,7 @@ function whatsappConversationHandleIncoming(
     if (!is_array($conversation)) {
         throw new RuntimeException('WHATSAPP_CONVERSATION_STATE_UNAVAILABLE');
     }
+    privacySubjectEnsureForRecord($pdo, 'whatsapp_conversa', (int) $conversation['id'], (int) $tenantId);
 
     if ($conversation['consentimento_em'] !== null && $conversation['revogado_em'] === null
         && whatsappConversationCommand((string) ($message['texto'] ?? '')) === 'SAIR') {

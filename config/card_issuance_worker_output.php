@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/privacy_subjects.php';
+
 /** @param array<string,mixed> $job @param array<string,mixed> $entry */
 function cardIssuanceWorkerPersistWebp(PDO $pdo, array $job, int $jobId, array $entry, int $now): void
 {
@@ -41,6 +43,14 @@ function cardIssuanceWorkerInsertCard(PDO $pdo, array $job, int $jobId, array $e
         'snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
         'front' => $front, 'back' => $back, 'pdf' => $pdf, 'created' => gmdate('Y-m-d H:i:s', $now),
     ]);
+    $cardId = (int) $pdo->lastInsertId();
+    $subject = privacySubjectEnsureTitular($pdo, (int) $entry['member']['id'], (int) $job['tenant_id']);
+    privacySubjectLinkRecord(
+        $pdo,
+        $subject['id'],
+        'carteirinha_emitida',
+        $cardId
+    );
 }
 
 function cardIssuanceWorkerFindExisting(PDO $pdo, int $jobId, int $holderId): ?array

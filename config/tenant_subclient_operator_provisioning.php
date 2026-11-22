@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/tenant_quota_policy.php';
+require_once __DIR__ . '/privacy_subjects.php';
 
 /** @param array<string, mixed> $identity @param array<string, mixed> $input */
 function tenantSubclientOperatorCreate(
@@ -113,6 +114,8 @@ function tenantSubclientOperatorCreate(
                 'created_at' => $now,
             ]);
             $userId = (int) $pdo->lastInsertId();
+            $subject = privacySubjectCreate($pdo, 'pessoa', $tenantId, $now);
+            privacySubjectLinkRecord($pdo, $subject['id'], 'usuario', $userId);
 
             $audit = $pdo->prepare(
                 'INSERT INTO auditoria_processos (tenant_id, subcliente_id, ator_usuario_id, ator_tipo, acao, entidade, '

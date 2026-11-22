@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/backup_destinations.php';
 require_once __DIR__ . '/s3_compatible_storage.php';
+require_once __DIR__ . '/privacy_subjects.php';
 
 function titularPrivacyReference(int $tenantId, int $titularId): string
 {
@@ -23,7 +24,7 @@ function titularPrivacyEnsureReference(PDO $pdo, int $tenantId, int $titularId):
         throw new DomainException('ANONYMIZATION_TITULAR_NOT_FOUND');
     }
     if (is_string($reference) && preg_match('/^[a-f0-9]{64}$/D', $reference) === 1) {
-        return $reference;
+        return privacySubjectEnsureTitular($pdo, $titularId, $tenantId)['reference'];
     }
 
     $reference = titularPrivacyReference($tenantId, $titularId);
@@ -38,9 +39,9 @@ function titularPrivacyEnsureReference(PDO $pdo, int $tenantId, int $titularId):
         if (!is_string($stored) || preg_match('/^[a-f0-9]{64}$/D', $stored) !== 1) {
             throw new RuntimeException('ANONYMIZATION_REFERENCE_PERSIST_FAILED');
         }
-        return $stored;
+        return privacySubjectEnsureTitular($pdo, $titularId, $tenantId)['reference'];
     }
-    return $reference;
+    return privacySubjectEnsureTitular($pdo, $titularId, $tenantId)['reference'];
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
@@ -131,6 +132,100 @@ function titularPrivacyProvisionKey(
     }
 }
 
+/** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
+function privacySubjectProvisionBackupKey(PDO $pdo, int $subjectId, ?callable $clientFactory = null): void
+{
+    if ($subjectId < 1) {
+        throw new InvalidArgumentException('ANONYMIZATION_REFERENCE_INVALID');
+    }
+    $ownsTransaction = !$pdo->inTransaction();
+    if ($ownsTransaction) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $lockSubject = $pdo->prepare('UPDATE privacy_subjects SET referencia = referencia WHERE id = :id AND estado <> \'anonimizado\'');
+        $lockSubject->execute(['id' => $subjectId]);
+        $subjectQuery = $pdo->prepare('SELECT referencia, estado FROM privacy_subjects WHERE id = :id LIMIT 1');
+        $subjectQuery->execute(['id' => $subjectId]);
+        $subjectRow = $subjectQuery->fetch(PDO::FETCH_ASSOC);
+        $reference = is_array($subjectRow) ? (string) $subjectRow['referencia'] : null;
+        if (!is_array($subjectRow) || ($subjectRow['estado'] ?? null) === 'anonimizado') {
+            throw new RuntimeException('ANONYMIZATION_SUBJECT_ERASED');
+        }
+        if (!is_string($reference) || preg_match('/^[a-f0-9]{64}$/D', $reference) !== 1) {
+            throw new DomainException('PRIVACY_SUBJECT_NOT_FOUND');
+        }
+        $key = titularAnonymizationEncryptionKey();
+        $destinations = titularPrivacyActiveDestinations($pdo);
+        if ($destinations === []) {
+            throw new RuntimeException('ANONYMIZATION_KEY_DESTINATION_UNAVAILABLE');
+        }
+        $referenceHmac = hash_hmac('sha256', $reference, $key);
+        $envelope = titularPrivacyLoadExistingEnvelope($pdo, $reference, $referenceHmac, $key, $clientFactory);
+        if ($envelope === null) {
+            $dek = random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
+            $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+            $envelope = json_encode([
+                'version' => 1,
+                'reference_hmac' => $referenceHmac,
+                'wrapped_dek' => base64_encode($nonce . sodium_crypto_secretbox($dek, $nonce, $key)),
+            ], JSON_THROW_ON_ERROR);
+            sodium_memzero($dek);
+        }
+        foreach ($destinations as $destination) {
+            $existing = $pdo->prepare(
+                'SELECT estado FROM titular_chaves_backup WHERE destino_id = :destination AND referencia_hmac = :reference LIMIT 1'
+            );
+            $existing->execute(['destination' => $destination['id'], 'reference' => $referenceHmac]);
+            if ($existing->fetchColumn() === 'ativa') {
+                $client = titularPrivacyCreateClient($destination, $clientFactory);
+                $client->headObject([
+                    'Bucket' => $destination['bucket'],
+                    'Key' => titularPrivacyObjectKey('keys', $reference, $key),
+                ]);
+                continue;
+            }
+            $now = gmdate('Y-m-d H:i:s');
+            $reserve = $pdo->prepare(
+                "INSERT INTO titular_chaves_backup (destino_id, referencia_hmac, estado, criado_em, atualizado_em) "
+                . "VALUES (:destination, :reference, 'pendente', :created, :updated)"
+            );
+            try {
+                $reserve->execute([
+                    'destination' => $destination['id'], 'reference' => $referenceHmac,
+                    'created' => $now, 'updated' => $now,
+                ]);
+            } catch (PDOException $exception) {
+                if (!in_array((string) $exception->getCode(), ['23000', '23505'], true)) throw $exception;
+            }
+            $client = titularPrivacyCreateClient($destination, $clientFactory);
+            $client->putObject([
+                'Bucket' => $destination['bucket'],
+                'Key' => titularPrivacyObjectKey('keys', $reference, $key),
+                'Body' => $envelope,
+                'ContentType' => 'application/json',
+                'ServerSideEncryption' => 'AES256',
+            ]);
+            $activate = $pdo->prepare(
+                "UPDATE titular_chaves_backup SET estado = 'ativa', atualizado_em = :updated "
+                . 'WHERE destino_id = :destination AND referencia_hmac = :reference'
+            );
+            $activate->execute([
+                'updated' => gmdate('Y-m-d H:i:s'), 'destination' => $destination['id'],
+                'reference' => $referenceHmac,
+            ]);
+        }
+        if ($ownsTransaction) {
+            $pdo->commit();
+        }
+    } catch (Throwable $exception) {
+        if ($ownsTransaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
+}
+
 /** Encrypt one holder's snapshot payload without exposing the DEK to callers.
  *  @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
  */
@@ -146,6 +241,30 @@ function titularPrivacyEncryptSnapshotData(
     }
     titularPrivacyProvisionKey($pdo, $tenantId, $titularId, $clientFactory);
     $reference = titularPrivacyEnsureReference($pdo, $tenantId, $titularId);
+    return titularPrivacyEncryptReferencePayload($pdo, $reference, $plaintext, $clientFactory);
+}
+
+/** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
+function privacySubjectEncryptSnapshotData(
+    PDO $pdo,
+    int $subjectId,
+    string $plaintext,
+    ?callable $clientFactory = null
+): string {
+    if (strlen($plaintext) > 67_108_864) {
+        throw new InvalidArgumentException('ANONYMIZATION_SNAPSHOT_PAYLOAD_TOO_LARGE');
+    }
+    privacySubjectProvisionBackupKey($pdo, $subjectId, $clientFactory);
+    $reference = privacySubjectReference($pdo, $subjectId);
+    if (!is_string($reference)) {
+        throw new DomainException('PRIVACY_SUBJECT_NOT_FOUND');
+    }
+    return titularPrivacyEncryptReferencePayload($pdo, $reference, $plaintext, $clientFactory);
+}
+
+/** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
+function titularPrivacyEncryptReferencePayload(PDO $pdo, string $reference, string $plaintext, ?callable $clientFactory): string
+{
     $key = titularAnonymizationEncryptionKey();
     $referenceHmac = hash_hmac('sha256', $reference, $key);
     $envelope = titularPrivacyLoadExistingEnvelope($pdo, $reference, $referenceHmac, $key, $clientFactory);
@@ -265,7 +384,23 @@ function titularPrivacyEraseKeys(PDO $pdo, string $reference, ?callable $clientF
         );
         $remove->execute(['destination' => $destination['id'], 'reference' => $referenceHmac]);
     }
+    $markSubject = $pdo->prepare(
+        "UPDATE privacy_subjects SET estado = 'anonimizado', anonimizado_em = :at WHERE referencia = :reference"
+    );
+    $markSubject->execute(['at' => gmdate('Y-m-d H:i:s'), 'reference' => $reference]);
     return ['destinations' => count($destinations)];
+}
+
+/** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
+ *  @return array{destinations:int}
+ */
+function privacySubjectEraseBackupKey(PDO $pdo, int $subjectId, ?callable $clientFactory = null): array
+{
+    $reference = privacySubjectReference($pdo, $subjectId);
+    if (!is_string($reference)) {
+        throw new DomainException('PRIVACY_SUBJECT_NOT_FOUND');
+    }
+    return titularPrivacyEraseKeys($pdo, $reference, $clientFactory);
 }
 
 require_once __DIR__ . '/titular_privacy_destinations.php';

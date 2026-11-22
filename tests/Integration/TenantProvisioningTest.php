@@ -53,6 +53,12 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         if (($active['tenant_id'] ?? null) < 1 || ($active['owner_user_id'] ?? null) < 1) {
             throw new RuntimeException($driver . ': provisioning must return the created tenant and owner IDs.');
         }
+        $ownerPrivacySubject = privacySubjectFindForRecord($pdo, 'usuario', $active['owner_user_id']);
+        $contactPrivacySubject = privacySubjectFindForRecord($pdo, 'tenant_contato', $active['tenant_id']);
+        if (!is_array($ownerPrivacySubject) || !is_array($contactPrivacySubject)
+            || $ownerPrivacySubject['id'] !== $contactPrivacySubject['id']) {
+            throw new RuntimeException($driver . ': tenant contact and owner account must share one privacy subject.');
+        }
         $tenant = $pdo->prepare('SELECT tipo, parent_id, plano_id, nome_organizacao, nome_responsavel, slug_subdominio, status_conta FROM tenants WHERE id = :id');
         $tenant->execute(['id' => $active['tenant_id']]);
         $tenantRow = $tenant->fetch(PDO::FETCH_ASSOC);

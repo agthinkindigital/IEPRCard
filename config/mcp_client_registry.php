@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/motor_permissoes.php';
 require_once __DIR__ . '/mcp_client_registry_support.php';
 require_once __DIR__ . '/mcp_oauth_support.php';
+require_once __DIR__ . '/privacy_subjects.php';
 
 /** @return array{id:int,tenant_id:int,client_id:string,client_secret:string,expira_em:?string} */
 function mcpClientCreate(PDO $pdo, TenantContext $context, array $identity, int $tenantId, array $input): array
@@ -69,6 +70,8 @@ function mcpClientCreate(PDO $pdo, TenantContext $context, array $identity, int 
             'created_at' => $createdAt,
         ]);
         $id = (int) $pdo->lastInsertId();
+        $ownerSubject = privacySubjectEnsureForRecord($pdo, 'usuario', (int) $identity['id'], $tenantId);
+        privacySubjectLinkRecord($pdo, $ownerSubject['id'], 'mcp_api_key', $id);
         $after = json_encode([
             'client_id' => $clientId,
             'nome' => $name,

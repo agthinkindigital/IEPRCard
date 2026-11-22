@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/privacy_subjects.php';
+
 function adminAuthProvisionInitialSuperadmin(
     PDO $pdo,
     string $name,
@@ -54,6 +56,8 @@ function adminAuthProvisionInitialSuperadmin(
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
         ]);
         $id = (int) $pdo->lastInsertId();
+        $subject = privacySubjectCreate($pdo, 'pessoa');
+        privacySubjectLinkRecord($pdo, $subject['id'], 'usuario', $id);
         $pdo->commit();
 
         return $id;
