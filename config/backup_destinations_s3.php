@@ -36,6 +36,13 @@ function backupDestinationTest(PDO $pdo, array $identity, int $id): array
             if (!hash_equals($payload, $body)) {
                 throw new RuntimeException('BACKUP_DESTINATION_PROBE_MISMATCH');
             }
+            $listing = $client->listObjectsV2([
+                'Bucket' => $destination['bucket'], 'Prefix' => $key, 'MaxKeys' => 1,
+            ]);
+            $listedKey = $listing['Contents'][0]['Key'] ?? null;
+            if (!is_string($listedKey) || !hash_equals($key, $listedKey)) {
+                throw new RuntimeException('BACKUP_DESTINATION_PROBE_LIST_MISMATCH');
+            }
             s3CompatibleDeleteObjectPermanently($client, (string) $destination['bucket'], $key);
             $written = false;
         } finally {
@@ -159,6 +166,9 @@ function backupDestinationShape(array $row): array
         'region' => (string) $row['regiao'],
         'endpoint' => $row['endpoint'] === null ? null : (string) $row['endpoint'],
         'path_style' => (bool) $row['path_style'],
+        'retention_days' => (int) $row['retencao_dias'],
+        'last_retention_at' => $row['retencao_ultima_execucao_em'] === null ? null : (string) $row['retencao_ultima_execucao_em'],
+        'retention_error_code' => $row['retencao_erro_codigo'] === null ? null : (string) $row['retencao_erro_codigo'],
         'enabled' => (bool) $row['ativo'],
         'credentials_configured' => (bool) ($row['credentials_configured'] ?? true),
         'test_status' => $row['ultimo_teste_status'] === null ? null : (string) $row['ultimo_teste_status'],

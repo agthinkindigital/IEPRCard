@@ -6,7 +6,7 @@ require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/titular_privacy_keys.php';
 
-const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '08556899bab9db97c3edb2c95bcc9e654f5d3a93bfae5da0a297692371c0b104';
+const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = 'a39a13830d96fdc9509d5a1579ab1079d0893e3774d1b7b69194584bc3608f52';
 
 /** @param array<string,array<string,mixed>> $catalog @return array<string,list<string>> */
 function privacySnapshotAssertReviewedSchema(array $catalog): array
@@ -217,7 +217,7 @@ function privacySnapshotBuildPayload(PDO $pdo, ?callable $encryptSubject = null,
     ksort($envelopes, SORT_STRING);
     $manifest = [
         'format' => 'ieprcard-snapshot-v2',
-        'schema_version' => '0018',
+        'schema_version' => '0019',
         'snapshot_id' => bin2hex(random_bytes(16)),
         'created_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($createdAt)),
         'table_count' => count($tableData),
@@ -347,6 +347,116 @@ function privacySnapshotRunDue(PDO $pdo, ?int $now = null, int $intervalSeconds 
     $query->execute(['cutoff' => $cutoff]);
     $ids = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
     return $ids === [] ? ['processed' => 0, 'failed' => 0, 'skipped' => 1] : privacySnapshotUpload($pdo, $ids);
+}
+
+/** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
+ *  @return array{processed:int,failed:int,skipped:int}
+ */
+function privacySnapshotPurgeExpired(
+    PDO $pdo,
+    ?int $now = null,
+    int $limit = 25,
+    ?callable $clientFactory = null
+): array {
+    if ($limit < 1 || $limit > 200) {
+        throw new InvalidArgumentException('PRIVACY_SNAPSHOT_RETENTION_LIMIT_INVALID');
+    }
+    $now ??= time();
+    $destinations = $pdo->query('SELECT * FROM destinos_backup ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+    if ($destinations === []) {
+        return ['processed' => 0, 'failed' => 0, 'skipped' => 1];
+    }
+
+    $processed = 0;
+    $failed = 0;
+    foreach ($destinations as $destinationRow) {
+        if ($processed >= $limit) {
+            break;
+        }
+        $destinationId = (int) ($destinationRow['id'] ?? 0);
+        $errorCode = null;
+        try {
+            $retentionDays = filter_var($destinationRow['retencao_dias'] ?? null, FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1, 'max_range' => 3650],
+            ]);
+            if ($destinationId < 1 || $retentionDays === false) {
+                throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_CONFIGURATION_INVALID');
+            }
+            $destination = titularPrivacyOpenDestinationCredentials([$destinationRow])[0] ?? null;
+            if (!is_array($destination) || !is_array($destination['_credentials'] ?? null)) {
+                throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_DESTINATION_INVALID');
+            }
+            $client = $clientFactory !== null
+                ? $clientFactory($destination, $destination['_credentials'])
+                : backupDestinationS3Client($destination, $destination['_credentials']);
+            $cutoff = $now - ($retentionDays * 86400);
+            $continuationToken = null;
+            $previousToken = null;
+            $scanned = 0;
+            $pages = 0;
+            do {
+                if (++$pages > 50) {
+                    throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_PAGE_LIMIT');
+                }
+                $arguments = ['Bucket' => (string) $destination['bucket'], 'Prefix' => 'ieprcard-snapshots/', 'MaxKeys' => 1000];
+                if (is_string($continuationToken)) {
+                    $arguments['ContinuationToken'] = $continuationToken;
+                }
+                $page = $client->listObjectsV2($arguments);
+                $contents = $page['Contents'] ?? [];
+                if (!is_array($contents)) {
+                    throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_LIST_INVALID');
+                }
+                foreach ($contents as $object) {
+                    if (!is_array($object) || !is_string($object['Key'] ?? null)) {
+                        throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_LIST_INVALID');
+                    }
+                    if (++$scanned > 1000) {
+                        break 2;
+                    }
+                    $objectKey = $object['Key'];
+                    if (preg_match('~^ieprcard-snapshots/v[0-9]+/[0-9]{4}/[0-9]{2}/[0-9]{2}/[a-f0-9]{32}\.json\.gz$~D', $objectKey) !== 1) {
+                        continue;
+                    }
+                    $lastModified = $object['LastModified'] ?? null;
+                    if ($lastModified instanceof DateTimeInterface) {
+                        $modifiedAt = $lastModified->getTimestamp();
+                    } elseif (is_string($lastModified) && ($parsed = strtotime($lastModified)) !== false) {
+                        $modifiedAt = $parsed;
+                    } else {
+                        throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_TIMESTAMP_INVALID');
+                    }
+                    if ($modifiedAt <= $cutoff) {
+                        s3CompatibleDeleteObjectPermanently($client, (string) $destination['bucket'], $objectKey);
+                        ++$processed;
+                        if ($processed >= $limit) {
+                            break 2;
+                        }
+                    }
+                }
+                $truncated = (bool) ($page['IsTruncated'] ?? false);
+                $nextToken = $truncated ? ($page['NextContinuationToken'] ?? null) : null;
+                if ($truncated && (!is_string($nextToken) || $nextToken === '' || $nextToken === $continuationToken
+                    || $nextToken === $previousToken)) {
+                    throw new RuntimeException('PRIVACY_SNAPSHOT_RETENTION_PAGINATION_INVALID');
+                }
+                $previousToken = $continuationToken;
+                $continuationToken = $nextToken;
+            } while ($truncated);
+        } catch (Throwable) {
+            $errorCode = 'PRIVACY_SNAPSHOT_RETENTION_FAILED';
+            ++$failed;
+        }
+        $update = $pdo->prepare(
+            'UPDATE destinos_backup SET retencao_ultima_execucao_em = :run_at, retencao_erro_codigo = :error, '
+            . 'atualizado_em = :updated WHERE id = :id'
+        );
+        $update->execute([
+            'run_at' => gmdate('Y-m-d H:i:s', $now), 'error' => $errorCode,
+            'updated' => gmdate('Y-m-d H:i:s', $now), 'id' => $destinationId,
+        ]);
+    }
+    return ['processed' => $processed, 'failed' => $failed, 'skipped' => 0];
 }
 
 function privacySnapshotQuoteIdentifier(string $identifier, string $driver): string

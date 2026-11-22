@@ -92,6 +92,7 @@ try {
             'region' => 'us-east-1',
             'endpoint' => $backupDestinationEndpoint,
             'path_style' => true,
+            'retention_days' => 45,
             'access_key' => 'synthetic-access-key',
             'secret_key' => 'synthetic-secret-key',
         ];
@@ -106,6 +107,9 @@ try {
         }
 
         $saved = backupDestinationSave($pdo, $identity, $input);
+        if (($saved['retention_days'] ?? null) !== 45) {
+            throw new RuntimeException($driver . ': a backup destination must persist its configured retention days.');
+        }
         $rows = backupDestinationReadAll($pdo, $identity);
         $stored = $pdo->query('SELECT credentials_cifradas, ativo FROM destinos_backup WHERE id = ' . (int) $saved['id'])->fetch(PDO::FETCH_ASSOC);
         if (!is_array($stored) || $stored['credentials_cifradas'] === 'synthetic-secret-key'
@@ -113,6 +117,16 @@ try {
             || ($rows[0]['credentials_configured'] ?? false) !== true
             || (int) $stored['ativo'] !== 0) {
             throw new RuntimeException($driver . ': backup credentials must be encrypted and omitted from read APIs.');
+        }
+        foreach ([0, -1, 3651, '1.5', 'invalid'] as $invalidRetention) {
+            try {
+                backupDestinationSave($pdo, $identity, array_merge($input, [
+                    'id' => (int) $saved['id'], 'retention_days' => $invalidRetention,
+                    'access_key' => '', 'secret_key' => '',
+                ]));
+                throw new RuntimeException($driver . ': invalid destination retention was accepted.');
+            } catch (InvalidArgumentException) {
+            }
         }
 
         $tested = backupDestinationTest($pdo, $identity, (int) $saved['id']);
@@ -147,13 +161,15 @@ try {
             if ($exception->getMessage() !== 'BACKUP_DESTINATION_PRIVACY_KEYS_PRESENT') throw $exception;
         }
         $pdo->prepare('DELETE FROM titular_chaves_backup WHERE destino_id = :id')->execute(['id' => $saved['id']]);
-        $updated = backupDestinationSave($pdo, $identity, array_merge($input, [
+        $updateInput = $input;
+        unset($updateInput['retention_days']);
+        $updated = backupDestinationSave($pdo, $identity, array_merge($updateInput, [
             'id' => (int) $saved['id'], 'access_key' => '', 'secret_key' => '',
         ]));
         $updatedCiphertext = (string) $pdo->query(
             'SELECT credentials_cifradas FROM destinos_backup WHERE id = ' . (int) $saved['id']
         )->fetchColumn();
-        if ($updated['id'] !== $saved['id'] || $updatedCiphertext !== $originalCiphertext
+        if ($updated['id'] !== $saved['id'] || $updated['retention_days'] !== 45 || $updatedCiphertext !== $originalCiphertext
             || $updated['test_status'] !== null || $updated['tested_at'] !== null) {
             throw new RuntimeException($driver . ': updating metadata without a new secret must preserve encrypted credentials.');
         }
@@ -161,8 +177,11 @@ try {
             throw new RuntimeException($driver . ': destination changes must be tested before re-enabling it.');
         }
 
-        $second = backupDestinationSave($pdo, $identity, array_merge($input, ['name' => 'Second S3 ' . $driver]));
-        if ($second['id'] === $saved['id'] || count(backupDestinationReadAll($pdo, $identity)) !== 2) {
+        $secondInput = $input;
+        unset($secondInput['retention_days']);
+        $second = backupDestinationSave($pdo, $identity, array_merge($secondInput, ['name' => 'Second S3 ' . $driver]));
+        if ($second['id'] === $saved['id'] || $second['retention_days'] !== 30
+            || count(backupDestinationReadAll($pdo, $identity)) !== 2) {
             throw new RuntimeException($driver . ': multiple independent backup destinations must be supported.');
         }
 
@@ -325,6 +344,83 @@ try {
             throw new RuntimeException($driver . ': snapshot upload must use an object key.');
         }
         s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $snapshotKey);
+
+        $oldSnapshotKey = 'ieprcard-snapshots/v2/2026/10/01/' . str_repeat('a', 32) . '.json.gz';
+        $olderSnapshotKey = 'ieprcard-snapshots/v2/2026/09/01/' . str_repeat('c', 32) . '.json.gz';
+        $recentSnapshotKey = 'ieprcard-snapshots/v2/2026/11/01/' . str_repeat('b', 32) . '.json.gz';
+        $retentionClient = new class([
+            $oldSnapshotKey => strtotime('2026-10-01T00:00:00Z'),
+            $olderSnapshotKey => strtotime('2026-09-01T00:00:00Z'),
+            $recentSnapshotKey => strtotime('2026-11-01T00:00:00Z'),
+            'ieprcard-privacy/keys/synthetic.json' => strtotime('2026-01-01T00:00:00Z'),
+        ]) {
+            public function __construct(public array $objects) {}
+            public function listObjectsV2(array $input): array {
+                $contents = [];
+                foreach ($this->objects as $key => $timestamp) {
+                    if (str_starts_with($key, (string) ($input['Prefix'] ?? ''))) {
+                        $contents[] = ['Key' => $key, 'LastModified' => new DateTimeImmutable('@' . $timestamp)];
+                    }
+                }
+                return ['Contents' => $contents, 'IsTruncated' => false];
+            }
+            public function listObjectVersions(array $input): array {
+                $key = (string) ($input['Prefix'] ?? '');
+                return isset($this->objects[$key])
+                    ? ['Versions' => [['Key' => $key, 'VersionId' => 'version-1']], 'DeleteMarkers' => [], 'IsTruncated' => false]
+                    : ['Versions' => [], 'DeleteMarkers' => [], 'IsTruncated' => false];
+            }
+            public function deleteObjects(array $input): array {
+                foreach ($input['Delete']['Objects'] ?? [] as $object) unset($this->objects[$object['Key']]);
+                return ['Errors' => []];
+            }
+            public function deleteObject(array $input): void { unset($this->objects[$input['Key']]); }
+            public function headObject(array $input): void {
+                if (isset($this->objects[$input['Key']])) throw new RuntimeException('Object still exists.', 200);
+                throw new RuntimeException('NoSuchKey', 404);
+            }
+        };
+        $retentionResult = privacySnapshotPurgeExpired(
+            $pdo,
+            strtotime('2026-11-22T12:00:00Z'),
+            1,
+            static fn(array $destination, array $credentials): object => $retentionClient
+        );
+        if (($retentionResult['processed'] ?? 0) !== 1 || ($retentionResult['failed'] ?? 0) !== 0
+            || isset($retentionClient->objects[$oldSnapshotKey]) || !isset($retentionClient->objects[$olderSnapshotKey])
+            || !isset($retentionClient->objects[$recentSnapshotKey])
+            || !isset($retentionClient->objects['ieprcard-privacy/keys/synthetic.json'])) {
+            throw new RuntimeException($driver . ': snapshot retention must permanently remove only expired snapshots on every configured destination.');
+        }
+        $retentionState = $pdo->query(
+            'SELECT retencao_ultima_execucao_em, retencao_erro_codigo FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($retentionState) || $retentionState['retencao_ultima_execucao_em'] !== gmdate('Y-m-d H:i:s', strtotime('2026-11-22T12:00:00Z'))
+            || $retentionState['retencao_erro_codigo'] !== null) {
+            throw new RuntimeException($driver . ': retention state must be tracked independently per destination.');
+        }
+        $retentionFailure = privacySnapshotPurgeExpired(
+            $pdo,
+            strtotime('2026-11-22T12:15:00Z'),
+            25,
+            static function (): object { throw new RuntimeException('Synthetic retention provider failure.'); }
+        );
+        $retentionFailureState = $pdo->query(
+            'SELECT retencao_erro_codigo FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetchColumn();
+        if (($retentionFailure['failed'] ?? 0) !== 2 || $retentionFailureState !== 'PRIVACY_SNAPSHOT_RETENTION_FAILED') {
+            throw new RuntimeException($driver . ': retention provider failures must remain isolated and visible per destination.');
+        }
+        $retentionRetry = privacySnapshotPurgeExpired(
+            $pdo,
+            strtotime('2026-11-22T12:30:00Z'),
+            25,
+            static fn(array $destination, array $credentials): object => $retentionClient
+        );
+        if (($retentionRetry['failed'] ?? 0) !== 0
+            || $pdo->query('SELECT retencao_erro_codigo FROM destinos_backup WHERE id = ' . (int) $saved['id'])->fetchColumn() !== null) {
+            throw new RuntimeException($driver . ': a successful retention retry must clear only the retention error.');
+        }
 
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $privacyHolderId]);
         $pdo->prepare('DELETE FROM tenants WHERE id = :id')->execute(['id' => $privacyTenantId]);

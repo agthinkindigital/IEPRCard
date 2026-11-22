@@ -12,6 +12,7 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
     $name = trim((string) ($input['name'] ?? ''));
     $bucket = trim((string) ($input['bucket'] ?? ''));
     $region = trim((string) ($input['region'] ?? ''));
+    $retentionDays = null;
     $endpoint = backupDestinationValidateEndpoint($input['endpoint'] ?? null);
     $pathStyle = filter_var($input['path_style'] ?? false, FILTER_VALIDATE_BOOL);
     $accessKey = trim((string) ($input['access_key'] ?? ''));
@@ -34,7 +35,7 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
     $existing = null;
     if ($id > 0) {
         $query = $pdo->prepare(
-            'SELECT bucket, regiao, endpoint, path_style, credentials_cifradas FROM destinos_backup WHERE id = :id'
+            'SELECT bucket, regiao, endpoint, path_style, credentials_cifradas, retencao_dias FROM destinos_backup WHERE id = :id'
         );
         $query->execute(['id' => $id]);
         $existing = $query->fetch(PDO::FETCH_ASSOC);
@@ -51,6 +52,15 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
         $encrypted = (string) $existing['credentials_cifradas'];
     } else {
         throw new InvalidArgumentException('Credenciais são obrigatórias ao criar um destino.');
+    }
+
+    if (array_key_exists('retention_days', $input)) {
+        $retentionDays = filter_var($input['retention_days'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 3650]]);
+        if ($retentionDays === false) {
+            throw new InvalidArgumentException('Período de retenção do backup inválido.');
+        }
+    } else {
+        $retentionDays = is_array($existing) ? (int) $existing['retencao_dias'] : 30;
     }
 
     if (is_array($existing)) {
@@ -71,24 +81,25 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
         $statement = $pdo->prepare(
             'UPDATE destinos_backup SET nome = :name, provedor = :provider, bucket = :bucket, regiao = :region, '
             . 'endpoint = :endpoint, path_style = :path_style, credentials_cifradas = :credentials, ativo = 0, '
-            . 'ultimo_teste_status = NULL, ultimo_teste_em = NULL, ultimo_erro_codigo = NULL, atualizado_em = :updated '
+            . 'retencao_dias = :retention_days, ultimo_teste_status = NULL, ultimo_teste_em = NULL, '
+            . 'ultimo_erro_codigo = NULL, atualizado_em = :updated '
             . 'WHERE id = :id'
         );
         $statement->execute([
             'name' => $name, 'provider' => 's3', 'bucket' => $bucket, 'region' => $region,
             'endpoint' => $endpoint, 'path_style' => $pathStyle ? 1 : 0, 'credentials' => $encrypted,
-            'updated' => $now, 'id' => $id,
+            'retention_days' => $retentionDays, 'updated' => $now, 'id' => $id,
         ]);
     } else {
         $statement = $pdo->prepare(
             'INSERT INTO destinos_backup (nome, provedor, bucket, regiao, endpoint, path_style, credentials_cifradas, '
-            . 'ativo, criado_em, atualizado_em) VALUES (:name, :provider, :bucket, :region, :endpoint, :path_style, '
-            . ':credentials, 0, :created, :updated)'
+            . 'retencao_dias, ativo, criado_em, atualizado_em) VALUES (:name, :provider, :bucket, :region, :endpoint, '
+            . ':path_style, :credentials, :retention_days, 0, :created, :updated)'
         );
         $statement->execute([
             'name' => $name, 'provider' => 's3', 'bucket' => $bucket, 'region' => $region,
             'endpoint' => $endpoint, 'path_style' => $pathStyle ? 1 : 0, 'credentials' => $encrypted,
-            'created' => $now, 'updated' => $now,
+            'retention_days' => $retentionDays, 'created' => $now, 'updated' => $now,
         ]);
         $id = (int) $pdo->lastInsertId();
     }
@@ -103,8 +114,8 @@ function backupDestinationReadAll(PDO $pdo, array $identity): array
 {
     backupDestinationAssertSuperadmin($pdo, $identity);
     $rows = $pdo->query(
-        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, ativo, ultimo_teste_status, '
-        . 'ultimo_teste_em, ultimo_sucesso_em, ultimo_erro_codigo, atualizado_em, '
+        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, retencao_dias, retencao_ultima_execucao_em, '
+        . 'retencao_erro_codigo, ativo, ultimo_teste_status, ultimo_teste_em, ultimo_sucesso_em, ultimo_erro_codigo, atualizado_em, '
         . 'EXISTS (SELECT 1 FROM titular_chaves_backup k WHERE k.destino_id = destinos_backup.id) AS privacy_keys_present '
         . 'FROM destinos_backup ORDER BY id'
     )->fetchAll(PDO::FETCH_ASSOC);
@@ -118,8 +129,8 @@ function backupDestinationReadOne(PDO $pdo, array $identity, int $id): array
 {
     backupDestinationAssertSuperadmin($pdo, $identity);
     $statement = $pdo->prepare(
-        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, ativo, ultimo_teste_status, '
-        . 'ultimo_teste_em, ultimo_sucesso_em, ultimo_erro_codigo, atualizado_em, '
+        'SELECT id, nome, provedor, bucket, regiao, endpoint, path_style, retencao_dias, retencao_ultima_execucao_em, '
+        . 'retencao_erro_codigo, ativo, ultimo_teste_status, ultimo_teste_em, ultimo_sucesso_em, ultimo_erro_codigo, atualizado_em, '
         . 'EXISTS (SELECT 1 FROM titular_chaves_backup k WHERE k.destino_id = destinos_backup.id) AS privacy_keys_present '
         . 'FROM destinos_backup WHERE id = :id'
     );

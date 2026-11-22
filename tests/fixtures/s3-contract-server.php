@@ -32,6 +32,23 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) === 'GET' && array_k
     exit;
 }
 
+if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) === 'GET' && (string) ($_GET['list-type'] ?? '') === '2') {
+    $prefix = (string) ($_GET['prefix'] ?? '');
+    $prefixPath = $storage . DIRECTORY_SEPARATOR . hash('sha256', $prefix);
+    $contents = is_file($prefixPath)
+        ? '<Contents><Key>' . htmlspecialchars($prefix, ENT_XML1) . '</Key>'
+            . '<LastModified>2026-11-22T00:00:00.000Z</LastModified><ETag>"' . md5_file($prefixPath)
+            . '"</ETag><Size>' . filesize($prefixPath) . '</Size><StorageClass>STANDARD</StorageClass></Contents>'
+        : '';
+    header('Content-Type: application/xml');
+    echo '<?xml version="1.0" encoding="UTF-8"?>'
+        . '<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        . '<Name>backup-test</Name><Prefix>' . htmlspecialchars($prefix, ENT_XML1) . '</Prefix>'
+        . '<KeyCount>' . (is_file($prefixPath) ? '1' : '0') . '</KeyCount><MaxKeys>1000</MaxKeys>'
+        . '<IsTruncated>false</IsTruncated>' . $contents . '</ListBucketResult>';
+    exit;
+}
+
 if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) === 'POST' && array_key_exists('delete', $_GET)) {
     $xml = (string) file_get_contents('php://input');
     if (preg_match_all('/<Object>\s*<Key>(.*?)<\/Key>\s*<VersionId>(.*?)<\/VersionId>\s*<\/Object>/s', $xml, $matches, PREG_SET_ORDER) > 0) {

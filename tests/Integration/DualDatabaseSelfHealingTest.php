@@ -147,7 +147,7 @@ $migrationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory
 $firstMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $secondMigrationRun = schemaAplicarMigracoes($migrationPdo, 'test');
 $migrationDrift = schemaInspecionar($migrationPdo);
-if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile', '0017_privacy_subjects', '0018_privacy_subject_requests'] || $secondMigrationRun !== $firstMigrationRun
+if ($firstMigrationRun !== ['0001_mvp_schema', '0002_catalogo_permissoes', '0003_mcp_oauth_client_registry', '0004_personal_data_lifecycle', '0005_normalized_telemetry_scope', '0006_titular_batch_origin', '0007_card_issuance_jobs', '0008_individual_card_issuance', '0009_ai_global_config', '0010_portal_pdf_access', '0011_seed_pdf_permission', '0012_backup_destinations', '0013_whatsapp_gateway', '0014_titular_privacy_reference', '0015_whatsapp_conversation', '0016_installation_profile', '0017_privacy_subjects', '0018_privacy_subject_requests', '0019_backup_snapshot_retention'] || $secondMigrationRun !== $firstMigrationRun
     || array_filter($migrationDrift) !== []) {
     throw new RuntimeException('Versioned migrations must apply explicitly, be repeatable, and produce the canonical SQLite schema: ' . json_encode([$firstMigrationRun, $secondMigrationRun, $migrationDrift]));
 }

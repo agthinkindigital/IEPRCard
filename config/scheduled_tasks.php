@@ -45,6 +45,7 @@ function scheduledTasksSafeErrorCode(Throwable $exception): string
         'PRIVACY_SUBJECT_BATCH_LIMIT_INVALID',
         'PRIVACY_SNAPSHOT_LOCK_UNAVAILABLE',
         'PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED',
+        'PRIVACY_SNAPSHOT_RETENTION_LIMIT_INVALID',
         'PRIVACY_SNAPSHOT_SCHEMA_REVIEW_REQUIRED',
         'SCHEDULED_TASK_CONFIGURATION_INVALID',
         'SCHEDULED_TASK_LIMIT_INVALID',
@@ -106,6 +107,9 @@ function scheduledTasksBuild(PDO $pdo, int $maxIssuanceJobs = 1, int $maintenanc
         },
         'privacy_backup' => static function () use ($pdo): array {
             return privacySnapshotRunDue($pdo);
+        },
+        'privacy_snapshot_retention' => static function () use ($pdo, $maintenanceLimit): array {
+            return privacySnapshotPurgeExpired($pdo, null, $maintenanceLimit);
         },
     ];
 }
