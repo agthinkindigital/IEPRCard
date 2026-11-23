@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/config/schema_self_healing.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/privacy_subjects.php';
 require_once dirname(__DIR__, 2) . '/config/privacy_snapshot.php';
+require_once dirname(__DIR__, 2) . '/config/ai_global_config.php';
 
 $temporary = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-privacy-subject-' . bin2hex(random_bytes(6));
 if (!mkdir($temporary, 0700, true)) {
@@ -190,6 +191,16 @@ try {
     $artifactName = str_repeat('a', 48) . '.webp';
     file_put_contents($artifactDirectory . DIRECTORY_SEPARATOR . $artifactName, $artifactBytes);
     $artifactKey = 'private://' . $tenantId . '/' . $artifactName;
+    $individualPdfBytes = "%PDF-1.4\nsynthetic individual card\n";
+    $individualPdfName = str_repeat('c', 48) . '.pdf';
+    file_put_contents($artifactDirectory . DIRECTORY_SEPARATOR . $individualPdfName, $individualPdfBytes);
+    $individualPdfKey = 'private://' . $tenantId . '/' . $individualPdfName;
+    $pdo->prepare('UPDATE carteirinhas_emitidas SET pdf_individual_url = :pdf WHERE id = :id')->execute([
+        'pdf' => $individualPdfKey, 'id' => $legacyCardId,
+    ]);
+    $pdo->prepare('UPDATE lotes_importacao SET pdf_consolidado_url = :pdf WHERE id = :id')->execute([
+        'pdf' => 'private://' . $tenantId . '/' . str_repeat('d', 48) . '.pdf', 'id' => $linkedJobId,
+    ]);
     $pdo->prepare('UPDATE titulares SET foto_url = :url WHERE id = :id')->execute([
         'url' => $artifactKey, 'id' => $legacyHolderId,
     ]);
@@ -230,16 +241,61 @@ try {
         'colunas_detectadas_json' => '["Nome de Maria Silva", "email"]',
         'mapa_de_para_usado_json' => '{"Nome de Maria Silva":"nome_completo"}',
     ];
+    try {
+        privacySnapshotAssertNoPiiLabel('designs_carteirinha', ['nome_layout' => 'Layout Maria Silva joao@example.test']);
+        throw new RuntimeException('A snapshot label containing a personal contact must be rejected.');
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_LABEL_PII') {
+            throw $exception;
+        }
+    }
     privacySnapshotMinimizeOperationalRows('lotes_importacao', $importMetadata);
     if ($importMetadata['colunas_detectadas_json'] !== null || $importMetadata['mapa_de_para_usado_json'] !== null) {
         throw new RuntimeException('Import column metadata that may contain personal labels must be excluded from snapshots.');
     }
+    $integrationConfiguration = [
+        'IEPR_INTEGRATION_KEY' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),
+        'IEPR_ANONYMIZATION_KEY' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),
+    ];
+    $tenantAiSecretPlaintext = 'synthetic-tenant-ai-secret-do-not-expose';
+    $tenantAiSecretCiphertext = aiGlobalConfigSeal($tenantAiSecretPlaintext, $integrationConfiguration);
     $pdo->prepare(
         'INSERT INTO ia_config (tenant_id, provedor, chave_cifrada, modelo, ativo, criado_em, atualizado_em) '
         . 'VALUES (:tenant, :provider, :secret, :model, 1, :created, :updated)'
     )->execute([
-        'tenant' => $tenantId, 'provider' => 'openai', 'secret' => 'synthetic-tenant-ai-ciphertext',
+        'tenant' => $tenantId, 'provider' => 'openai', 'secret' => $tenantAiSecretCiphertext,
         'model' => 'synthetic-model', 'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
+    ]);
+    $globalAiSecretPlaintext = 'synthetic-global-ai-secret-do-not-expose';
+    $globalAiSecretCiphertext = aiGlobalConfigSeal($globalAiSecretPlaintext, $integrationConfiguration);
+    $pdo->prepare(
+        'INSERT INTO ia_config_global (provedor, chave_cifrada, modelo, ativo, criado_em, atualizado_em) '
+        . 'VALUES (:provider, :secret, :model, 1, :created, :updated)'
+    )->execute([
+        'provider' => 'gemini', 'secret' => $globalAiSecretCiphertext, 'model' => 'synthetic-global-model',
+        'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
+    ]);
+    $whatsappSecretPlaintext = 'synthetic-whatsapp-secret-do-not-expose';
+    $whatsappSecretCiphertext = aiGlobalConfigSeal($whatsappSecretPlaintext, $integrationConfiguration);
+    $pdo->prepare(
+        'INSERT INTO whatsapp_config_global (chave, api_base_url, api_token_cifrado, criado_em, atualizado_em) '
+        . 'VALUES (:key, :url, :secret, :created, :updated)'
+    )->execute([
+        'key' => 'global', 'url' => 'https://gateway.example.test', 'secret' => $whatsappSecretCiphertext,
+        'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
+    ]);
+    $s3SecretPlaintext = json_encode(
+        ['access_key' => 'synthetic-s3-access', 'secret_key' => 'synthetic-s3-secret-do-not-expose'],
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES
+    );
+    $s3SecretCiphertext = aiGlobalConfigSeal($s3SecretPlaintext, $integrationConfiguration);
+    $pdo->prepare(
+        'INSERT INTO destinos_backup (nome, provedor, bucket, regiao, credentials_cifradas, ativo, criado_em, atualizado_em) '
+        . 'VALUES (:name, :provider, :bucket, :region, :secret, 1, :created, :updated)'
+    )->execute([
+        'name' => 'Synthetic backup destination', 'provider' => 's3', 'bucket' => 'iepr-test-snapshot',
+        'region' => 'us-east-1', 'secret' => $s3SecretCiphertext,
+        'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
     ]);
     $subjectPlaintexts = [];
     $snapshot = privacySnapshotBuildPayload($pdo, static function (int $subjectId, string $plaintext) use (&$subjectPlaintexts): string {
@@ -285,7 +341,8 @@ try {
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
         'Synthetic privacy organization', 'Synthetic tenant without contact', 'synthetic-private-subdomain',
         'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
-        $artifactKey, $artifactBytes, 'synthetic-tenant-ai-ciphertext',
+        $artifactKey, $artifactBytes, $tenantAiSecretPlaintext, $globalAiSecretPlaintext,
+        $whatsappSecretPlaintext, 'synthetic-s3-access', 'synthetic-s3-secret-do-not-expose',
     ] as $pii) {
         if (str_contains($snapshotJson, $pii)) {
             $containingTables = [];
@@ -301,6 +358,28 @@ try {
     if (($snapshot['manifest']['format'] ?? null) !== 'ieprcard-snapshot-v2'
         || !is_array($snapshot['subject_envelopes'] ?? null) || count($snapshot['subject_envelopes']) < 3) {
         throw new RuntimeException('Snapshot must separate PII into versioned per-subject envelopes.');
+    }
+    $snapshotConfigRows = [
+        'ia_config' => $snapshot['tables']['ia_config'][0] ?? [],
+        'ia_config_global' => $snapshot['tables']['ia_config_global'][0] ?? [],
+        'whatsapp_config_global' => $snapshot['tables']['whatsapp_config_global'][0] ?? [],
+        'destinos_backup' => $snapshot['tables']['destinos_backup'][0] ?? [],
+    ];
+    if (($snapshotConfigRows['ia_config']['chave_cifrada'] ?? null) !== $tenantAiSecretCiphertext
+        || ($snapshotConfigRows['ia_config_global']['chave_cifrada'] ?? null) !== $globalAiSecretCiphertext
+        || ($snapshotConfigRows['whatsapp_config_global']['api_token_cifrado'] ?? null) !== $whatsappSecretCiphertext
+        || ($snapshotConfigRows['destinos_backup']['credentials_cifradas'] ?? null) !== $s3SecretCiphertext
+        || ($snapshotConfigRows['ia_config']['ativo'] ?? null) !== 0
+        || ($snapshotConfigRows['ia_config_global']['ativo'] ?? null) !== 0
+        || ($snapshotConfigRows['destinos_backup']['ativo'] ?? null) !== 0
+        || ($snapshotConfigRows['destinos_backup']['ultimo_teste_status'] ?? null) !== null) {
+        throw new RuntimeException('Snapshots must preserve integration credentials as ciphertext while disabling integrations for restore.');
+    }
+    if (aiGlobalConfigOpen((string) $snapshotConfigRows['ia_config']['chave_cifrada'], $integrationConfiguration) !== $tenantAiSecretPlaintext
+        || aiGlobalConfigOpen((string) $snapshotConfigRows['ia_config_global']['chave_cifrada'], $integrationConfiguration) !== $globalAiSecretPlaintext
+        || aiGlobalConfigOpen((string) $snapshotConfigRows['whatsapp_config_global']['api_token_cifrado'], $integrationConfiguration) !== $whatsappSecretPlaintext
+        || aiGlobalConfigOpen((string) $snapshotConfigRows['destinos_backup']['credentials_cifradas'], $integrationConfiguration) !== $s3SecretPlaintext) {
+        throw new RuntimeException('Preserved integration ciphertext must remain recoverable with the separately managed integration key.');
     }
     $conversationSubjectPlaintext = $subjectPlaintexts[(int) $conversationSubject['id']] ?? '';
     if (!str_contains($conversationSubjectPlaintext, 'synthetic-consent-purpose')
@@ -373,6 +452,18 @@ try {
         || ($designRows[0]['bg_frente_url'] ?? null) !== null) {
         throw new RuntimeException('Titular-linked design backgrounds must live only in the titular envelope and lose the live storage path in snapshots.');
     }
+    $cardRecord = array_values(array_filter($holderEnvelope['records'] ?? [], static fn(array $record): bool => ($record['table'] ?? null) === 'carteirinhas_emitidas'))[0] ?? null;
+    $individualPdfArtifact = is_array($cardRecord)
+        ? array_values(array_filter($cardRecord['artifacts'] ?? [], static fn(array $item): bool => ($item['field'] ?? null) === 'pdf_individual_url'))[0] ?? null
+        : null;
+    if (!is_array($individualPdfArtifact)
+        || ($individualPdfArtifact['media_type'] ?? null) !== 'application/pdf'
+        || !hash_equals(hash('sha256', $individualPdfBytes), (string) ($individualPdfArtifact['sha256'] ?? ''))
+        || base64_decode((string) ($individualPdfArtifact['contents_base64'] ?? ''), true) !== $individualPdfBytes
+        || ($snapshot['tables']['carteirinhas_emitidas'][0]['pdf_individual_url'] ?? null) !== null
+        || ($snapshot['tables']['lotes_importacao'][0]['pdf_consolidado_url'] ?? null) !== null) {
+        throw new RuntimeException('Snapshots must preserve each holder PDF in the subject envelope and omit derived consolidated PDFs.');
+    }
 
     $subject = privacySubjectCreate($pdo, 'pessoa', $tenantId, '2026-11-22 12:00:00');
     $reference = (string) $subject['reference'];
@@ -425,8 +516,11 @@ try {
 
     fwrite(STDOUT, "PASS: opaque privacy subjects group PII records without persisting PII.\n");
 } finally {
-    if (isset($artifactDirectory, $artifactName) && is_file($artifactDirectory . DIRECTORY_SEPARATOR . $artifactName)) {
-        unlink($artifactDirectory . DIRECTORY_SEPARATOR . $artifactName);
+    foreach ([$artifactName ?? null, $individualPdfName ?? null] as $storedArtifactName) {
+        if (is_string($storedArtifactName) && isset($artifactDirectory)
+            && is_file($artifactDirectory . DIRECTORY_SEPARATOR . $storedArtifactName)) {
+            unlink($artifactDirectory . DIRECTORY_SEPARATOR . $storedArtifactName);
+        }
     }
     if (isset($artifactDirectory) && is_dir($artifactDirectory)) {
         @rmdir($artifactDirectory);

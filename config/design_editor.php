@@ -5,6 +5,7 @@ require_once __DIR__ . '/design_map_contract.php';
 require_once __DIR__ . '/design_mapping.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
+require_once __DIR__ . '/privacy_snapshot_labels.php';
 
 /** @return list<array{id:int,name:string}> */
 function designEditorTitularChoices(PDO $pdo, int $tenantId): array
@@ -122,6 +123,11 @@ function designEditorValidate(array $input): array
 {
     $name = trim((string) ($input['nome_layout'] ?? ''));
     if ($name === '' || strlen($name) > 120) return ['valid' => false, 'code' => 'invalid_name', 'path' => 'nome_layout'];
+    try {
+        privacySnapshotAssertNoPiiLabel('designs_carteirinha', ['nome_layout' => $name]);
+    } catch (RuntimeException) {
+        return ['valid' => false, 'code' => 'label_contains_personal_data', 'path' => 'nome_layout'];
+    }
     $mapRaw = $input['mapa_campos_json'] ?? null;
     $mapValidation = designMapValidate($mapRaw);
     if (!$mapValidation['valid']) {

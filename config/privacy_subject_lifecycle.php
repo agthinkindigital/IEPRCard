@@ -363,7 +363,7 @@ function privacySubjectLifecycleAnonymizeRecord(PDO $pdo, string $recordType, in
             return;
         case 'carteirinha_emitida':
             $query = $pdo->prepare(
-                'SELECT tenant_id, webp_frente_url, webp_verso_url, pdf_individual_url FROM carteirinhas_emitidas WHERE id = :id LIMIT 1'
+                'SELECT tenant_id, lote_id, webp_frente_url, webp_verso_url, pdf_individual_url FROM carteirinhas_emitidas WHERE id = :id LIMIT 1'
             );
             $query->execute(['id' => $recordId]);
             $card = $query->fetch(PDO::FETCH_ASSOC);
@@ -374,6 +374,9 @@ function privacySubjectLifecycleAnonymizeRecord(PDO $pdo, string $recordType, in
                 if (is_string($card[$field]) && $card[$field] !== '') {
                     titularAnonymizationDeletePrivateArtifact((int) $card['tenant_id'], $card[$field]);
                 }
+            }
+            if (filter_var($card['lote_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false) {
+                titularAnonymizationInvalidateConsolidatedPdf($pdo, (int) $card['tenant_id'], (int) $card['lote_id']);
             }
             $pdo->prepare(
                 "UPDATE carteirinhas_emitidas SET status_carteirinha = 'revogada', codigo_validacao_qr = :qr, "

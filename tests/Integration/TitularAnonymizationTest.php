@@ -43,6 +43,40 @@ try {
             'created' => gmdate('Y-m-d H:i:s'),
         ]);
         $titularId = (int) $pdo->lastInsertId();
+        $pdo->prepare(
+            'INSERT INTO designs_carteirinha (tenant_id, nome_layout, orientacao, criado_em) '
+            . 'VALUES (:tenant, :name, :orientation, :created)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'name' => 'Anonymization test design ' . $suffix,
+            'orientation' => 'horizontal', 'created' => gmdate('Y-m-d H:i:s'),
+        ]);
+        $designId = (int) $pdo->lastInsertId();
+        $consolidatedPdfKey = 'private://' . $fixture['tenant_id'] . '/' . str_repeat('b', 48) . '.pdf';
+        $tenantArtifactDirectory = $storagePath . DIRECTORY_SEPARATOR . (string) $fixture['tenant_id'];
+        if (!is_dir($tenantArtifactDirectory) && !mkdir($tenantArtifactDirectory, 0700, true)) {
+            throw new RuntimeException('Could not create consolidated PDF fixture storage.');
+        }
+        $consolidatedPdfPath = $tenantArtifactDirectory . DIRECTORY_SEPARATOR . str_repeat('b', 48) . '.pdf';
+        file_put_contents($consolidatedPdfPath, 'synthetic consolidated PDF with personal page');
+        $pdo->prepare(
+            'INSERT INTO lotes_importacao (tenant_id, design_id, origem_tipo, total_registros, processados_sucesso, '
+            . 'status_lote, pdf_consolidado_url, criado_em, finalizado_em) '
+            . 'VALUES (:tenant, :design, :origin, 1, 1, :status, :pdf, :created, :finished)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'design' => $designId, 'origin' => 'manual',
+            'status' => 'concluido', 'pdf' => $consolidatedPdfKey,
+            'created' => gmdate('Y-m-d H:i:s'), 'finished' => gmdate('Y-m-d H:i:s'),
+        ]);
+        $pdfJobId = (int) $pdo->lastInsertId();
+        $pdo->prepare(
+            'INSERT INTO carteirinhas_emitidas (tenant_id, subcliente_id, titular_id, design_id, lote_id, '
+            . 'codigo_validacao_qr, status_carteirinha, snapshot_dados_json, emitida_em) '
+            . 'VALUES (:tenant, :subclient, :holder, :design, :job, :qr, :status, :snapshot, :issued)'
+        )->execute([
+            'tenant' => $fixture['tenant_id'], 'subclient' => $fixture['subcliente_id'], 'holder' => $titularId,
+            'design' => $designId, 'job' => $pdfJobId, 'qr' => bin2hex(random_bytes(24)), 'status' => 'ativa',
+            'snapshot' => '{"nome":"Sensitive Holder ' . $suffix . '"}', 'issued' => gmdate('Y-m-d H:i:s'),
+        ]);
         $createdAt = gmdate('Y-m-d H:i:s');
         $pdo->prepare(
             "INSERT INTO whatsapp_instancias (tenant_id, escopo_chave, nome_instancia, webhook_token_hash, estado, fluxo_cadastro_ativo, criado_em, atualizado_em) "
@@ -127,6 +161,8 @@ try {
         $stored->execute(['id' => $requestId]);
         $completed = $stored->fetch(PDO::FETCH_ASSOC);
         $conversation = $pdo->query('SELECT estado, contato_hmac, dados_cifrados, titular_id FROM whatsapp_conversas LIMIT 1')->fetch(PDO::FETCH_ASSOC);
+        $consolidatedPdfUrl = $pdo->prepare('SELECT pdf_consolidado_url FROM lotes_importacao WHERE id = :id');
+        $consolidatedPdfUrl->execute(['id' => $pdfJobId]);
         if (($result['processed'] ?? null) !== 1 || ($result['failed'] ?? null) !== 0
             || !is_array($anonymized) || $anonymized['nome_completo'] !== 'Titular anonimizado'
             || $anonymized['cpf'] !== null || $anonymized['rg'] !== null || $anonymized['cargo_funcao'] !== null
@@ -137,6 +173,7 @@ try {
             || (int) $anonymized['ativo'] !== 0 || (int) $anonymized['acesso_app_liberado'] !== 0
             || !is_array($conversation) || $conversation['estado'] !== 'anonimizada' || $conversation['contato_hmac'] !== null
             || $conversation['dados_cifrados'] !== null || $conversation['titular_id'] !== null
+            || $consolidatedPdfUrl->fetchColumn() !== null || is_file($consolidatedPdfPath)
             || !is_array($completed) || $completed['estado'] !== 'concluida'
             || $completed['referencia_titular_cifrada'] !== '') {
             throw new RuntimeException($driver . ': due deletion requests must erase direct identifiers and clear their encrypted queue reference.');
@@ -391,6 +428,9 @@ try {
         }
 
         $pdo->prepare('DELETE FROM solicitacoes_anonimizacao WHERE solicitacao_id = :id')->execute(['id' => $requestId]);
+        $pdo->prepare('DELETE FROM carteirinhas_emitidas WHERE titular_id = :id')->execute(['id' => $titularId]);
+        $pdo->prepare('DELETE FROM lotes_importacao WHERE id = :id')->execute(['id' => $pdfJobId]);
+        $pdo->prepare('DELETE FROM designs_carteirinha WHERE id = :id')->execute(['id' => $designId]);
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $titularId]);
         $pdo->prepare('DELETE FROM solicitacoes_anonimizacao WHERE id > :baseline')->execute(['baseline' => $queueBaseline]);
         $pdo->prepare('DELETE FROM titulares WHERE id = :id')->execute(['id' => $retentionId]);

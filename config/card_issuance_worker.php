@@ -219,12 +219,41 @@ function cardIssuanceWorkerProcess(PDO $pdo, int $jobId, int $now): void
             throw new RuntimeException('ISSUANCE_RENDER_FAILED');
         }
         $key = cardIssuanceWorkerStore($tenantId, $jobId, 0, 'pdf', $rendered['pdf']);
+        $individualPdfKeys = [];
+        try {
+            foreach ($cards as $entry) {
+                $holderId = (int) $entry['member']['id'];
+                $individual = match ($job['modo_saida']) {
+                    'pdf_cr80' => cardRenderPdfBatch([$entry['card']]),
+                    'pdf_a4_8up' => cardRenderPdfA4Batch([$entry['card']], '8up'),
+                    'pdf_a4_10up' => cardRenderPdfA4Batch([$entry['card']], '10up'),
+                    default => throw new RuntimeException('ISSUANCE_OUTPUT_INVALID'),
+                };
+                if (!$individual['valid']) {
+                    throw new RuntimeException('ISSUANCE_INDIVIDUAL_RENDER_FAILED');
+                }
+                $individualPdfKeys[$holderId] = cardIssuanceWorkerStore(
+                    $tenantId,
+                    $jobId,
+                    $holderId,
+                    'pdf',
+                    $individual['pdf']
+                );
+            }
+        } catch (Throwable $exception) {
+            foreach ($individualPdfKeys as $individualPdfKey) {
+                cardIssuanceWorkerDeleteAsset($tenantId, $individualPdfKey);
+            }
+            cardIssuanceWorkerDeleteAsset($tenantId, $key);
+            throw $exception;
+        }
         $pdo->beginTransaction();
         try {
             $pdo->prepare('UPDATE lotes_importacao SET pdf_consolidado_url = :key WHERE id = :id')
                 ->execute(['key' => $key, 'id' => $jobId]);
             foreach ($cards as $entry) {
-                cardIssuanceWorkerInsertCard($pdo, $job, $jobId, $entry, null, null, null, $now);
+                $holderId = (int) $entry['member']['id'];
+                cardIssuanceWorkerInsertCard($pdo, $job, $jobId, $entry, null, null, $individualPdfKeys[$holderId], $now);
             }
             $pdo->commit();
         } catch (Throwable $exception) {
@@ -232,6 +261,9 @@ function cardIssuanceWorkerProcess(PDO $pdo, int $jobId, int $now): void
                 $pdo->rollBack();
             }
             cardIssuanceWorkerDeleteAsset($tenantId, $key);
+            foreach ($individualPdfKeys as $individualPdfKey) {
+                cardIssuanceWorkerDeleteAsset($tenantId, $individualPdfKey);
+            }
             throw $exception;
         }
     }

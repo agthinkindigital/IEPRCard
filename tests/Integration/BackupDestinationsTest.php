@@ -110,6 +110,11 @@ try {
         if (($saved['retention_days'] ?? null) !== 45) {
             throw new RuntimeException($driver . ': a backup destination must persist its configured retention days.');
         }
+        try {
+            backupDestinationSave($pdo, $identity, array_merge($input, ['name' => 'backup-owner@example.test']));
+            throw new RuntimeException($driver . ': backup destination labels containing a personal email were accepted.');
+        } catch (InvalidArgumentException) {
+        }
         $rows = backupDestinationReadAll($pdo, $identity);
         $stored = $pdo->query('SELECT credentials_cifradas, ativo FROM destinos_backup WHERE id = ' . (int) $saved['id'])->fetch(PDO::FETCH_ASSOC);
         if (!is_array($stored) || $stored['credentials_cifradas'] === 'synthetic-secret-key'

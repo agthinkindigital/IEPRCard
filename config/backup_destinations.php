@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/ai_global_config.php';
 require_once __DIR__ . '/s3_compatible_storage.php';
+require_once __DIR__ . '/privacy_snapshot_labels.php';
 
 /** @param array<string, mixed> $identity */
 function backupDestinationSave(PDO $pdo, array $identity, array $input): array
@@ -25,6 +26,11 @@ function backupDestinationSave(PDO $pdo, array $identity, array $input): array
         || strlen($region) < 1 || strlen($region) > 100
         || preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/D', $region) !== 1) {
         throw new InvalidArgumentException('Configuração do destino de backup inválida.');
+    }
+    try {
+        privacySnapshotAssertNoPiiLabel('destinos_backup', ['nome' => $name]);
+    } catch (RuntimeException) {
+        throw new InvalidArgumentException('O nome do destino não pode conter dados pessoais.');
     }
     if ($accessKey !== '' && (strlen($accessKey) > 256 || preg_match('/[\x00-\x1f\x7f]/', $accessKey) === 1)
         || $secretKey !== '' && (strlen($secretKey) > 4096 || preg_match('/[\x00-\x1f\x7f]/', $secretKey) === 1)

@@ -180,6 +180,13 @@ try {
     if ($designEditorHttpStatus !== 200 || !str_contains((string) $designEditorHttpBody, 'invalid_json')) {
         throw new RuntimeException('Invalid maps must return a field-addressable validation message.');
     }
+    [$designEditorHttpStatus, $designEditorHttpBody] = designEditorHttpRequest($designEditorHttpUrl, $designEditorHttpCookie, $designEditorHttpHost, 'POST', http_build_query([
+        'csrf_token' => $designEditorHttpCsrf, 'nome_layout' => 'contato@example.test',
+        'mapa_campos_json' => $designEditorHttpDefaults, 'mapeamento_fixo_json' => $designEditorHttpMapping,
+    ]));
+    if ($designEditorHttpStatus !== 200 || !str_contains((string) $designEditorHttpBody, 'label_contains_personal_data')) {
+        throw new RuntimeException('Design labels must reject detectable personal data before persistence.');
+    }
     [$designEditorHttpStatus] = designEditorHttpRequest($designEditorHttpUrl, $designEditorHttpCookie, $designEditorHttpHost, 'POST', http_build_query([
         'csrf_token' => str_repeat('0', 64), 'nome_layout' => 'No CSRF',
         'mapa_campos_json' => $designEditorHttpDefaults, 'mapeamento_fixo_json' => $designEditorHttpMapping,

@@ -385,16 +385,22 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             $pdfResult->execute(['id' => $pdfJob['job_id']]);
             $pdfRow = $pdfResult->fetch(PDO::FETCH_ASSOC);
             $pdfBytes = is_array($pdfRow) ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], (string) $pdfRow['pdf_consolidado_url']) : '';
-            $pdfCards = $pdo->prepare('SELECT codigo_validacao_qr FROM carteirinhas_emitidas WHERE lote_id = :job AND pdf_individual_url IS NULL');
+            $pdfCards = $pdo->prepare('SELECT codigo_validacao_qr, pdf_individual_url FROM carteirinhas_emitidas WHERE lote_id = :job');
             $pdfCards->execute(['job' => $pdfJob['job_id']]);
-            $pdfCardCodes = $pdfCards->fetchAll(PDO::FETCH_COLUMN);
+            $pdfCardRows = $pdfCards->fetchAll(PDO::FETCH_ASSOC);
+            $individualPdfKey = (string) ($pdfCardRows[0]['pdf_individual_url'] ?? '');
+            $individualPdfBytes = $individualPdfKey !== ''
+                ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], $individualPdfKey) : '';
             if (!is_array($pdfRow) || $pdfRow['status_lote'] !== 'concluido'
                 || !str_starts_with((string) $pdfRow['pdf_consolidado_url'], 'private://')
                 || !str_starts_with($pdfBytes, '%PDF-1.4')
-                || count($pdfCardCodes) !== 1 || hash_equals($webpValidationCode, (string) $pdfCardCodes[0])) {
-                throw new RuntimeException($driver . ': PDF jobs must save a private consolidated PDF and a new QR token for each deliberate issuance.');
+                || count($pdfCardRows) !== 1 || !str_starts_with($individualPdfKey, 'private://')
+                || !str_starts_with($individualPdfBytes, '%PDF-1.4')
+                || hash_equals($webpValidationCode, (string) $pdfCardRows[0]['codigo_validacao_qr'])) {
+                throw new RuntimeException($driver . ': PDF jobs must save a private consolidated PDF, a private per-holder PDF, and a new QR token for each deliberate issuance.');
             }
             $testAssetKeys[] = $pdfRow['pdf_consolidado_url'];
+            $testAssetKeys[] = $individualPdfKey;
 
             $pdo->prepare('UPDATE tenants SET limite_carteirinhas = 2, consumo_carteirinhas = 0 WHERE id = :tenant')
                 ->execute(['tenant' => $fixture['tenant_id']]);
@@ -413,12 +419,20 @@ foreach (tenantTestConnections() as $driver => $pdo) {
                 $a4Result->execute(['id' => $a4Job['job_id']]);
                 $a4Row = $a4Result->fetch(PDO::FETCH_ASSOC);
                 $a4Bytes = is_array($a4Row) ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], (string) $a4Row['pdf_consolidado_url']) : '';
+                $a4IndividualQuery = $pdo->prepare('SELECT pdf_individual_url FROM carteirinhas_emitidas WHERE lote_id = :job');
+                $a4IndividualQuery->execute(['job' => $a4Job['job_id']]);
+                $a4IndividualKey = (string) $a4IndividualQuery->fetchColumn();
+                $a4IndividualBytes = $a4IndividualKey !== ''
+                    ? cardIssuanceWorkerReadAsset($fixture['tenant_id'], $a4IndividualKey) : '';
                 if (!is_array($a4Row) || $a4Row['status_lote'] !== 'concluido'
                     || !str_starts_with((string) $a4Row['pdf_consolidado_url'], 'private://')
-                    || !str_starts_with($a4Bytes, '%PDF-1.4')) {
-                    throw new RuntimeException($driver . ': A4 jobs must persist a private consolidated PDF.');
+                    || !str_starts_with($a4Bytes, '%PDF-1.4')
+                    || !str_starts_with($a4IndividualKey, 'private://')
+                    || !str_starts_with($a4IndividualBytes, '%PDF-1.4')) {
+                    throw new RuntimeException($driver . ': A4 jobs must persist private consolidated and per-holder PDFs.');
                 }
                 $testAssetKeys[] = $a4Row['pdf_consolidado_url'];
+                $testAssetKeys[] = $a4IndividualKey;
             }
         } elseif (getenv('CI') === 'true') {
             throw new RuntimeException($driver . ': CI must provide the renderer extensions for the worker output test.');

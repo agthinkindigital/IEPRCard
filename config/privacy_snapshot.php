@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/database/schema/catalog.php';
 require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/titular_privacy_keys.php';
+require_once __DIR__ . '/privacy_snapshot_labels.php';
 
 const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '823b640e74818588532c745edd4ec3f2d2715eb7a7afd4390facb12b1f48de3c';
 
@@ -162,6 +163,7 @@ function privacySnapshotBuildPayload(
             privacySnapshotAssertSupportedArtifacts($table, $row);
             privacySnapshotStripUnrecoverableSecrets($table, $row);
             privacySnapshotMinimizeOperationalRows($table, $row);
+            privacySnapshotAssertNoPiiLabel($table, $row);
             if ($table === 'designs_carteirinha') {
                 $row['bg_frente_url'] = null;
                 $row['bg_verso_url'] = null;
@@ -693,20 +695,12 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
 {
     $fields = match ($table) {
         'destinos_backup' => ['ultimo_erro_codigo'],
-        'ia_config' => ['chave_cifrada'],
-        'ia_config_global' => ['chave_cifrada'],
-        'whatsapp_config_global' => ['api_token_cifrado'],
         default => [],
     };
     foreach ($fields as $field) {
         if (array_key_exists($field, $row)) {
-            $row[$field] = in_array($table . '.' . $field, [
-                'ia_config.chave_cifrada', 'ia_config_global.chave_cifrada', 'whatsapp_config_global.api_token_cifrado',
-            ], true) ? '' : null;
+            $row[$field] = null;
         }
-    }
-    if ($table === 'destinos_backup' && array_key_exists('credentials_cifradas', $row)) {
-        $row['credentials_cifradas'] = '';
     }
     if ($table === 'destinos_backup' && array_key_exists('ativo', $row)) {
         $row['ativo'] = 0;
@@ -746,6 +740,9 @@ function privacySnapshotAssertSupportedArtifacts(string $table, array $row): voi
     };
     foreach ($privateArtifacts as $field) {
         if (isset($row[$field]) && trim((string) $row[$field]) !== '') {
+            if ($table === 'lotes_importacao' && $field === 'pdf_consolidado_url') {
+                continue;
+            }
             if (!in_array($field, privacySnapshotArtifactFields()[$table] ?? [], true)) {
                 throw new RuntimeException('PRIVACY_SNAPSHOT_ARTIFACT_ENCRYPTION_REQUIRED');
             }
