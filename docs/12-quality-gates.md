@@ -33,7 +33,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 * **GATE 5 — Servidor MCP & Prontidão de Produção (Após Épico 7):**
 * [x] `TDD-07` passou na suíte CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
-* [ ] Não há evidência E2E de um agente externo realizando alteração X/Y, preview WebP e consulta de telemetria sem intervenção humana; manter o gate aberto até essa validação.
+* [ ] O gate pede um agente externo alterar X/Y, gerar preview WebP e consultar telemetria sem intervenção. Hoje o runtime registra apenas `system.read` e `telemetry.read`; o ADR-0009 exige aprovação para `design.write` e descreve `code.patch` somente em dev/staging, mas essa tool não está no runtime. Aguardar decisão de escopo antes da validação E2E.
 
 
 
