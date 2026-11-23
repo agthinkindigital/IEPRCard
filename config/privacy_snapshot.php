@@ -6,6 +6,7 @@ require_once __DIR__ . '/batch_import_staging_support.php';
 require_once __DIR__ . '/privacy_subjects.php';
 require_once __DIR__ . '/titular_privacy_keys.php';
 require_once __DIR__ . '/privacy_snapshot_labels.php';
+require_once __DIR__ . '/privacy_snapshot_resume.php';
 
 const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '823b640e74818588532c745edd4ec3f2d2715eb7a7afd4390facb12b1f48de3c';
 
@@ -271,8 +272,11 @@ function privacySnapshotBuildPayload(
  *  @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
  *  @return array{processed:int,failed:int,skipped:int}
  */
-function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callable $encryptSubject = null, ?callable $clientFactory = null): array
+function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callable $encryptSubject = null, ?callable $clientFactory = null, int $rowLimit = 500): array
 {
+    if ($rowLimit < 1 || $rowLimit > 500) {
+        throw new InvalidArgumentException('PRIVACY_SNAPSHOT_BATCH_LIMIT_INVALID');
+    }
     $destinations = titularPrivacyActiveDestinations($pdo);
     if ($destinationIds !== null) {
         $wanted = array_fill_keys(array_map('intval', $destinationIds), true);
@@ -319,7 +323,7 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
 
         $processed = 0;
         $failed = 0;
-        $snapshotTemplate = null;
+        $skipped = 0;
         foreach ($destinations as $destination) {
             $destinationId = (int) $destination['id'];
             try {
@@ -331,7 +335,7 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
                 }
                 $createdAt = gmdate('Y-m-d\\TH:i:s\\Z', $pendingTimestamp);
                 $created = new DateTimeImmutable($createdAt);
-                $objectKey = 'ieprcard-snapshots/v2/' . $created->format('Y/m/d') . '/' . $pendingId . '.json.gz';
+                $objectKey = 'ieprcard-snapshots/v3/' . $created->format('Y/m/d') . '/' . $pendingId . '.json.gz';
                 $credentials = $destination['_credentials'] ?? [];
                 if (!is_array($credentials)) {
                     throw new RuntimeException('PRIVACY_SNAPSHOT_DESTINATION_CREDENTIALS_INVALID');
@@ -340,40 +344,53 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
                     ? $clientFactory($destination, $credentials)
                     : backupDestinationS3Client($destination, $credentials);
 
+                $resumeDirectory = privacySnapshotResumeDirectory($destinationId, $pendingId);
+                $legacyObjectKey = 'ieprcard-snapshots/v2/' . $created->format('Y/m/d') . '/' . $pendingId . '.json.gz';
+                $legacyExists = privacySnapshotExistingObjectMatches(
+                    $client, (string) $destination['bucket'], $legacyObjectKey, null, $pendingId, $createdAt
+                );
+                if ($legacyExists) {
+                    $objectKey = $legacyObjectKey;
+                }
                 if (!privacySnapshotExistingObjectMatches(
-                    $client,
-                    (string) $destination['bucket'],
-                    $objectKey,
-                    null,
-                    $pendingId,
-                    $createdAt
+                    $client, (string) $destination['bucket'], $objectKey, null, $pendingId, $createdAt
                 )) {
-                    $snapshotTemplate ??= privacySnapshotBuildPayload($pdo, $encryptSubject, $createdAt, $pendingId);
-                    $snapshot = $snapshotTemplate;
-                    $snapshot['manifest']['created_at'] = $createdAt;
-                    $snapshot['manifest']['snapshot_id'] = $pendingId;
-                    $json = json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                    if (strlen($json) > 536_870_912) {
-                        throw new RuntimeException('PRIVACY_SNAPSHOT_TOO_LARGE');
+                    $state = privacySnapshotResumeReadState($resumeDirectory, $createdAt, $pendingId);
+                    $complete = privacySnapshotResumeStage(
+                        $pdo,
+                        $resumeDirectory,
+                        $state,
+                        $encryptSubject ?? static fn(int $subjectId, string $plaintext): string => privacySubjectEncryptSnapshotData($pdo, $subjectId, $plaintext),
+                        $rowLimit
+                    );
+                    if (!$complete) {
+                        $skipped++;
+                        continue;
                     }
-                    $compressed = gzencode($json, 6, ZLIB_ENCODING_GZIP);
-                    if (!is_string($compressed)) {
-                        throw new RuntimeException('PRIVACY_SNAPSHOT_COMPRESSION_FAILED');
+                    $final = privacySnapshotResumeFinalize($resumeDirectory, $state);
+                    $checksum = (string) $final['sha256'];
+                    $body = fopen((string) $final['path'], 'rb');
+                    if (!is_resource($body)) {
+                        throw new RuntimeException('PRIVACY_SNAPSHOT_UPLOAD_UNVERIFIED');
                     }
-                    $checksum = hash('sha256', $compressed);
-                    $client->putObject([
-                        'Bucket' => $destination['bucket'],
-                        'Key' => $objectKey,
-                        'Body' => $compressed,
-                        'ContentType' => 'application/gzip',
-                        'Metadata' => ['sha256' => $checksum, 'format' => 'ieprcard-snapshot-v2'],
-                        'ServerSideEncryption' => 'AES256',
-                    ]);
+                    try {
+                        $client->putObject([
+                            'Bucket' => $destination['bucket'],
+                            'Key' => $objectKey,
+                            'Body' => $body,
+                            'ContentType' => 'application/gzip',
+                            'Metadata' => ['sha256' => $checksum, 'format' => $legacyExists ? 'ieprcard-snapshot-v2' : 'ieprcard-snapshot-v3'],
+                            'ServerSideEncryption' => 'AES256',
+                        ]);
+                    } finally {
+                        fclose($body);
+                    }
                     if (!privacySnapshotExistingObjectMatches($client, (string) $destination['bucket'], $objectKey, $checksum)) {
                         throw new RuntimeException('PRIVACY_SNAPSHOT_UPLOAD_UNVERIFIED');
                     }
                 }
 
+                privacySnapshotResumeDelete($resumeDirectory);
                 $update = $pdo->prepare(
                     'UPDATE destinos_backup SET ultimo_sucesso_em = :success, ultimo_erro_codigo = NULL, '
                     . 'snapshot_pendente_id = NULL, snapshot_pendente_em = NULL, atualizado_em = :updated '
@@ -396,7 +413,7 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
                 ++$failed;
             }
         }
-        return ['processed' => $processed, 'failed' => $failed, 'skipped' => 0];
+        return ['processed' => $processed, 'failed' => $failed, 'skipped' => $skipped];
     } finally {
         flock($lockHandle, LOCK_UN);
         fclose($lockHandle);
@@ -427,7 +444,7 @@ function privacySnapshotExistingObjectMatches(
     }
     $metadata = array_change_key_case($metadata, CASE_LOWER);
     $storedChecksum = $metadata['sha256'] ?? null;
-    if (($metadata['format'] ?? null) !== 'ieprcard-snapshot-v2'
+    if (!in_array(($metadata['format'] ?? null), ['ieprcard-snapshot-v2', 'ieprcard-snapshot-v3'], true)
         || !is_string($storedChecksum) || preg_match('/^[a-f0-9]{64}$/D', $storedChecksum) !== 1) {
         throw new RuntimeException('PRIVACY_SNAPSHOT_EXISTING_OBJECT_INVALID');
     }
@@ -449,7 +466,7 @@ function privacySnapshotExistingObjectMatches(
         }
         $snapshot = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         $manifest = is_array($snapshot) && is_array($snapshot['manifest'] ?? null) ? $snapshot['manifest'] : [];
-        if (($manifest['format'] ?? null) !== 'ieprcard-snapshot-v2'
+        if (($manifest['format'] ?? null) !== $metadata['format']
             || ($expectedSnapshotId !== null && !hash_equals($expectedSnapshotId, (string) ($manifest['snapshot_id'] ?? '')))
             || ($expectedCreatedAt !== null && !hash_equals($expectedCreatedAt, (string) ($manifest['created_at'] ?? '')))) {
             throw new RuntimeException('PRIVACY_SNAPSHOT_EXISTING_OBJECT_IDENTITY_INVALID');
@@ -482,7 +499,7 @@ function privacySnapshotRunDue(
     $query->execute(['cutoff' => $cutoff]);
     $ids = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
     return $ids === [] ? ['processed' => 0, 'failed' => 0, 'skipped' => 1]
-        : privacySnapshotUpload($pdo, $ids, $encryptSubject, $clientFactory);
+        : privacySnapshotUpload($pdo, $ids, $encryptSubject, $clientFactory, 50);
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
@@ -530,8 +547,10 @@ function privacySnapshotPurgeExpired(
                     throw new RuntimeException('PRIVACY_SNAPSHOT_PENDING_STATE_INVALID');
                 }
                 if ((int) ($destinationRow['ativo'] ?? 0) === 1) {
-                    $pendingSnapshotKey = 'ieprcard-snapshots/v2/' . gmdate('Y/m/d', $pendingTimestamp)
-                        . '/' . $pendingSnapshotId . '.json.gz';
+                    $pendingSnapshotKey = [
+                        'ieprcard-snapshots/v2/' . gmdate('Y/m/d', $pendingTimestamp) . '/' . $pendingSnapshotId . '.json.gz',
+                        'ieprcard-snapshots/v3/' . gmdate('Y/m/d', $pendingTimestamp) . '/' . $pendingSnapshotId . '.json.gz',
+                    ];
                 }
             }
             $destination = titularPrivacyOpenDestinationCredentials([$destinationRow])[0] ?? null;
@@ -567,7 +586,7 @@ function privacySnapshotPurgeExpired(
                         break 2;
                     }
                     $objectKey = $object['Key'];
-                    if (is_string($pendingSnapshotKey) && hash_equals($pendingSnapshotKey, $objectKey)) {
+                    if (is_array($pendingSnapshotKey) && in_array($objectKey, $pendingSnapshotKey, true)) {
                         continue;
                     }
                     if (preg_match('~^ieprcard-snapshots/v[0-9]+/[0-9]{4}/[0-9]{2}/[0-9]{2}/[a-f0-9]{32}\.json\.gz$~D', $objectKey) !== 1) {

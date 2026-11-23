@@ -85,6 +85,13 @@ try {
         $superadminId = (int) $pdo->lastInsertId();
         $superadminSubject = privacySubjectCreate($pdo, 'pessoa');
         privacySubjectLinkRecord($pdo, $superadminSubject['id'], 'usuario', $superadminId);
+        $secondSnapshotEmail = 'backup-checkpoint-' . bin2hex(random_bytes(6)) . '@example.test';
+        $pdo->prepare(
+            "INSERT INTO usuarios (papel_sistema, nome, email, senha_hash, ativo) VALUES ('admin', 'Checkpoint User', :email, :hash, 1)"
+        )->execute(['email' => $secondSnapshotEmail, 'hash' => password_hash('synthetic-checkpoint-password', PASSWORD_DEFAULT)]);
+        $secondSnapshotUserId = (int) $pdo->lastInsertId();
+        $secondSnapshotSubject = privacySubjectCreate($pdo, 'pessoa');
+        privacySubjectLinkRecord($pdo, $secondSnapshotSubject['id'], 'usuario', $secondSnapshotUserId);
         $identity = ['id' => $superadminId, 'papel_sistema' => 'superadmin', 'tenant_id' => null, 'subcliente_id' => null];
         $input = [
             'name' => 'Local S3 ' . $driver,
@@ -304,6 +311,38 @@ try {
             }
         }
 
+        $checkpointFirst = privacySnapshotUpload(
+            $pdo,
+            [(int) $saved['id']],
+            static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext),
+            static function (): object {
+                return new class {
+                    public function headObject(array $input): mixed {
+                        throw new class('NoSuchKey', 404) extends RuntimeException {
+                            public function getStatusCode(): int { return 404; }
+                        };
+                    }
+                    public function putObject(array $input): mixed { throw new RuntimeException('An incomplete checkpoint must never publish an object.'); }
+                };
+            },
+            1
+        );
+        if (($checkpointFirst['processed'] ?? 0) !== 0 || ($checkpointFirst['failed'] ?? 0) !== 0
+            || ($checkpointFirst['skipped'] ?? 0) !== 1) {
+            throw new RuntimeException($driver . ': an incomplete bounded snapshot must persist progress without publishing a partial object.');
+        }
+        $checkpointState = $pdo->query(
+            'SELECT snapshot_pendente_id FROM destinos_backup WHERE id = ' . (int) $saved['id']
+        )->fetchColumn();
+        $checkpointDirectory = privacySnapshotResumeDirectory((int) $saved['id'], (string) $checkpointState);
+        foreach (glob($checkpointDirectory . DIRECTORY_SEPARATOR . '*.json') ?: [] as $checkpointFile) {
+            $checkpointBytes = file_get_contents($checkpointFile);
+            if (!is_string($checkpointBytes) || str_contains($checkpointBytes, $superadminEmail)
+                || str_contains($checkpointBytes, $secondSnapshotEmail)) {
+                throw new RuntimeException($driver . ': resumable private parts must not persist plaintext identity fields.');
+            }
+        }
+
         $privacySnapshotClient = null;
         if (!is_dir($backupDestinationPrivateStorage) && !mkdir($backupDestinationPrivateStorage, 0700, true)) {
             throw new RuntimeException($driver . ': could not create private snapshot lock directory.');
@@ -324,27 +363,52 @@ try {
         if (($overlapUpload['skipped'] ?? 0) !== 1 || ($overlapUpload['processed'] ?? 0) !== 0) {
             throw new RuntimeException($driver . ': overlapping snapshot runs must skip without publishing a second copy.');
         }
-        $snapshotUpload = privacySnapshotUpload(
-            $pdo,
-            [(int) $saved['id']],
-            static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext),
-            static function (array $destination, array $credentials) use (&$privacySnapshotClient, $privacyClient): object {
-                $privacySnapshotClient = new class($privacyClient) {
-                    public array $uploads = [];
-                    public function __construct(private object $client) {}
-                    public function putObject(array $input): mixed {
-                        $this->uploads[] = $input;
-                        return $this->client->putObject($input);
-                    }
-                public function __call(string $name, array $arguments): mixed { return $this->client->{$name}(...$arguments); }
-                };
-                return $privacySnapshotClient;
-            }
-        );
-        $snapshotBody = $privacySnapshotClient?->uploads[0]['Body'] ?? null;
-        $snapshotBytes = is_string($snapshotBody) ? gzdecode($snapshotBody) : false;
+        $snapshotUpload = ['processed' => 0, 'failed' => 0, 'skipped' => 0];
+        for ($attempt = 0; $attempt < 1000 && ($snapshotUpload['processed'] ?? 0) === 0; $attempt++) {
+            $snapshotUpload = privacySnapshotUpload(
+                $pdo,
+                [(int) $saved['id']],
+                static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext),
+                static function (array $destination, array $credentials) use (&$privacySnapshotClient, $privacyClient): object {
+                    $privacySnapshotClient = new class($privacyClient) {
+                        public array $uploads = [];
+                        public function __construct(private object $client) {}
+                        public function putObject(array $input): mixed {
+                            $this->uploads[] = $input;
+                            return $this->client->putObject($input);
+                        }
+                        public function __call(string $name, array $arguments): mixed { return $this->client->{$name}(...$arguments); }
+                    };
+                    return $privacySnapshotClient;
+                },
+                50
+            );
+            if (($snapshotUpload['failed'] ?? 0) > 0) break;
+        }
+        $snapshotObjectKey = (string) ($privacySnapshotClient?->uploads[0]['Key'] ?? '');
+        $snapshotObject = $snapshotObjectKey === '' ? null : $privacyClient->getObject([
+            'Bucket' => (string) $saved['bucket'], 'Key' => $snapshotObjectKey,
+        ]);
+        $snapshotCompressed = $snapshotObject !== null ? (string) ($snapshotObject['Body'] ?? '') : false;
+        $snapshotBytes = is_string($snapshotCompressed) ? gzdecode($snapshotCompressed) : false;
+        $snapshotPayload = is_string($snapshotBytes) ? json_decode($snapshotBytes, true) : null;
+        $snapshotManifest = is_array($snapshotPayload) ? ($snapshotPayload['manifest'] ?? []) : [];
+        $manifestPartsHash = hash('sha256', json_encode(array_map(
+            static fn(array $part): array => [$part['table'], $part['first_id'], $part['last_id'], $part['sha256']],
+            $snapshotManifest['parts'] ?? []
+        ), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $snapshotPayloadHash = is_array($snapshotPayload) ? hash('sha256', json_encode([
+            'tables' => $snapshotPayload['tables'] ?? [],
+            'subject_envelopes' => $snapshotPayload['subject_envelopes'] ?? [],
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) : '';
         if (($snapshotUpload['processed'] ?? 0) !== 1 || ($snapshotUpload['failed'] ?? 0) !== 0
-            || !is_string($snapshotBytes) || !str_contains($snapshotBytes, 'ieprcard-snapshot-v2')
+            || !is_string($snapshotBytes) || !str_contains($snapshotBytes, 'ieprcard-snapshot-v3')
+            || ($snapshotManifest['format'] ?? null) !== 'ieprcard-snapshot-v3'
+            || !hash_equals($manifestPartsHash, (string) ($snapshotManifest['parts_sha256'] ?? ''))
+            || !hash_equals($snapshotPayloadHash, (string) ($snapshotManifest['payload_sha256'] ?? ''))
+            || !is_array($snapshotPayload['subject_envelopes'] ?? null)
+            || !isset($snapshotPayload['subject_envelopes'][0]['reference'], $snapshotPayload['subject_envelopes'][0]['ciphertext'])
+            || is_dir($checkpointDirectory)
             || str_contains($snapshotBytes, 'Synthetic S3 privacy holder')
             || str_contains($snapshotBytes, $superadminEmail)) {
             throw new RuntimeException($driver . ': S3 snapshot upload must store a checksummed gzip payload without plaintext PII ('
@@ -382,7 +446,10 @@ try {
         $snapshotFactory = static fn(array $destination, array $credentials): object => $ambiguousSnapshotClient;
         $snapshotEncryptor = static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext);
         $snapshotTime = strtotime('2026-11-22T12:00:00Z');
-        $ambiguousFirst = privacySnapshotRunDue($pdo, $snapshotTime, 900, $snapshotEncryptor, $snapshotFactory);
+        $ambiguousFirst = ['processed' => 0, 'failed' => 0, 'skipped' => 0];
+        for ($attempt = 0; $attempt < 100 && ($ambiguousFirst['failed'] ?? 0) === 0; $attempt++) {
+            $ambiguousFirst = privacySnapshotRunDue($pdo, $snapshotTime + ($attempt * 60), 900, $snapshotEncryptor, $snapshotFactory);
+        }
         $pendingAfterAmbiguous = $pdo->query(
             'SELECT snapshot_pendente_id, snapshot_pendente_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
         )->fetch(PDO::FETCH_ASSOC);
@@ -410,7 +477,7 @@ try {
         $pendingAfterRetry = $pdo->query(
             'SELECT snapshot_pendente_id, ultimo_sucesso_em FROM destinos_backup WHERE id = ' . (int) $saved['id']
         )->fetch(PDO::FETCH_ASSOC);
-        $retriedSnapshotKey = 'ieprcard-snapshots/v2/' . gmdate('Y/m/d', strtotime((string) $pendingAfterAmbiguous['snapshot_pendente_em']))
+        $retriedSnapshotKey = 'ieprcard-snapshots/v3/' . gmdate('Y/m/d', strtotime((string) $pendingAfterAmbiguous['snapshot_pendente_em']))
             . '/' . $pendingSnapshotId . '.json.gz';
         $retriedSnapshotVersions = $privacyClient->listObjectVersions([
             'Bucket' => $saved['bucket'], 'Prefix' => $retriedSnapshotKey, 'MaxKeys' => 100,
