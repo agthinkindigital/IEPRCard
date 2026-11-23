@@ -23,13 +23,13 @@ Os erros exibidos são resumidos e não incluem credenciais nem respostas brutas
 
 ## Restaurar snapshot por ZIP — aprovado em 2026-11-22
 
-1. Acesse **Restaurar backup** e selecione um ZIP exportado pelo próprio IEPRCard. Pacotes de atualização de código não são aceitos.
+1. Acesse **Restaurar backup** e selecione um ZIP exportado pelo IEPRCard. Se ainda não tiver o arquivo, escolha um destino S3 e o snapshot completo mais recente e selecione **Exportar e baixar ZIP**. Pacotes de atualização de código não são aceitos.
 2. Marque a confirmação para validar o arquivo sem alterar a base ativa e selecione **Validar arquivo**.
 3. O sistema confere a origem e o checksum com o snapshot no destino S3 configurado e consulta nesse destino o ledger atual de tombstones e envelopes de chaves. Também verifica manifesto, versão do schema e disponibilidade da chave mestra. Uma falha bloqueia a restauração e exibe uma mensagem sem dados pessoais ou segredos.
 4. Antes de preparar a restauração, provisiona-se um banco MySQL dedicado, distinto da base ativa, com conexão isolada configurada no ambiente. Se a validação passar, selecione **Preparar isolada**. O sistema restaura sem tráfego, emissão, sessão de cliente ou chamadas MCP e aplica os tombstones de privacidade.
 5. A liberação exige revisão humana posterior do resultado. O fluxo não restaura diretamente sobre produção.
 
-O fluxo e o mockup correspondente foram aprovados em 2026-11-22. A implementação depende da conclusão da [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e segue o contrato de recuperação do [ADR-0012](../adr/0012-ci-deploy-e-backup.md).
+O upload/restauração e seu mockup-base foram aprovados em 2026-11-22. A ação de exportar/baixar pelo painel é uma extensão proposta e aguarda aprovação. A implementação depende da conclusão da [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e segue o contrato de recuperação do [ADR-0012](../adr/0012-ci-deploy-e-backup.md).
 
 ## Retenção por destino
 
