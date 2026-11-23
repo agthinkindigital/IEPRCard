@@ -868,6 +868,15 @@ function privacySnapshotMinimizeOperationalRows(string $table, array &$row): voi
         $row['evento_id'] = 'snapshot-redacted-' . (string) ($row['id'] ?? 'unknown');
         $row['payload_hash'] = hash('sha256', 'snapshot-redacted-webhook-' . (string) ($row['id'] ?? 'unknown'));
     }
+    if ($table === 'webhook_gowa_eventos') {
+        $row['evento_hash'] = hash('sha256', 'snapshot-redacted-gowa-' . (string) ($row['id'] ?? 'unknown'));
+        $row['estado'] = 'processado';
+        $row['processando_em'] = null;
+        $row['tentativas'] = 0;
+    }
+    if ($table === 'whatsapp_conversas' && array_key_exists('ultimo_erro_entrega', $row)) {
+        $row['ultimo_erro_entrega'] = null;
+    }
     if ($table === 'destinos_backup') {
         $row['snapshot_pendente_id'] = null;
         $row['snapshot_pendente_em'] = null;
