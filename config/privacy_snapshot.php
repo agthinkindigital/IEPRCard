@@ -98,8 +98,8 @@ function privacySnapshotPersonalFields(): array
             'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'titular_id', 'job_id', 'dados_cifrados',
         ],
         'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url', 'criado_em'],
-        'acessos_suporte' => ['usuario_id', 'token_hash', 'ip_usado', 'usado_em'],
-        'mcp_api_keys' => ['usuario_id', 'nome', 'chave_hash', 'ultimo_uso_em'],
+        'acessos_suporte' => ['usuario_id', 'ip_usado', 'usado_em'],
+        'mcp_api_keys' => ['usuario_id', 'nome', 'ultimo_uso_em'],
         'design_fundos_privacidade' => ['classificacao', 'titular_id', 'asset_url'],
         'importacao_linhas_staging' => ['dados_cifrados', 'foto_cifrada'],
         'carteirinhas_emitidas' => [
@@ -739,6 +739,19 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
         $row['device_id'] = null;
         $row['estado'] = 'inativa';
     }
+    if ($table === 'acessos_suporte') {
+        $row['token_hash'] = hash('sha256', 'snapshot-disabled-support-' . (string) ($row['id'] ?? ''));
+    }
+    if ($table === 'mcp_api_keys') {
+        $row['chave_hash'] = hash('sha256', 'snapshot-disabled-mcp-' . (string) ($row['id'] ?? ''));
+        $row['ativo'] = 0;
+    }
+    if ($table === 'dominios_tenant') {
+        $row['token_verificacao_hash'] = hash('sha256', 'snapshot-disabled-domain-' . (string) ($row['id'] ?? ''));
+        $row['estado'] = 'pendente_verificacao';
+        $row['verificado_em'] = null;
+        $row['tls_validado_em'] = null;
+    }
 }
 
 /** Fail closed for artifacts without an envelope format tied to a privacy subject. */
@@ -849,6 +862,7 @@ function privacySnapshotMinimizeOperationalRows(string $table, array &$row): voi
         'usuarios' => ['criado_por_usuario_id'],
         'usuario_permissoes' => ['criado_por_usuario_id'],
         'lotes_importacao' => ['usuario_id', 'titular_origem_id', 'colunas_detectadas_json', 'mapa_de_para_usado_json'],
+        'solicitacoes_anonimizacao' => ['correlation_id'],
         default => [],
     };
     foreach ($redacted as $field) {
