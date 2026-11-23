@@ -63,11 +63,11 @@ $insert = $pdo->prepare(
 );
 $insert->execute([
     'tenant' => $fixture['tenant_id'], 'name' => 'MCP transport client', 'client' => $clientId,
-    'hash' => password_hash($clientSecret, PASSWORD_DEFAULT), 'scopes' => '["system.read","telemetry.read"]',
+    'hash' => password_hash($clientSecret, PASSWORD_DEFAULT), 'scopes' => '["system.read","telemetry.read","db.inspect"]',
 ]);
 $configuration = ['APP_ENV' => 'dev', 'MCP_PUBLIC_BASE_URL' => $baseUrl, 'MCP_OAUTH_SIGNING_KEY' => $signingKey];
 $token = mcpOauthIssueClientCredentialsToken($pdo, [
-    'grant_type' => 'client_credentials', 'resource' => $baseUrl . '/mcp', 'scope' => 'system.read telemetry.read',
+    'grant_type' => 'client_credentials', 'resource' => $baseUrl . '/mcp', 'scope' => 'system.read telemetry.read db.inspect',
     '_basic_credentials' => ['client_id' => $clientId, 'client_secret' => $clientSecret],
 ], $configuration, $ratePath)['access_token'];
 $limitedClientId = 'mcp_' . bin2hex(random_bytes(20));
@@ -134,7 +134,13 @@ try {
     if ($status !== 200 || !str_contains((string) $response, '"result":{}')) {
         throw new RuntimeException('MCP ping must return an empty JSON-RPC result.');
     }
+    $tenantCountBeforeTools = (int) $pdo->query('SELECT COUNT(*) FROM tenants')->fetchColumn();
+    $schemaVersionBeforeTools = (int) $pdo->query('PRAGMA schema_version')->fetchColumn();
     mcpServerHttpToolAssertions($url, $token, $limitedToken, $dailyDate, $meta, $rpc, $rpcHeaders);
+    if ((int) $pdo->query('SELECT COUNT(*) FROM tenants')->fetchColumn() !== $tenantCountBeforeTools
+        || (int) $pdo->query('PRAGMA schema_version')->fetchColumn() !== $schemaVersionBeforeTools) {
+        throw new RuntimeException('MCP read tools must not mutate tenant business data or schema.');
+    }
     [$status, $response, $authHeaders] = mcpServerHttpRequest($url, 'POST', $body, ['Accept: application/json, text/event-stream', 'Content-Type: application/json', 'Origin: https://client.example.test']);
     if ($status !== 401 || !in_array('www-authenticate: bearer resource_metadata="' . $baseUrl . '/.well-known/oauth-protected-resource/mcp", error="invalid_token"', array_map('strtolower', $authHeaders), true)) {
         throw new RuntimeException('MCP authentication challenge must reference Protected Resource Metadata.');
@@ -213,7 +219,7 @@ try {
     }
     $activate = $pdo->prepare('UPDATE mcp_api_keys SET ativo = 1 WHERE client_id = :client');
     $activate->execute(['client' => $clientId]);
-    $pdo->prepare('UPDATE mcp_api_keys SET limite_requisicoes_minuto = 22 WHERE client_id = :client')
+    $pdo->prepare('UPDATE mcp_api_keys SET limite_requisicoes_minuto = 23 WHERE client_id = :client')
         ->execute(['client' => $limitedClientId]);
     $body = $rpc('ping');
     for ($attempt = 0; $attempt < 20; ++$attempt) {
@@ -227,7 +233,7 @@ try {
         throw new RuntimeException('MCP client rate limit must return HTTP 429 and Retry-After.');
     }
     $auditCount = (int) $pdo->query('SELECT COUNT(*) FROM mcp_audit_logs')->fetchColumn();
-    if ($auditCount !== 38) {
+    if ($auditCount !== 44) {
         throw new RuntimeException('Authenticated MCP protocol calls must produce sanitized audit records.');
     }
 } finally {

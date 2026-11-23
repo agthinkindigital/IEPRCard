@@ -19,9 +19,9 @@ use function IEPRCard\Database\Schema\sqlCriarTabela;
 use function IEPRCard\Database\Schema\tabelasExistentes;
 use function IEPRCard\Database\Schema\colunasExistentes;
 
-function schemaInspecionar(PDO $pdo): array
+function schemaInspecionar(PDO $pdo, ?array $catalog = null): array
 {
-    return inspecionar($pdo);
+    return inspecionar($pdo, $catalog);
 }
 
 function schemaGarantirEstrutura(PDO $pdo, ?string $environment = null): array

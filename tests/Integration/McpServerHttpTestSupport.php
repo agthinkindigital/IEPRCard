@@ -67,9 +67,40 @@ function mcpServerHttpToolAssertions(string $url, string $token, string $limited
     [$status, $response] = mcpServerHttpRequest($url, 'POST', $rpc('tools/list'), $rpcHeaders('tools/list', null, '2026-07-28', $token));
     $list = json_decode((string) $response, true);
     $tools = is_array($list) ? ($list['result']['tools'] ?? null) : null;
-    if ($status !== 200 || !is_array($tools) || array_column($tools, 'name') !== ['system.read', 'telemetry.read']
+    if ($status !== 200 || !is_array($tools) || array_column($tools, 'name') !== ['system.read', 'telemetry.read', 'db.inspect']
         || str_contains((string) $response, 'code.patch')) {
         throw new RuntimeException('MCP tools/list must filter the deterministic registry by token scope.');
+    }
+    [$status, $response] = mcpServerHttpRequest($url, 'POST', $rpc('tools/call', '2026-07-28', [
+        'name' => 'db.inspect', 'arguments' => (object) [],
+    ]), $rpcHeaders('tools/call', 'db.inspect', '2026-07-28', $token));
+    $schema = json_decode((string) $response, true);
+    $schemaResult = $schema['result']['structuredContent'] ?? null;
+    if ($status !== 200 || !is_array($schemaResult) || ($schemaResult['driver'] ?? null) !== 'sqlite'
+        || !is_array($schemaResult['tables'] ?? null)
+        || count($schemaResult['tables']) !== count(\IEPRCard\Database\Schema\catalogoCanonico())
+        || isset($schemaResult['defaults']) || str_contains((string) $response, 'CREATE TABLE')
+        || str_contains((string) $response, 'MCP transport client') || str_contains((string) $response, 'Sensitive MCP')) {
+        throw new RuntimeException('MCP db.inspect must return only canonical structural metadata and drift.');
+    }
+    [$status, $response] = mcpServerHttpRequest($url, 'POST', $rpc('tools/call', '2026-07-28', [
+        'name' => 'db.inspect', 'arguments' => ['tabela' => 'tenants'],
+    ]), $rpcHeaders('tools/call', 'db.inspect', '2026-07-28', $token));
+    $singleSchema = json_decode((string) $response, true)['result']['structuredContent'] ?? null;
+    $tenantTable = $singleSchema['tables'][0] ?? null;
+    $tenantColumns = is_array($tenantTable) ? array_column($tenantTable['columns'] ?? [], 'name') : [];
+    if ($status !== 200 || !is_array($singleSchema) || count($singleSchema['tables'] ?? []) !== 1
+        || ($tenantTable['name'] ?? null) !== 'tenants' || ($tenantTable['present'] ?? false) !== true
+        || !in_array('id', $tenantColumns, true) || !in_array('nome_organizacao', $tenantColumns, true)) {
+        throw new RuntimeException('MCP db.inspect must restrict single-table requests to the canonical catalog.');
+    }
+    foreach ([['tabela' => 'private_table'], ['tabela' => 'tenants', 'sql' => 'SELECT 1'], ['tabela' => null]] as $invalidSchemaArguments) {
+        [$status, $response] = mcpServerHttpRequest($url, 'POST', $rpc('tools/call', '2026-07-28', [
+            'name' => 'db.inspect', 'arguments' => $invalidSchemaArguments,
+        ]), $rpcHeaders('tools/call', 'db.inspect', '2026-07-28', $token));
+        if ($status !== 400 || !str_contains((string) $response, 'Invalid tool arguments')) {
+            throw new RuntimeException('MCP db.inspect must reject unknown tables and caller-supplied properties.');
+        }
     }
     [$status, $response] = mcpServerHttpRequest(
         $url,
@@ -136,9 +167,27 @@ function mcpServerHttpToolAssertions(string $url, string $token, string $limited
         throw new RuntimeException('MCP telemetry.read must not be discoverable without its OAuth scope.');
     }
     [$status, $response] = mcpServerHttpRequest($url, 'POST', $rpc('tools/call', '2026-07-28', [
+        'name' => 'db.inspect', 'arguments' => (object) [],
+    ]), $rpcHeaders('tools/call', 'db.inspect', '2026-07-28', $limitedToken));
+    if ($status !== 400 || !str_contains((string) $response, 'Unknown tool')) {
+        throw new RuntimeException('MCP db.inspect must reject calls without the db.inspect OAuth scope.');
+    }
+    [$status, $response] = mcpServerHttpRequest($url, 'POST', $rpc('tools/call', '2026-07-28', [
         'name' => 'telemetry.read', 'arguments' => ['from' => $day, 'to' => $day],
     ]), $rpcHeaders('tools/call', 'telemetry.read', '2026-07-28', $limitedToken));
     if ($status !== 400 || !str_contains((string) $response, '"code":-32602')) {
         throw new RuntimeException('MCP telemetry.read must reject calls without the OAuth scope.');
+    }
+
+    $driftPdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $driftPdo->exec('CREATE TABLE tenants (id INTEGER PRIMARY KEY, nome_organizacao TEXT)');
+    $driftVersion = (int) $driftPdo->query('PRAGMA schema_version')->fetchColumn();
+    $driftCall = mcpToolCall('db.inspect', ['tabela' => 'tenants'], ['db.inspect'], $driftPdo);
+    $driftResult = $driftCall['result']['structuredContent'] ?? null;
+    if (!is_array($driftResult) || ($driftResult['driver'] ?? null) !== 'sqlite'
+        || ($driftResult['tables'][0]['present'] ?? false) !== true
+        || ($driftResult['drift']['missing_columns'] ?? []) === []
+        || (int) $driftPdo->query('PRAGMA schema_version')->fetchColumn() !== $driftVersion) {
+        throw new RuntimeException('MCP db.inspect must report structural drift without changing schema.');
     }
 }

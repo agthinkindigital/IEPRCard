@@ -5,10 +5,10 @@ namespace IEPRCard\Database\Schema;
 
 use PDO;
 
-function inspecionar(PDO $pdo): array
+function inspecionar(PDO $pdo, ?array $catalog = null): array
 {
     $driver = identificar($pdo);
-    $catalog = catalogoCanonico();
+    $catalog ??= catalogoCanonico();
     $existingTables = tabelasExistentes($pdo, $driver);
     $report = ['missing_tables' => [], 'missing_columns' => [], 'mismatched_columns' => [], 'missing_indexes' => [], 'missing_foreign_keys' => []];
 

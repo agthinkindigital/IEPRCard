@@ -64,7 +64,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | C5 | RBAC em `includes/rbac.php` (pode()) × `includes/motor_permissoes.php` (tabelas `papeis`/`permissoes`) | `docs/04` × `docs/02` | Um único motor `motor_permissoes.php` expondo `pode()`; tabelas `perfis_acesso`/`permissoes`/`usuario_permissoes` | 0004 |
 | C6 | Evento `permissao.alterada` invalida cache, mas não está no catálogo de eventos | `docs/04` × `docs/05` | Incluir no catálogo; cache de RBAC por requisição | 0004 |
 | C7 | *Self-healing* automático de schema é descrito como mecanismo de produção | `docs/02`, `docs/11` ISSUE-002 | Restrito a dev/test; produção usa migrações versionadas expand-only | 0010 |
-| C8 | `mcp.code.safe_patch` aplica patches e roda testes no servidor | `docs/09`, `docs/11` ISSUE-017 | Disponível somente em dev/staging; em produção apenas tools de leitura | 0009 |
+| C8 | A proposta de `mcp.code.safe_patch` permitiria alteração remota | `docs/09`, `docs/11` ISSUE-017 | `code.patch` não está implementado; escrita remota exige decisão e revisão específicas | 0009 |
 | C9 | Suítes TDD contadas como 7, mas existe `TDD-02B` | `docs/10` × `docs/14` | 8 suítes canônicas (TDD-01…07 + 02B) | 0012 |
 | C10 | Nenhuma seção de disponibilidade, RPO/RTO, backup, deploy, CSRF/CSP, correlation id ou rate limiting | ausente em `docs/00-17` | Proposto em §2, §6, §7, §8 e §10 | 0006, 0011, 0012 |
 
@@ -115,7 +115,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 1. **Carga operacional:** painel Admin com dados diários, lote recomendado e pico previsto na janela X; ajustes manuais aplicam após pedido de reinício do worker. O cálculo e o comportamento estão definidos em ADR-0011.
 2. **SLA e recuperação:** objetivos internos de NFR-15/16 aceitos, sem compromisso comercial. Viabilidade no plano e condições de medição estão em ADR-0012.
 3. **Dados pessoais:** política em `docs/01`; requisitos de backup e restauração em ADR-0012.
-4. **MCP:** disponível desde o primeiro lançamento, inclusive em produção, com as restrições do ADR-0009: produção somente com ferramentas de leitura; escrita requer aprovação humana e alteração de código remoto continua indisponível.
+4. **MCP:** disponível desde o primeiro lançamento, inclusive em produção. O runtime atual registra `system.read`, `telemetry.read` e `db.inspect`, filtradas por escopo OAuth. Tools de escrita aguardam decisão; alteração remota de código não está implementada. Ver contrato atual em [docs/09](../09-mcp.md) e ADR-0009.
 5. **Região:** uma única região atende ao lançamento; multirregião não é requisito.
 6. **Domínios:** domínios próprios dos Clientes são requisito do lançamento. Cada domínio deve ser verificado, vinculado unicamente a um tenant e servido com TLS; a hospedagem precisa aceitar múltiplos nomes apontando para a mesma aplicação.
 7. **Pagamentos:** cobranças SaaS, cobranças de titulares e repasses estão fora do MVP. O fluxo plataforma→Cliente por marketplace/split é apenas uma direção futura, descrita em `docs/07` e ADR-0008; o código de webhook existente será referência para avaliação, sem integração no lançamento.
@@ -229,7 +229,7 @@ C4Container
         Container(engines, "Motors de Dominio", "PHP", "RBAC, cotas, importacao, mapeamento, render, eventos, telemetria")
         Container(fila, "Fila em banco + outbox", "Tabela MySQL/SQLite", "Lotes, retry, DLQ e efeitos externos confiaveis")
         Container(worker, "cron.php / worker", "PHP CLI", "Processa lotes, agrega telemetria, expira trial, drena outbox")
-        Container(mcp, "MCP Server", "PHP JSON-RPC 2.0", "Tools de leitura em prod; patches apenas em dev")
+        Container(mcp, "MCP Server", "PHP JSON-RPC 2.0", "Tools read-only autenticadas e filtradas por escopo")
         ContainerDb(db, "Banco Principal", "SQLite (dev) / MySQL 8 ou MariaDB 10.6 (prod)", "Dados transacionais, fila, outbox e auditoria")
         ContainerDb(storage, "Storage de artifacts", "Filesystem por tenant", "fundos de design, fotos, WebP e PDF")
     }
@@ -638,7 +638,7 @@ O alvo arquitetural usa eventos de domínio e outbox transacional, com efeitos e
 ### 6.3. APIs e contratos
 
 - **Portal do titular / validação QR:** rotas HTTP server-rendered; contrato de request/response documentado em OpenAPI 3.0 na Fase de contratos (payload de login, resposta de validação com `status`, `motivo_codigo`, sem CPF).
-- **MCP desde o primeiro lançamento:** JSON-RPC 2.0 sobre Streamable HTTP sem sessão no endpoint remoto; cada POST é autenticado e autorizado isoladamente, sem processo residente. Produção registra somente tools de leitura; escrita exige aprovação humana e `code.patch` não existe em produção. Tarefas longas retornam `job_id` para consulta posterior. STDIO é opcional para execução local. Chaves em `mcp_api_keys` têm escopos e limites; `mcp_audit_logs` registra toda chamada. Ver ADR-0009.
+- **MCP desde o primeiro lançamento:** JSON-RPC 2.0 sobre Streamable HTTP sem sessão no endpoint remoto; cada POST é autenticado e autorizado isoladamente, sem processo residente. O runtime atual registra `system.read`, `telemetry.read` e `db.inspect`, conforme os escopos do token. Tools de escrita aguardam decisão; `code.patch` não está implementado. Ver contrato em [docs/09](../09-mcp.md) e ADR-0009.
 - **Integrações externas:** wrappers em `api/` com timeout, retry, circuit breaker e erro normalizado. Nenhuma credencial em log.
 - **Versionamento:** contratos de webhook e MCP versionados por campo `versao` no payload; mudanças quebráveis seguem Expand & Contract.
 
@@ -709,7 +709,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | # | Risco | Impacto | Mitigação | Prioridade | ADR |
 | --- | --- | --- | --- | --- | --- |
 | R1 | Self-healing alterando schema em produção | Perda de dados / downtime silencioso | Desligar em prod; migrações versionadas expand-only | Alta | 0010 |
-| R2 | `mcp.code.safe_patch` em produção | Execução remota de código, vazamento de segredos | Tool desabilitada em prod; escopo `code.patch` só em dev | Alta | 0009 |
+| R2 | Escrita remota MCP | Execução remota de código ou alteração indevida | Runtime read-only; futura escrita exige decisão, escopo mínimo e revisão de segurança | Alta | 0009 |
 | R3 | Corrida na cota entre operadores | Emissão acima do contrato | UPDATE condicional + unique key + reserva com TTL | Alta | 0004 |
 | R4 | Query fora do TenantScope | Vazamento cross-tenant | Helper obrigatório, testes negativos, code review | Alta | 0003 |
 | R5 | Ausência de CSRF/CSP/HttpOnly | ATO e XSS | NFR-20 + specs de segurança | Alta | 0008 |
@@ -749,7 +749,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | [0006](../adr/0006-event-bus-e-outbox.md) | Event bus interno com outbox transacional | Proposta |
 | [0007](../adr/0007-renderizacao-nativa-e-fila.md) | Renderização WebP/PDF nativa e fila em banco | Aceita (baseline) |
 | [0008](../adr/0008-webhooks-idempotentes-e-segredos.md) | Webhooks idempotentes, HMAC e sigilo de credenciais | Aceita + ajustes |
-| [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP com escopos e patch restrito a dev | Proposta |
+| [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP stateless com escopos e runtime read-only | Aceita; escrita pendente de decisão |
 | [0010](../adr/0010-self-healing-apenas-dev.md) | Self-healing restrito a dev/test e migrações expand-only | Proposta |
 | [0011](../adr/0011-observabilidade-golden-signals.md) | Observabilidade com `correlation_id` e golden signals | Proposta |
 | [0012](../adr/0012-ci-deploy-e-backup.md) | CI, perfil de hospedagem, deploy e recuperação | Proposta |

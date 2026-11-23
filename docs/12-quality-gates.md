@@ -32,8 +32,8 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 
 * **GATE 5 — Servidor MCP & Prontidão de Produção (Após Épico 7):**
-* [x] `TDD-07` passou na suíte CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
-* [ ] O gate pede um agente externo alterar X/Y, gerar preview WebP e consultar telemetria sem intervenção. Hoje o runtime registra apenas `system.read` e `telemetry.read`; o ADR-0009 exige aprovação para `design.write` e descreve `code.patch` somente em dev/staging, mas essa tool não está no runtime. Aguardar decisão de escopo antes da validação E2E.
+* [x] A versão anterior de `TDD-07` passou na suíte CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904). A extensão `db.inspect` da #88 aguarda nova execução da matriz.
+* [ ] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. O gate ainda exige prova ponta a ponta com agente externo e preview WebP. A edição MCP aguarda a decisão de escopo de `design.write`; `code.patch` não está implementado. Ver ADR-0009 e [Issue #88](https://github.com/agthinkindigital/IEPRCard/issues/88).
 
 
 
