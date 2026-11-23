@@ -8,6 +8,37 @@ require_once dirname(__DIR__, 2) . '/config/titular_anonymization.php';
 require_once dirname(__DIR__, 2) . '/config/titular_privacy_keys.php';
 require_once dirname(__DIR__, 2) . '/config/privacy_snapshot.php';
 
+$missingVersionPurgeClient = new class {
+    public bool $deleteObjectCalled = false;
+
+    public function listObjectVersions(array $input): array
+    {
+        $markers = $this->deleteObjectCalled
+            ? [['Key' => (string) ($input['Prefix'] ?? ''), 'VersionId' => 'new-delete-marker']]
+            : [];
+        return ['Versions' => [], 'DeleteMarkers' => $markers, 'IsTruncated' => false];
+    }
+
+    public function deleteObject(array $input): void
+    {
+        $this->deleteObjectCalled = true;
+    }
+
+    public function headObject(array $input): void
+    {
+        throw new class('NoSuchKey', 404) extends RuntimeException {
+            public function getStatusCode(): int
+            {
+                return 404;
+            }
+        };
+    }
+};
+s3CompatibleDeleteObjectPermanently($missingVersionPurgeClient, 'synthetic-bucket', 'already-absent-key');
+if ($missingVersionPurgeClient->deleteObjectCalled) {
+    throw new RuntimeException('An absent versioned object must not receive a new delete marker during an idempotent purge.');
+}
+
 $backupDestinationsConnections = ['SQLite' => dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:'])];
 $backupDestinationsMysql = [
     'DB_HOST' => getenv('TEST_MYSQL_HOST'),

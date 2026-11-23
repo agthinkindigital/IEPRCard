@@ -43,9 +43,6 @@ function s3CompatibleDeleteObjectPermanently(object $client, string $bucket, str
         }
     } while ($truncated);
 
-    if (!$foundVersion) {
-        $client->deleteObject(['Bucket' => $bucket, 'Key' => $objectKey]);
-    }
     $verify = $client->listObjectVersions(['Bucket' => $bucket, 'Prefix' => $objectKey, 'MaxKeys' => 1000]);
     foreach (['Versions', 'DeleteMarkers'] as $section) {
         foreach (($verify[$section] ?? []) as $entry) {
