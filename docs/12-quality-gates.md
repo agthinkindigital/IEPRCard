@@ -20,8 +20,8 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 * **GATE 3 — Motor de Importação, Mapeamento & Renderização PDF/WebP (Após Épico 3 e 4):**
 * [x] Suítes `TDD-03`, `TDD-04` e `TDD-10` passaram no CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
-* [ ] WebP 1011×638: ADR-0007 e o teste definem ≤80 ms por face. Em PHP 8.2.35 local, o par levou 105,47 ms (média 52,74 ms/face); o teste ainda não impõe o limite nem mede cada face separadamente, então o gate permanece aberto.
-* [x] PDF de 50 carteirinhas: 913,60 ms local em PHP 8.2.35 e limite de 3,5 s imposto no CI: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
+* [x] WebP 1011×638: ≤80 ms por face em média no benchmark frente/verso definido na [Issue #36](https://github.com/agthinkindigital/IEPRCard/issues/36); CI PHP 8.2 mediu 49,55 ms (MySQL) e 49,29 ms (MariaDB) por face no [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
+* [x] PDF de 50 carteirinhas: 3.065,89 ms no job de benchmark PHP 8.2, abaixo do limite de 3,5 s imposto no CI [45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 * [x] Portal do titular e validação pública de QR passaram nos testes HTTP da suíte CI [45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 
 
