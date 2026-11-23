@@ -11,7 +11,7 @@ $directory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-backup-http-' 
 mkdir($directory, 0700, true);
 $databasePath = $directory . DIRECTORY_SEPARATOR . 'source.sqlite';
 $oldEnvironment = [];
-foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'PLATFORM_HOSTNAME', 'IEPR_INTEGRATION_KEY'] as $key) {
+foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH', 'PLATFORM_HOSTNAME', 'IEPR_INTEGRATION_KEY', 'IEPR_BACKUP_HOSTING_PROFILE', 'IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT'] as $key) {
     $value = getenv($key);
     $oldEnvironment[$key] = $value === false ? null : $value;
 }
@@ -20,6 +20,8 @@ putenv('DB_DRIVER=sqlite');
 putenv('DB_SQLITE_PATH=' . $databasePath);
 putenv('PLATFORM_HOSTNAME=127.0.0.1');
 putenv('IEPR_INTEGRATION_KEY=' . base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
+putenv('IEPR_BACKUP_HOSTING_PROFILE=shared');
+putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
 
 $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
 schemaGarantirEstrutura($pdo, 'test');
@@ -162,6 +164,17 @@ try {
     [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'POST', $toggleOn, $cookie);
     if ($status !== 303 || (int) $pdo->query('SELECT ativo FROM destinos_backup WHERE id = ' . $createdId)->fetchColumn() !== 1) {
         throw new RuntimeException('A successfully tested destination must be activatable.');
+    }
+    $pdo->exec("UPDATE destinos_backup SET ultimo_teste_status = 'success' WHERE id = " . (int) $protected['id']);
+    $overLimitToggle = http_build_query([
+        'csrf_token' => $csrf, 'action' => 'toggle', 'destination_id' => (string) $protected['id'], 'enabled' => '1',
+    ]);
+    [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'POST', $overLimitToggle, $cookie);
+    [$noticeStatus, $limitPage] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'GET', null, $cookie);
+    if ($status !== 303 || $noticeStatus !== 200
+        || !str_contains((string) $limitPage, 'Hospedagem compartilhada permite um')
+        || (int) $pdo->query('SELECT ativo FROM destinos_backup WHERE id = ' . (int) $protected['id'])->fetchColumn() !== 0) {
+        throw new RuntimeException('The admin screen must explain that the shared-host active destination limit was reached.');
     }
     $badDelete = http_build_query(['csrf_token' => $csrf, 'action' => 'delete', 'destination_id' => (string) $createdId, 'confirm_name' => 'wrong']);
     [$status] = backupDestHttpRequest($baseUrl . '/admin/backup-destinos.php', 'POST', $badDelete, $cookie);

@@ -287,6 +287,15 @@ function privacySnapshotUpload(
         throw new InvalidArgumentException('PRIVACY_SNAPSHOT_BATCH_LIMIT_INVALID');
     }
     $destinations = titularPrivacyActiveDestinations($pdo);
+    $activeLimit = backupDestinationActiveLimit();
+    if (count($destinations) > $activeLimit) {
+        $markFailure = $pdo->prepare(
+            "UPDATE destinos_backup SET ultimo_erro_codigo = 'active_destination_limit_exceeded', atualizado_em = :updated "
+            . 'WHERE ativo = 1'
+        );
+        $markFailure->execute(['updated' => gmdate('Y-m-d H:i:s')]);
+        return ['processed' => 0, 'failed' => count($destinations), 'skipped' => 0];
+    }
     if ($destinationIds !== null) {
         $wanted = array_fill_keys(array_map('intval', $destinationIds), true);
         $destinations = array_values(array_filter($destinations, static fn(array $row): bool => isset($wanted[(int) $row['id']])));

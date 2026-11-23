@@ -167,29 +167,6 @@ function backupDestinationReadOne(PDO $pdo, array $identity, int $id): array
 }
 
 /** @param array<string, mixed> $identity */
-function backupDestinationSetEnabled(PDO $pdo, array $identity, int $id, bool $enabled): void
-{
-    backupDestinationAssertSuperadmin($pdo, $identity);
-    if ($enabled) {
-        $verified = $pdo->prepare("SELECT ultimo_teste_status FROM destinos_backup WHERE id = :id");
-        $verified->execute(['id' => $id]);
-        if ($verified->fetchColumn() !== 'success') {
-            throw new DomainException('BACKUP_DESTINATION_TEST_REQUIRED');
-        }
-    }
-    $statement = $pdo->prepare('UPDATE destinos_backup SET ativo = :enabled, atualizado_em = :updated WHERE id = :id');
-    $statement->execute(['enabled' => $enabled ? 1 : 0, 'updated' => gmdate('Y-m-d H:i:s'), 'id' => $id]);
-    if ($statement->rowCount() !== 1) {
-        $exists = $pdo->prepare('SELECT 1 FROM destinos_backup WHERE id = :id');
-        $exists->execute(['id' => $id]);
-        if ($exists->fetchColumn() !== false) {
-            return;
-        }
-        throw new DomainException('BACKUP_DESTINATION_NOT_FOUND');
-    }
-}
-
-/** @param array<string, mixed> $identity */
 function backupDestinationDelete(PDO $pdo, array $identity, int $id): void
 {
     backupDestinationAssertSuperadmin($pdo, $identity);
@@ -212,3 +189,4 @@ function backupDestinationDelete(PDO $pdo, array $identity, int $id): void
 }
 
 require_once __DIR__ . '/backup_destinations_s3.php';
+require_once __DIR__ . '/backup_destination_activation.php';

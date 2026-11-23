@@ -34,8 +34,12 @@ if (!mkdir($backupDestinationStorage, 0700, true)) {
     throw new RuntimeException('Could not create local S3 contract-test storage.');
 }
 $oldPrivateStorage = getenv('IEPR_PRIVATE_STORAGE_PATH');
+$oldBackupHostingProfile = getenv('IEPR_BACKUP_HOSTING_PROFILE');
+$oldBackupActiveLimit = getenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
 $backupDestinationPrivateStorage = $backupDestinationStorage . '-private';
 putenv('IEPR_PRIVATE_STORAGE_PATH=' . $backupDestinationPrivateStorage);
+putenv('IEPR_BACKUP_HOSTING_PROFILE=shared');
+putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
 $backupDestinationNullDevice = PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null';
 $backupDestinationStdout = fopen($backupDestinationNullDevice, 'wb');
 $backupDestinationStderr = fopen($backupDestinationNullDevice, 'wb');
@@ -75,6 +79,8 @@ putenv('IEPR_INTEGRATION_KEY=' . base64_encode(str_repeat("\x61", SODIUM_CRYPTO_
 putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(str_repeat("\x62", SODIUM_CRYPTO_SECRETBOX_KEYBYTES)));
 try {
     foreach ($backupDestinationsConnections as $driver => $pdo) {
+        putenv('IEPR_BACKUP_HOSTING_PROFILE=shared');
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
         schemaAplicarMigracoes($pdo, 'test');
         schemaGarantirEstrutura($pdo, 'test');
         $superadminEmail = 'backup-test-' . bin2hex(random_bytes(6)) . '@example.test';
@@ -209,6 +215,19 @@ try {
         backupDestinationSetEnabled($pdo, $identity, (int) $saved['id'], true);
         if ((int) $pdo->query('SELECT ativo FROM destinos_backup WHERE id = ' . (int) $saved['id'])->fetchColumn() !== 1) {
             throw new RuntimeException($driver . ': destinations must be independently enableable.');
+        }
+        if ((backupDestinationTest($pdo, $identity, (int) $second['id'])['status'] ?? null) !== 'success') {
+            throw new RuntimeException($driver . ': the second independent destination did not pass its S3 contract probe.');
+        }
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT=2');
+        try {
+            backupDestinationSetEnabled($pdo, $identity, (int) $second['id'], true);
+            throw new RuntimeException($driver . ': shared hosting must reject a second active backup destination.');
+        } catch (DomainException $exception) {
+            if ($exception->getMessage() !== 'BACKUP_DESTINATION_ACTIVE_LIMIT_REACHED') throw $exception;
+        }
+        if ((int) $pdo->query('SELECT ativo FROM destinos_backup WHERE id = ' . (int) $second['id'])->fetchColumn() !== 0) {
+            throw new RuntimeException($driver . ': a rejected shared-host destination must remain inactive.');
         }
 
         $pdo->prepare(
@@ -502,10 +521,30 @@ try {
         }
         s3CompatibleDeleteObjectPermanently($privacyClient, (string) $saved['bucket'], $retriedSnapshotKey);
 
-        if ((backupDestinationTest($pdo, $identity, (int) $second['id'])['status'] ?? null) !== 'success') {
-            throw new RuntimeException($driver . ': the second independent destination did not pass its S3 contract probe.');
-        }
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT=2');
+        putenv('IEPR_BACKUP_HOSTING_PROFILE=vps');
         backupDestinationSetEnabled($pdo, $identity, (int) $second['id'], true);
+        putenv('IEPR_BACKUP_HOSTING_PROFILE=shared');
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
+        $overLimitFactoryCalls = 0;
+        $overLimitResult = privacySnapshotUpload(
+            $pdo,
+            [(int) $saved['id'], (int) $second['id']],
+            $snapshotEncryptor,
+            static function () use (&$overLimitFactoryCalls, $privacyClient): object {
+                ++$overLimitFactoryCalls;
+                return $privacyClient;
+            }
+        );
+        $overLimitErrors = $pdo->query(
+            'SELECT ultimo_erro_codigo FROM destinos_backup WHERE ativo = 1 ORDER BY id'
+        )->fetchAll(PDO::FETCH_COLUMN);
+        if (($overLimitResult['processed'] ?? -1) !== 0 || ($overLimitResult['failed'] ?? -1) !== 2
+            || $overLimitFactoryCalls !== 0 || $overLimitErrors !== ['active_destination_limit_exceeded', 'active_destination_limit_exceeded']) {
+            throw new RuntimeException($driver . ': snapshots must fail closed and mark every destination when active count exceeds the configured limit.');
+        }
+        putenv('IEPR_BACKUP_HOSTING_PROFILE=vps');
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT=2');
         $multipleDestinationUploads = [];
         $multipleDestinationResult = privacySnapshotUpload(
             $pdo,
@@ -734,6 +773,16 @@ try {
         $pdo->prepare('DELETE FROM usuarios WHERE id = :id')->execute(['id' => $superadminId]);
     }
 } finally {
+    if ($oldBackupHostingProfile === false) {
+        putenv('IEPR_BACKUP_HOSTING_PROFILE');
+    } else {
+        putenv('IEPR_BACKUP_HOSTING_PROFILE=' . $oldBackupHostingProfile);
+    }
+    if ($oldBackupActiveLimit === false) {
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
+    } else {
+        putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT=' . $oldBackupActiveLimit);
+    }
     if ($oldPrivateStorage === false) {
         putenv('IEPR_PRIVATE_STORAGE_PATH');
     } else {

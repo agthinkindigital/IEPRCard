@@ -22,6 +22,7 @@ O mockup [`admin-backup-destinations-mockup.svg`](../mockups/admin-backup-destin
 - Falha: exibir erro seguro e próximo passo genérico; nunca renderizar credenciais ou mensagem bruta do SDK.
 - Remoção: pedir confirmação usando o nome do destino; cancelar mantém a configuração.
 - Retry pendente: mostrar estado aguardando confirmação; bloquear troca de armazenamento/credenciais e remoção até resolver o snapshot.
+- Limite de destinos ativos: o perfil compartilhado permite um destino ativo. VPS também inicia com um; ampliar o limite exige medir o RPO para a quantidade e configurar o mesmo perfil/limite no PHP web e no cron. Se o limite ficar abaixo da quantidade ativa, mostrar que os snapshots estão suspensos até desativar os excedentes.
 - Controles têm rótulos persistentes, foco visível, teclado e contraste AA; status não depende só de cor.
 
 ## Limites deste painel

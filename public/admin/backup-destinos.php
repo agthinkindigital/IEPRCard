@@ -132,6 +132,9 @@ function backupDestinationPageAge(?string $value): string
 
 function backupDestinationPageSnapshotState(array $destination): string
 {
+    if ($destination['last_error_code'] === 'active_destination_limit_exceeded') {
+        return 'Backup suspenso: desative destinos excedentes para respeitar o limite deste perfil.';
+    }
     if ($destination['pending_snapshot']) return 'Snapshot pendente; o worker tentará concluir o mesmo envio.';
     if ($destination['last_error_code'] !== null) return 'Último envio falhou; o worker tentará novamente.';
     if ($destination['last_success_at'] === null) return 'Ainda não há snapshot concluído.';
@@ -155,6 +158,8 @@ function backupDestinationSafeDomainMessage(string $code): string
         'BACKUP_DESTINATION_DUPLICATE_STORAGE' => 'Este bucket e endpoint já estão cadastrados em outro destino. Use um armazenamento separado para manter cópias independentes.',
         'BACKUP_DESTINATION_SNAPSHOT_PENDING' => 'O destino tem um snapshot pendente de confirmação. Conclua a tentativa de backup antes de trocar o armazenamento ou remover o destino.',
         'BACKUP_DESTINATION_TEST_REQUIRED' => 'Ative o destino somente após um teste bem-sucedido de escrita, leitura e purga permanente.',
+        'BACKUP_DESTINATION_ACTIVE_LIMIT_REACHED' => 'O limite de destinos ativos deste perfil foi atingido. Hospedagem compartilhada permite um; em VPS, configure IEPR_BACKUP_HOSTING_PROFILE=vps e aumente IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT somente após medir o RPO para essa quantidade.',
+        'BACKUP_DESTINATION_ACTIVE_LIMIT_INVALID', 'BACKUP_DESTINATION_HOSTING_PROFILE_INVALID' => 'A configuração do perfil de backup no ambiente PHP é inválida. Use shared ou vps e um limite inteiro de 1 a 100.',
         'BACKUP_DESTINATION_NOT_FOUND' => 'O destino não foi encontrado. Atualize a página e tente novamente.',
         'BACKUP_DESTINATION_FORBIDDEN', 'AI_CONFIG_FORBIDDEN' => 'Acesso restrito ao superadmin.',
         default => 'A operação não pode ser concluída com a configuração atual. Revise os campos e tente novamente.',

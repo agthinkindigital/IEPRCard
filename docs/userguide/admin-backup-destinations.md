@@ -15,7 +15,9 @@ Este painel é restrito ao superadmin e configura destinos externos com API S3, 
 ## Editar, ativar e remover
 
 - Para trocar as chaves, digite as novas. Deixe os campos vazios para conservar as chaves atuais.
-- **Ativo** permite ao cron enviar snapshots periódicos para o destino. Se um envio ficar pendente, o cron confirma ou repete o mesmo snapshot antes de iniciar outro; enquanto isso, não troque nem remova o destino.
+- **Ativo** permite ao cron enviar snapshots periódicos para o destino. Hospedagem compartilhada aceita apenas um destino ativo. VPS também inicia com um; só aumente `IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT` depois de medir o RPO para essa quantidade, configurando `IEPR_BACKUP_HOSTING_PROFILE=vps` no PHP web e no cron. Recarregue o PHP web e reinicie os workers PHP após mudar essas variáveis. Se a quantidade ativa exceder o limite configurado, o cron suspende os snapshots e marca os destinos até o superadmin desativar os excedentes.
+- A ativação é serializada para que dois pedidos simultâneos não ultrapassem o limite. Destinos podem ser cadastrados e testados mesmo quando outro já está ativo.
+- Se um envio ficar pendente, o cron confirma ou repete o mesmo snapshot antes de iniciar outro; enquanto isso, não troque nem remova o destino.
 - **Testar** comprova conexão e purga permanente de um objeto temporário. A data exibida é do teste, não de um backup.
 - **Remover** pede confirmação com o nome do destino e exclui somente essa configuração.
 
