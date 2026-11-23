@@ -32,7 +32,7 @@ O teste confirma conexão e purga permanente do objeto temporário; não confirm
 
 O mockup [`admin-backup-restore-mockup.svg`](../mockups/admin-backup-restore-mockup.svg) propõe ao superadmin enviar um snapshot ZIP ou exportar e baixar o snapshot completo mais recente de um destino S3 configurado. A exportação não altera o backup nem descriptografa os dados. O operador valida manifesto, integridade, schema, ledger e chave mestra e só então solicita a preparação em banco MySQL isolado. A aplicação ativa continua separada; a liberação exige aplicar tombstones e revisar o resultado. ZIPs de atualização de código não são snapshots de dados e devem ser rejeitados.
 
-A base do fluxo ZIP foi aprovada pelo mantenedor em 2026-11-22. A exportação/baixada pelo painel é uma extensão proposta e aguarda aprovação. Regras de recuperação, privacidade e retenção permanecem no ADR-0012; a implementação depende da conclusão da #84.
+A base do fluxo ZIP foi aprovada pelo mantenedor em 2026-11-22. A extensão para exportar e baixar pelo painel foi aprovada em 2026-11-23. Regras de recuperação, privacidade e retenção permanecem no ADR-0012; a implementação depende da conclusão da #84.
 
 ## Retenção de snapshots por destino — aprovada em 2026-11-22
 
