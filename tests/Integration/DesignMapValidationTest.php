@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/config/design_map_contract.php';
+require_once dirname(__DIR__, 2) . '/config/design_editor.php';
 
 set_error_handler(static function (int $severity, string $message, string $file, int $line): never {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -33,6 +34,18 @@ $validMap = [
 $result = designMapValidate($validMap);
 if ($result !== ['valid' => true, 'errors' => []]) {
     throw new RuntimeException('A valid CR80 layout map should pass validation without errors.');
+}
+$personalDataMapping = designEditorValidate([
+    'nome_layout' => 'Design genérico',
+    'mapa_campos_json' => $validMap,
+    'mapeamento_fixo_json' => json_encode([
+        'versao_schema' => '1.0',
+        'mapeamentos' => ['titular.nome_completo' => ['tipo' => 'valor', 'valor' => 'joao@example.test']],
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+]);
+if (($personalDataMapping['valid'] ?? true) !== false
+    || ($personalDataMapping['code'] ?? null) !== 'personal_data_in_mapping') {
+    throw new RuntimeException('Design fixed-value mappings must reject structured personal data before persistence.');
 }
 
 $tooManyElementsMap = $validMap;

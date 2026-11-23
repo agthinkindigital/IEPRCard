@@ -306,12 +306,12 @@ function privacySubjectLifecycleAnonymizeRecord(PDO $pdo, string $recordType, in
             return;
         case 'acesso_suporte':
             $pdo->prepare(
-                'UPDATE acessos_suporte SET token_hash = :token, ip_usado = NULL WHERE id = :id'
+                'UPDATE acessos_suporte SET usuario_id = NULL, token_hash = :token, ip_usado = NULL WHERE id = :id'
             )->execute(['token' => hash('sha256', 'privacy-subject-support:' . $recordId), 'id' => $recordId]);
             return;
         case 'mcp_api_key':
             $pdo->prepare(
-                "UPDATE mcp_api_keys SET nome = 'Chave revogada', chave_hash = :hash, ativo = 0, ultimo_uso_em = NULL WHERE id = :id"
+                "UPDATE mcp_api_keys SET usuario_id = NULL, nome = 'Chave revogada', chave_hash = :hash, ativo = 0, ultimo_uso_em = NULL WHERE id = :id"
             )->execute(['hash' => hash('sha256', 'privacy-subject-mcp:' . $recordId), 'id' => $recordId]);
             return;
         case 'whatsapp_conversa':

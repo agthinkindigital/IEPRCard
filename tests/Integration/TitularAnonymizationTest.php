@@ -307,10 +307,10 @@ try {
         $genericContact = $pdo->query(
             'SELECT nome_responsavel, cargo_responsavel FROM tenants WHERE id = ' . $fixture['tenant_id']
         )->fetch(PDO::FETCH_ASSOC);
-        $genericSupportQuery = $pdo->prepare('SELECT token_hash, ip_usado FROM acessos_suporte WHERE id = :id');
+        $genericSupportQuery = $pdo->prepare('SELECT usuario_id, token_hash, ip_usado FROM acessos_suporte WHERE id = :id');
         $genericSupportQuery->execute(['id' => $supportId]);
         $genericSupport = $genericSupportQuery->fetch(PDO::FETCH_ASSOC);
-        $genericMcpQuery = $pdo->prepare('SELECT nome, chave_hash, ativo FROM mcp_api_keys WHERE id = :id');
+        $genericMcpQuery = $pdo->prepare('SELECT usuario_id, nome, chave_hash, ativo FROM mcp_api_keys WHERE id = :id');
         $genericMcpQuery->execute(['id' => $mcpKeyId]);
         $genericMcp = $genericMcpQuery->fetch(PDO::FETCH_ASSOC);
         if (($genericResult['processed'] ?? null) !== 1 || ($genericResult['failed'] ?? null) !== 0
@@ -322,8 +322,10 @@ try {
             || $genericSubjectState['anonimizado_em'] !== gmdate('Y-m-d H:i:s', $genericNow)
             || !is_array($genericContact) || $genericContact['nome_responsavel'] !== null
             || $genericContact['cargo_responsavel'] !== null || !is_array($genericSupport)
+            || $genericSupport['usuario_id'] !== null
             || str_contains((string) $genericSupport['token_hash'], $suffix) || $genericSupport['ip_usado'] !== null
             || !is_array($genericMcp) || $genericMcp['nome'] !== 'Chave revogada'
+            || $genericMcp['usuario_id'] !== null
             || str_contains((string) $genericMcp['chave_hash'], $suffix) || (int) $genericMcp['ativo'] !== 0) {
             throw new RuntimeException($driver . ': generic inactive privacy subjects must erase account PII after twelve months: '
                 . json_encode([$genericResult, $genericUser, $genericSubjectState, $genericContact, $genericSupport, $genericMcp]));

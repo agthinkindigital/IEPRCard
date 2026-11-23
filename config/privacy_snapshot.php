@@ -98,12 +98,12 @@ function privacySnapshotPersonalFields(): array
             'contato_hmac', 'consentimento_finalidade', 'consentimento_em', 'revogado_em', 'titular_id', 'job_id', 'dados_cifrados',
         ],
         'mensagens_whatsapp' => ['telefone', 'conteudo', 'id_mensagem_api', 'arquivo_url', 'criado_em'],
-        'acessos_suporte' => ['token_hash', 'ip_usado', 'usado_em'],
-        'mcp_api_keys' => ['nome', 'chave_hash', 'ultimo_uso_em'],
+        'acessos_suporte' => ['usuario_id', 'token_hash', 'ip_usado', 'usado_em'],
+        'mcp_api_keys' => ['usuario_id', 'nome', 'chave_hash', 'ultimo_uso_em'],
         'design_fundos_privacidade' => ['classificacao', 'titular_id', 'asset_url'],
         'importacao_linhas_staging' => ['dados_cifrados', 'foto_cifrada'],
         'carteirinhas_emitidas' => [
-            'codigo_validacao_qr', 'snapshot_dados_json', 'webp_frente_url', 'webp_verso_url', 'pdf_individual_url',
+            'titular_id', 'codigo_validacao_qr', 'snapshot_dados_json', 'webp_frente_url', 'webp_verso_url', 'pdf_individual_url',
             'data_validade', 'total_leituras_qr', 'emitida_em',
         ],
     ];
@@ -845,6 +845,10 @@ function privacySnapshotMinimizeOperationalRows(string $table, array &$row): voi
         'telemetria_eventos' => ['subcliente_id', 'usuario_id', 'metadados_json'],
         'mcp_audit_logs' => ['api_key_id', 'correlation_id'],
         'configuracoes_instalacao' => ['ator_usuario_id'],
+        'configuracoes_operacionais' => ['alterado_por_usuario_id'],
+        'usuarios' => ['criado_por_usuario_id'],
+        'usuario_permissoes' => ['criado_por_usuario_id'],
+        'lotes_importacao' => ['usuario_id', 'titular_origem_id', 'colunas_detectadas_json', 'mapa_de_para_usado_json'],
         default => [],
     };
     foreach ($redacted as $field) {
@@ -853,19 +857,20 @@ function privacySnapshotMinimizeOperationalRows(string $table, array &$row): voi
         }
     }
     if ($table === 'outbox_eventos') {
+        $row['evento_chave'] = 'snapshot-redacted-' . (string) ($row['id'] ?? 'unknown');
         $row['payload_json'] = null;
         $row['status'] = 'cancelled';
         $row['tentativas'] = 0;
         $row['proxima_tentativa_em'] = null;
         $row['correlation_id'] = null;
     }
+    if ($table === 'webhooks_recebidos') {
+        $row['evento_id'] = 'snapshot-redacted-' . (string) ($row['id'] ?? 'unknown');
+        $row['payload_hash'] = hash('sha256', 'snapshot-redacted-webhook-' . (string) ($row['id'] ?? 'unknown'));
+    }
     if ($table === 'destinos_backup') {
         $row['snapshot_pendente_id'] = null;
         $row['snapshot_pendente_em'] = null;
-    }
-    if ($table === 'lotes_importacao') {
-        $row['colunas_detectadas_json'] = null;
-        $row['mapa_de_para_usado_json'] = null;
     }
     if ($table === 'whatsapp_instancias') {
         $row['nome_instancia'] = 'Instância protegida';

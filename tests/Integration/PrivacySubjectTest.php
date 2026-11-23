@@ -234,10 +234,22 @@ try {
         'INSERT INTO outbox_eventos (evento_chave, tipo_evento, payload_json, status, criado_em) '
         . 'VALUES (:event, :type, :payload, :status, :created)'
     )->execute([
-        'event' => 'synthetic-outbox', 'type' => 'synthetic.event', 'payload' => '{"email":"outbox-private@example.test"}',
+        'event' => 'outbox-event-private@example.test', 'type' => 'synthetic.event', 'payload' => '{"email":"outbox-private@example.test"}',
         'status' => 'pending', 'created' => '2026-11-22 12:00:00',
     ]);
+    $webhookEventId = 'webhook-event-private@example.test';
+    $webhookPayloadHash = hash('sha256', 'payload containing webhook-event-private@example.test');
+    $pdo->prepare(
+        'INSERT INTO webhooks_recebidos (evento_id, origem, payload_hash, estado, recebido_em) '
+        . 'VALUES (:event, :origin, :hash, :state, :received)'
+    )->execute([
+        'event' => $webhookEventId, 'origin' => 'synthetic', 'hash' => $webhookPayloadHash,
+        'state' => 'recebido', 'received' => '2026-11-22 12:00:00',
+    ]);
+    $webhookRowId = (int) $pdo->lastInsertId();
     $importMetadata = [
+        'usuario_id' => 19,
+        'titular_origem_id' => 23,
         'colunas_detectadas_json' => '["Nome de Maria Silva", "email"]',
         'mapa_de_para_usado_json' => '{"Nome de Maria Silva":"nome_completo"}',
     ];
@@ -257,9 +269,28 @@ try {
             throw $exception;
         }
     }
+    foreach ([
+        ['planos', ['descricao' => 'Contato joao@example.test']],
+        ['designs_carteirinha', ['mapeamento_fixo_json' => '{"nome":{"tipo":"valor","valor":"joao@example.test"}}']],
+    ] as [$labelTable, $labelRow]) {
+        try {
+            privacySnapshotAssertNoPiiLabel($labelTable, $labelRow);
+            throw new RuntimeException('Free plan/design configuration containing a personal contact must be rejected.');
+        } catch (RuntimeException $exception) {
+            if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_LABEL_PII') {
+                throw $exception;
+            }
+        }
+    }
     privacySnapshotMinimizeOperationalRows('lotes_importacao', $importMetadata);
-    if ($importMetadata['colunas_detectadas_json'] !== null || $importMetadata['mapa_de_para_usado_json'] !== null) {
-        throw new RuntimeException('Import column metadata that may contain personal labels must be excluded from snapshots.');
+    if ($importMetadata['usuario_id'] !== null || $importMetadata['titular_origem_id'] !== null
+        || $importMetadata['colunas_detectadas_json'] !== null || $importMetadata['mapa_de_para_usado_json'] !== null) {
+        throw new RuntimeException('Import labels and actor/holder links must be excluded from snapshots when they lack a removable subject envelope.');
+    }
+    $actorMetadata = ['alterado_por_usuario_id' => 19];
+    privacySnapshotMinimizeOperationalRows('configuracoes_operacionais', $actorMetadata);
+    if ($actorMetadata['alterado_por_usuario_id'] !== null) {
+        throw new RuntimeException('Operational configuration must not retain a direct user link without its own subject envelope.');
     }
     $integrationConfiguration = [
         'IEPR_INTEGRATION_KEY' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),
@@ -305,6 +336,18 @@ try {
         'region' => 'us-east-1', 'secret' => $s3SecretCiphertext,
         'created' => '2026-11-22 12:00:00', 'updated' => '2026-11-22 12:00:00',
     ]);
+    $oldAnonymizationKey = getenv('IEPR_ANONYMIZATION_KEY');
+    putenv('IEPR_ANONYMIZATION_KEY=');
+    try {
+        privacySnapshotBuildPayload($pdo);
+        throw new RuntimeException('Snapshot generation must fail closed when its subject key is unavailable.');
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() !== 'ANONYMIZATION_KEY_UNAVAILABLE') {
+            throw $exception;
+        }
+    } finally {
+        putenv('IEPR_ANONYMIZATION_KEY=' . ($oldAnonymizationKey === false ? '' : $oldAnonymizationKey));
+    }
     $subjectPlaintexts = [];
     $snapshot = privacySnapshotBuildPayload($pdo, static function (int $subjectId, string $plaintext) use (&$subjectPlaintexts): string {
         $subjectPlaintexts[$subjectId] = $plaintext;
@@ -347,6 +390,7 @@ try {
         '2026-11-22 11:47:14', '2027-11-22', '2026-11-22 11:49:16',
         'person-owned-private-domain.example.test',
         'audit-private@example.test', 'telemetry-private@example.test', 'outbox-private@example.test',
+        'outbox-event-private@example.test', $webhookEventId, $webhookPayloadHash,
         'Synthetic privacy organization', 'Synthetic tenant without contact', 'synthetic-private-subdomain',
         'synthetic-consent-purpose', '2026-11-22 11:13:14', '2026-11-22 11:23:45',
         $artifactKey, $artifactBytes, $tenantAiSecretPlaintext, $globalAiSecretPlaintext,
@@ -366,6 +410,16 @@ try {
     if (($snapshot['manifest']['format'] ?? null) !== 'ieprcard-snapshot-v2'
         || !is_array($snapshot['subject_envelopes'] ?? null) || count($snapshot['subject_envelopes']) < 3) {
         throw new RuntimeException('Snapshot must separate PII into versioned per-subject envelopes.');
+    }
+    $outboxSnapshot = $snapshot['tables']['outbox_eventos'][0] ?? [];
+    $webhookSnapshot = array_values(array_filter(
+        $snapshot['tables']['webhooks_recebidos'],
+        static fn(array $row): bool => (int) ($row['id'] ?? 0) === $webhookRowId
+    ))[0] ?? [];
+    if (($outboxSnapshot['evento_chave'] ?? null) !== 'snapshot-redacted-' . (string) ($outboxSnapshot['id'] ?? '')
+        || ($webhookSnapshot['evento_id'] ?? null) !== 'snapshot-redacted-' . $webhookRowId
+        || ($webhookSnapshot['payload_hash'] ?? null) === $webhookPayloadHash) {
+        throw new RuntimeException('Webhook and outbox identifiers or payload fingerprints must be redacted before snapshot publication.');
     }
     $snapshotConfigRows = [
         'ia_config' => $snapshot['tables']['ia_config'][0] ?? [],
@@ -405,6 +459,20 @@ try {
         || !str_contains($ownerSubjectPlaintext, 'person-owned-private-domain.example.test')) {
         throw new RuntimeException('Tenant identity and custom hostnames must remain recoverable only from the removable subject envelope.');
     }
+    $ownerEnvelope = json_decode($ownerSubjectPlaintext, true);
+    $apiKeyEnvelopeRow = null;
+    foreach ($ownerEnvelope['records'] ?? [] as $record) {
+        if (($record['table'] ?? null) === 'mcp_api_keys' && ($record['record_id'] ?? null) === $legacyApiKeyId) {
+            $apiKeyEnvelopeRow = $record;
+            break;
+        }
+    }
+    if (($snapshot['tables']['acessos_suporte'][0]['usuario_id'] ?? null) !== null
+        || ($snapshot['tables']['mcp_api_keys'][0]['usuario_id'] ?? null) !== null
+        || !str_contains($ownerSubjectPlaintext, '"usuario_id":' . $legacyOwnerId)
+        || ($apiKeyEnvelopeRow['fields']['usuario_id'] ?? null) !== $legacyOwnerId) {
+        throw new RuntimeException('Support and API ownership links must remain recoverable only inside the owning person subject envelope.');
+    }
     $unownedTenantPlaintext = $subjectPlaintexts[(int) $tenantWithoutContactSubject['id']] ?? '';
     if (!str_contains($unownedTenantPlaintext, 'Synthetic tenant without contact')) {
         throw new RuntimeException('An organization without a responsible contact must remain recoverable only from its removable privacy subject envelope.');
@@ -433,9 +501,21 @@ try {
     if (!str_contains($holderEnvelopeJson, '2026-11-22 11:47:14')
         || !str_contains($holderEnvelopeJson, '2027-11-22')
         || !str_contains($holderEnvelopeJson, '2026-11-22 11:49:16')
+        || ($snapshot['tables']['carteirinhas_emitidas'][0]['titular_id'] ?? null) !== null
         || !str_contains($holderEnvelopeJson, '"total_leituras_qr":7')
         || ($snapshot['tables']['carteirinhas_emitidas'][0]['total_leituras_qr'] ?? null) !== 0) {
         throw new RuntimeException('Titular interaction and card lifecycle metrics must be recoverable only from the removable subject envelope.');
+    }
+    $holderEnvelopeRecords = $holderEnvelope['records'] ?? [];
+    $cardEnvelopeRow = null;
+    foreach ($holderEnvelopeRecords as $record) {
+        if (($record['table'] ?? null) === 'carteirinhas_emitidas' && ($record['record_id'] ?? null) === $legacyCardId) {
+            $cardEnvelopeRow = $record;
+            break;
+        }
+    }
+    if (($cardEnvelopeRow['fields']['titular_id'] ?? null) !== $legacyHolderId) {
+        throw new RuntimeException('Card ownership links must remain recoverable only inside the holder subject envelope.');
     }
     $artifactRecord = null;
     foreach ($holderEnvelope['records'] ?? [] as $record) {

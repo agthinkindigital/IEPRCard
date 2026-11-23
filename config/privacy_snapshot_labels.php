@@ -5,9 +5,9 @@ declare(strict_types=1);
 function privacySnapshotLabelFields(): array
 {
     return [
-        'planos' => ['nome'],
+        'planos' => ['nome', 'descricao'],
         'perfis_acesso' => ['nome_perfil'],
-        'designs_carteirinha' => ['nome_layout'],
+        'designs_carteirinha' => ['nome_layout', 'mapa_campos_json', 'mapeamento_fixo_json'],
         'categorias_titular' => ['nome_categoria'],
         'destinos_backup' => ['nome'],
     ];

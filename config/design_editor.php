@@ -156,6 +156,14 @@ function designEditorValidate(array $input): array
             return ['valid' => false, 'code' => 'invalid_mapping', 'path' => 'mapeamento_fixo_json.mapeamentos'];
         }
     }
+    try {
+        privacySnapshotAssertNoPiiLabel('designs_carteirinha', [
+            'mapa_campos_json' => json_encode($map, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'mapeamento_fixo_json' => json_encode($mapping, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+    } catch (RuntimeException) {
+        return ['valid' => false, 'code' => 'personal_data_in_mapping', 'path' => 'mapeamento_fixo_json'];
+    }
     return ['valid' => true, 'map' => $map, 'mapping' => $mapping];
 }
 
