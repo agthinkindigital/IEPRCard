@@ -51,7 +51,7 @@ function titularPrivacyProvisionKey(
     int $tenantId,
     int $titularId,
     ?callable $clientFactory = null
-): void {
+): string {
     $ownsTransaction = !$pdo->inTransaction();
     if ($ownsTransaction) {
         $pdo->beginTransaction();
@@ -125,6 +125,7 @@ function titularPrivacyProvisionKey(
         if ($ownsTransaction) {
             $pdo->commit();
         }
+        return $envelope;
     } catch (Throwable $exception) {
         if ($ownsTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -134,7 +135,7 @@ function titularPrivacyProvisionKey(
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
-function privacySubjectProvisionBackupKey(PDO $pdo, int $subjectId, ?callable $clientFactory = null): void
+function privacySubjectProvisionBackupKey(PDO $pdo, int $subjectId, ?callable $clientFactory = null): string
 {
     if ($subjectId < 1) {
         throw new InvalidArgumentException('ANONYMIZATION_REFERENCE_INVALID');
@@ -219,6 +220,7 @@ function privacySubjectProvisionBackupKey(PDO $pdo, int $subjectId, ?callable $c
         if ($ownsTransaction) {
             $pdo->commit();
         }
+        return $envelope;
     } catch (Throwable $exception) {
         if ($ownsTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -235,14 +237,19 @@ function titularPrivacyEncryptSnapshotData(
     int $tenantId,
     int $titularId,
     string $plaintext,
-    ?callable $clientFactory = null
+    ?callable $clientFactory = null,
+    ?array &$dekCache = null
 ): string {
     if (strlen($plaintext) > 67_108_864) {
         throw new InvalidArgumentException('ANONYMIZATION_SNAPSHOT_PAYLOAD_TOO_LARGE');
     }
-    titularPrivacyProvisionKey($pdo, $tenantId, $titularId, $clientFactory);
     $reference = titularPrivacyEnsureReference($pdo, $tenantId, $titularId);
-    return titularPrivacyEncryptReferencePayload($pdo, $reference, $plaintext, $clientFactory);
+    $key = titularAnonymizationEncryptionKey();
+    $referenceHmac = hash_hmac('sha256', $reference, $key);
+    $envelope = $dekCache === null || !isset($dekCache[$referenceHmac])
+        ? titularPrivacyProvisionKey($pdo, $tenantId, $titularId, $clientFactory)
+        : null;
+    return titularPrivacyEncryptReferencePayload($pdo, $reference, $plaintext, $clientFactory, $dekCache, $envelope);
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
@@ -250,47 +257,80 @@ function privacySubjectEncryptSnapshotData(
     PDO $pdo,
     int $subjectId,
     string $plaintext,
-    ?callable $clientFactory = null
+    ?callable $clientFactory = null,
+    ?array &$dekCache = null
 ): string {
     if (strlen($plaintext) > 67_108_864) {
         throw new InvalidArgumentException('ANONYMIZATION_SNAPSHOT_PAYLOAD_TOO_LARGE');
     }
-    privacySubjectProvisionBackupKey($pdo, $subjectId, $clientFactory);
     $reference = privacySubjectReference($pdo, $subjectId);
     if (!is_string($reference)) {
         throw new DomainException('PRIVACY_SUBJECT_NOT_FOUND');
     }
-    return titularPrivacyEncryptReferencePayload($pdo, $reference, $plaintext, $clientFactory);
+    $key = titularAnonymizationEncryptionKey();
+    $referenceHmac = hash_hmac('sha256', $reference, $key);
+    $envelope = $dekCache === null || !isset($dekCache[$referenceHmac])
+        ? privacySubjectProvisionBackupKey($pdo, $subjectId, $clientFactory)
+        : null;
+    return titularPrivacyEncryptReferencePayload($pdo, $reference, $plaintext, $clientFactory, $dekCache, $envelope);
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */
-function titularPrivacyEncryptReferencePayload(PDO $pdo, string $reference, string $plaintext, ?callable $clientFactory): string
+function titularPrivacyEncryptReferencePayload(
+    PDO $pdo,
+    string $reference,
+    string $plaintext,
+    ?callable $clientFactory,
+    ?array &$dekCache = null,
+    ?string $knownEnvelope = null
+): string
 {
     $key = titularAnonymizationEncryptionKey();
     $referenceHmac = hash_hmac('sha256', $reference, $key);
-    $envelope = titularPrivacyLoadExistingEnvelope($pdo, $reference, $referenceHmac, $key, $clientFactory);
-    if (!is_string($envelope)) {
-        throw new RuntimeException('ANONYMIZATION_KEY_ENVELOPE_MISSING');
+    $cachedDek = $dekCache[$referenceHmac] ?? null;
+    if (!is_string($cachedDek)) {
+        $envelope = $knownEnvelope
+            ?? titularPrivacyLoadExistingEnvelope($pdo, $reference, $referenceHmac, $key, $clientFactory);
+        if (!is_string($envelope)) {
+            throw new RuntimeException('ANONYMIZATION_KEY_ENVELOPE_MISSING');
+        }
+        $decoded = json_decode($envelope, true, 8);
+        $wrapped = is_array($decoded) ? base64_decode((string) ($decoded['wrapped_dek'] ?? ''), true) : false;
+        if (!is_string($wrapped) || strlen($wrapped) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
+            throw new RuntimeException('ANONYMIZATION_KEY_ENVELOPE_INVALID');
+        }
+        $cachedDek = sodium_crypto_secretbox_open(
+            substr($wrapped, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+            substr($wrapped, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+            $key
+        );
+        if (!is_string($cachedDek) || strlen($cachedDek) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
+            throw new RuntimeException('ANONYMIZATION_KEY_ENVELOPE_INVALID');
+        }
+        if ($dekCache !== null) {
+            $dekCache[$referenceHmac] = $cachedDek;
+        }
     }
-    $decoded = json_decode($envelope, true, 8);
-    $wrapped = is_array($decoded) ? base64_decode((string) ($decoded['wrapped_dek'] ?? ''), true) : false;
-    if (!is_string($wrapped) || strlen($wrapped) <= SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
-        throw new RuntimeException('ANONYMIZATION_KEY_ENVELOPE_INVALID');
-    }
-    $dek = sodium_crypto_secretbox_open(
-        substr($wrapped, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
-        substr($wrapped, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
-        $key
-    );
-    if (!is_string($dek) || strlen($dek) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
-        throw new RuntimeException('ANONYMIZATION_KEY_ENVELOPE_INVALID');
-    }
+    $dek = $cachedDek;
     try {
         $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         return 'v1:' . base64_encode($nonce . sodium_crypto_secretbox($plaintext, $nonce, $dek));
     } finally {
-        sodium_memzero($dek);
+        if ($dekCache === null) {
+            sodium_memzero($dek);
+        }
     }
+}
+
+/** Remove request-local plaintext DEKs after a snapshot invocation. */
+function titularPrivacyClearDekCache(array &$dekCache): void
+{
+    foreach (array_keys($dekCache) as $referenceHmac) {
+        if (is_string($dekCache[$referenceHmac] ?? null)) {
+            sodium_memzero($dekCache[$referenceHmac]);
+        }
+    }
+    $dekCache = [];
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory */

@@ -111,6 +111,66 @@ function privacySnapshotResumeWriteState(string $directory, array $state): void
     }
 }
 
+/** Persist a bounded group of transformed rows as one resumable part. */
+function privacySnapshotResumeWritePart(
+    string $directory,
+    array &$state,
+    int $tableIndex,
+    string $table,
+    array $rows,
+    array $envelopes
+): int {
+    if ($rows === []) {
+        return 0;
+    }
+    $firstId = (int) ($rows[0]['id'] ?? 0);
+    $lastId = (int) ($rows[array_key_last($rows)]['id'] ?? 0);
+    if ($firstId < 1 || $lastId < $firstId || $firstId <= (int) $state['cursor']) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_CURSOR_INVALID');
+    }
+    $partName = sprintf('part-%04d-%010d-%010d.json', $tableIndex, $firstId, $lastId);
+    $partPath = $directory . DIRECTORY_SEPARATOR . $partName;
+    if (is_link($partPath)) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_INVALID');
+    }
+    $partJson = json_encode(
+        ['table' => $table, 'rows' => $rows, 'subject_envelopes' => $envelopes],
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    if (strlen($partJson) > 67_108_864) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_PART_TOO_LARGE');
+    }
+    // A crash after the atomic part rename but before state.json is replaced leaves an orphan.
+    // The current cursor proves that this range was not committed, so it is safe to overwrite.
+    if (is_file($partPath) && !unlink($partPath)) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_WRITE_FAILED');
+    }
+    $temporary = $partPath . '.' . bin2hex(random_bytes(8)) . '.tmp';
+    if (file_put_contents($temporary, $partJson, LOCK_EX) !== strlen($partJson)) {
+        @unlink($temporary);
+        throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_WRITE_FAILED');
+    }
+    if (DIRECTORY_SEPARATOR === '/') {
+        @chmod($temporary, 0600);
+    }
+    if (!rename($temporary, $partPath)) {
+        @unlink($temporary);
+        throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_WRITE_FAILED');
+    }
+    $state['parts'][$partName] = [
+        'table_index' => $tableIndex,
+        'table' => $table,
+        'first_id' => $firstId,
+        'last_id' => $lastId,
+        'high_water_mark' => (int) $state['high_water_mark'],
+        'rows' => count($rows),
+        'sha256' => hash('sha256', $partJson),
+    ];
+    $state['cursor'] = $lastId;
+    privacySnapshotResumeWriteState($directory, $state);
+    return count($rows);
+}
+
 /** @param array<string,mixed> $row @return array{row:array<string,mixed>,envelope:?array{reference:string,ciphertext:string}} */
 function privacySnapshotResumeTransformRow(
     PDO $pdo,
@@ -211,7 +271,7 @@ function privacySnapshotResumeStage(
     int $rowLimit = 50,
     float $timeLimitSeconds = 8.0
 ): bool {
-    if ($rowLimit < 1 || $rowLimit > 500 || $timeLimitSeconds < 1 || $timeLimitSeconds > 30) {
+    if ($rowLimit < 1 || $rowLimit > 4000 || $timeLimitSeconds < 1 || $timeLimitSeconds > 30) {
         throw new InvalidArgumentException('PRIVACY_SNAPSHOT_BATCH_LIMIT_INVALID');
     }
     $catalog = \IEPRCard\Database\Schema\catalogoCanonico();
@@ -243,66 +303,56 @@ function privacySnapshotResumeStage(
             $state['high_water_mark'] = (int) $maximum;
             privacySnapshotResumeWriteState($directory, $state);
         }
+        $queryLimit = min(50, $rowLimit - $used);
         $sql = 'SELECT * FROM ' . privacySnapshotQuoteIdentifier($table, $driver)
-            . ' WHERE id > :cursor AND id <= :high_water ORDER BY id LIMIT 1';
+            . ' WHERE id > :cursor AND id <= :high_water ORDER BY id LIMIT ' . $queryLimit;
         $query = $pdo->prepare($sql);
         $query->execute(['cursor' => (int) $state['cursor'], 'high_water' => (int) $state['high_water_mark']]);
-        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
-        if ($rows === []) {
+        $firstRow = $query->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($firstRow)) {
             ++$state['table_index'];
             $state['cursor'] = 0;
             $state['high_water_mark'] = null;
             privacySnapshotResumeWriteState($directory, $state);
             continue;
         }
-        $transformedRows = [];
+        $rows = [];
         $envelopes = [];
-        foreach ($rows as $row) {
+        $chunkBytes = 0;
+        $currentRow = $firstRow;
+        do {
+            $row = $currentRow;
             $transformed = privacySnapshotResumeTransformRow($pdo, $table, $row, $policies, $encryptSubject);
-            $transformedRows[] = $transformed['row'];
+            $entryBytes = strlen(json_encode(
+                ['row' => $transformed['row'], 'envelope' => $transformed['envelope']],
+                JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            ));
+            if ($rows !== [] && ($chunkBytes + $entryBytes > 8_388_608 || count($rows) >= 50)) {
+                $used += privacySnapshotResumeWritePart($directory, $state, $tableIndex, $table, $rows, $envelopes);
+                $rows = [];
+                $envelopes = [];
+                $chunkBytes = 0;
+            }
+            $rows[] = $transformed['row'];
             if ($transformed['envelope'] !== null) {
                 $envelopes[] = $transformed['envelope'];
             }
+            $chunkBytes += $entryBytes;
+            if (count($rows) >= 50 || $chunkBytes >= 8_388_608 || $used + count($rows) >= $rowLimit
+                || microtime(true) >= $deadline) {
+                $used += privacySnapshotResumeWritePart($directory, $state, $tableIndex, $table, $rows, $envelopes);
+                $rows = [];
+                $envelopes = [];
+                $chunkBytes = 0;
+                if ($used >= $rowLimit || microtime(true) >= $deadline) {
+                    break;
+                }
+            }
+            $currentRow = $query->fetch(PDO::FETCH_ASSOC);
+        } while (is_array($currentRow));
+        if ($rows !== []) {
+            $used += privacySnapshotResumeWritePart($directory, $state, $tableIndex, $table, $rows, $envelopes);
         }
-        $firstId = (int) ($rows[0]['id'] ?? 0);
-        $lastId = (int) ($rows[array_key_last($rows)]['id'] ?? 0);
-        if ($firstId <= (int) $state['cursor'] || $lastId < $firstId) {
-            throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_CURSOR_INVALID');
-        }
-        $partName = sprintf('part-%04d-%010d-%010d.json', $tableIndex, $firstId, $lastId);
-        $partPath = $directory . DIRECTORY_SEPARATOR . $partName;
-        if (is_link($partPath)) {
-            throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_INVALID');
-        }
-        $part = ['table' => $table, 'rows' => $transformedRows, 'subject_envelopes' => $envelopes];
-        $partJson = json_encode($part, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        if (strlen($partJson) > 67_108_864) {
-            throw new RuntimeException('PRIVACY_SNAPSHOT_PART_TOO_LARGE');
-        }
-        $temporary = $partPath . '.' . bin2hex(random_bytes(8)) . '.tmp';
-        if (file_put_contents($temporary, $partJson, LOCK_EX) !== strlen($partJson)) {
-            @unlink($temporary);
-            throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_WRITE_FAILED');
-        }
-        if (DIRECTORY_SEPARATOR === '/') {
-            @chmod($temporary, 0600);
-        }
-        if (!rename($temporary, $partPath)) {
-            @unlink($temporary);
-            throw new RuntimeException('PRIVACY_SNAPSHOT_RESUME_PART_WRITE_FAILED');
-        }
-        $state['parts'][$partName] = [
-            'table_index' => $tableIndex,
-            'table' => $table,
-            'first_id' => $firstId,
-            'last_id' => $lastId,
-            'high_water_mark' => (int) $state['high_water_mark'],
-            'rows' => count($transformedRows),
-            'sha256' => hash('sha256', $partJson),
-        ];
-        $state['cursor'] = $lastId;
-        $used += count($rows);
-        privacySnapshotResumeWriteState($directory, $state);
     }
     return $state['table_index'] >= count($tableNames);
 }

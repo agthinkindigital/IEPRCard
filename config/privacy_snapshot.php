@@ -272,9 +272,9 @@ function privacySnapshotBuildPayload(
  *  @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
  *  @return array{processed:int,failed:int,skipped:int}
  */
-function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callable $encryptSubject = null, ?callable $clientFactory = null, int $rowLimit = 500): array
+function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callable $encryptSubject = null, ?callable $clientFactory = null, int $rowLimit = 4000): array
 {
-    if ($rowLimit < 1 || $rowLimit > 500) {
+    if ($rowLimit < 1 || $rowLimit > 4000) {
         throw new InvalidArgumentException('PRIVACY_SNAPSHOT_BATCH_LIMIT_INVALID');
     }
     $destinations = titularPrivacyActiveDestinations($pdo);
@@ -301,6 +301,11 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
         fclose($lockHandle);
         return ['processed' => 0, 'failed' => 0, 'skipped' => 1];
     }
+
+    $dekCache = [];
+    $resolvedEncryptSubject = $encryptSubject ?? static function (int $subjectId, string $plaintext) use ($pdo, &$dekCache): string {
+        return privacySubjectEncryptSnapshotData($pdo, $subjectId, $plaintext, null, $dekCache);
+    };
 
     try {
         $now = gmdate('Y-m-d H:i:s');
@@ -360,7 +365,7 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
                         $pdo,
                         $resumeDirectory,
                         $state,
-                        $encryptSubject ?? static fn(int $subjectId, string $plaintext): string => privacySubjectEncryptSnapshotData($pdo, $subjectId, $plaintext),
+                        $resolvedEncryptSubject,
                         $rowLimit
                     );
                     if (!$complete) {
@@ -415,6 +420,9 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
         }
         return ['processed' => $processed, 'failed' => $failed, 'skipped' => $skipped];
     } finally {
+        if ($dekCache !== []) {
+            titularPrivacyClearDekCache($dekCache);
+        }
         flock($lockHandle, LOCK_UN);
         fclose($lockHandle);
     }
@@ -499,7 +507,7 @@ function privacySnapshotRunDue(
     $query->execute(['cutoff' => $cutoff]);
     $ids = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
     return $ids === [] ? ['processed' => 0, 'failed' => 0, 'skipped' => 1]
-        : privacySnapshotUpload($pdo, $ids, $encryptSubject, $clientFactory, 50);
+        : privacySnapshotUpload($pdo, $ids, $encryptSubject, $clientFactory, 4000);
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
