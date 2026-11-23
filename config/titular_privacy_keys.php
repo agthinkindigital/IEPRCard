@@ -68,7 +68,15 @@ function titularPrivacyProvisionKey(
             throw new RuntimeException('ANONYMIZATION_KEY_DESTINATION_UNAVAILABLE');
         }
         $referenceHmac = hash_hmac('sha256', $reference, $key);
-        $envelope = titularPrivacyLoadExistingEnvelope($pdo, $reference, $referenceHmac, $key, $clientFactory);
+        $envelopeDestinationId = null;
+        $envelope = titularPrivacyLoadExistingEnvelope(
+            $pdo,
+            $reference,
+            $referenceHmac,
+            $key,
+            $clientFactory,
+            $envelopeDestinationId
+        );
         if ($envelope === null) {
             $dek = random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
             $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
@@ -85,6 +93,9 @@ function titularPrivacyProvisionKey(
             );
             $existing->execute(['destination' => $destination['id'], 'reference' => $referenceHmac]);
             if ($existing->fetchColumn() === 'ativa') {
+                if ((int) $destination['id'] === $envelopeDestinationId) {
+                    continue;
+                }
                 $client = titularPrivacyCreateClient($destination, $clientFactory);
                 $client->headObject([
                     'Bucket' => $destination['bucket'],
@@ -163,7 +174,15 @@ function privacySubjectProvisionBackupKey(PDO $pdo, int $subjectId, ?callable $c
             throw new RuntimeException('ANONYMIZATION_KEY_DESTINATION_UNAVAILABLE');
         }
         $referenceHmac = hash_hmac('sha256', $reference, $key);
-        $envelope = titularPrivacyLoadExistingEnvelope($pdo, $reference, $referenceHmac, $key, $clientFactory);
+        $envelopeDestinationId = null;
+        $envelope = titularPrivacyLoadExistingEnvelope(
+            $pdo,
+            $reference,
+            $referenceHmac,
+            $key,
+            $clientFactory,
+            $envelopeDestinationId
+        );
         if ($envelope === null) {
             $dek = random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES);
             $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
@@ -180,6 +199,9 @@ function privacySubjectProvisionBackupKey(PDO $pdo, int $subjectId, ?callable $c
             );
             $existing->execute(['destination' => $destination['id'], 'reference' => $referenceHmac]);
             if ($existing->fetchColumn() === 'ativa') {
+                if ((int) $destination['id'] === $envelopeDestinationId) {
+                    continue;
+                }
                 $client = titularPrivacyCreateClient($destination, $clientFactory);
                 $client->headObject([
                     'Bucket' => $destination['bucket'],
@@ -339,7 +361,8 @@ function titularPrivacyLoadExistingEnvelope(
     string $reference,
     string $referenceHmac,
     string $key,
-    ?callable $clientFactory
+    ?callable $clientFactory,
+    ?int &$loadedDestinationId = null
 ): ?string {
     $query = $pdo->prepare(
         "SELECT d.* FROM destinos_backup d JOIN titular_chaves_backup k ON k.destino_id = d.id "
@@ -350,6 +373,7 @@ function titularPrivacyLoadExistingEnvelope(
     if (!is_array($destination)) {
         return null;
     }
+    $loadedDestinationId = (int) $destination['id'];
     $opened = titularPrivacyOpenDestinationCredentials([$destination]);
     $destination = $opened[0];
     $client = titularPrivacyCreateClient($destination, $clientFactory);

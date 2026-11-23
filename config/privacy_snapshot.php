@@ -270,11 +270,20 @@ function privacySnapshotBuildPayload(
 
 /** @param list<int>|null $destinationIds @param callable(int,string):string|null $encryptSubject
  *  @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory
+ *  @param int $rowLimit
+ *  @param float $timeLimitSeconds Maximum staging time before a resumable checkpoint.
  *  @return array{processed:int,failed:int,skipped:int}
  */
-function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callable $encryptSubject = null, ?callable $clientFactory = null, int $rowLimit = 4000): array
+function privacySnapshotUpload(
+    PDO $pdo,
+    ?array $destinationIds = null,
+    ?callable $encryptSubject = null,
+    ?callable $clientFactory = null,
+    int $rowLimit = 4000,
+    float $timeLimitSeconds = 30.0
+): array
 {
-    if ($rowLimit < 1 || $rowLimit > 4000) {
+    if ($rowLimit < 1 || $rowLimit > 4000 || $timeLimitSeconds < 1 || $timeLimitSeconds > 30) {
         throw new InvalidArgumentException('PRIVACY_SNAPSHOT_BATCH_LIMIT_INVALID');
     }
     $destinations = titularPrivacyActiveDestinations($pdo);
@@ -366,7 +375,8 @@ function privacySnapshotUpload(PDO $pdo, ?array $destinationIds = null, ?callabl
                         $resumeDirectory,
                         $state,
                         $resolvedEncryptSubject,
-                        $rowLimit
+                        $rowLimit,
+                        $timeLimitSeconds
                     );
                     if (!$complete) {
                         $skipped++;
@@ -507,7 +517,7 @@ function privacySnapshotRunDue(
     $query->execute(['cutoff' => $cutoff]);
     $ids = array_map('intval', $query->fetchAll(PDO::FETCH_COLUMN));
     return $ids === [] ? ['processed' => 0, 'failed' => 0, 'skipped' => 1]
-        : privacySnapshotUpload($pdo, $ids, $encryptSubject, $clientFactory, 4000);
+        : privacySnapshotUpload($pdo, $ids, $encryptSubject, $clientFactory, 4000, 30.0);
 }
 
 /** @param callable(array<string,mixed>,array<string,string>):object|null $clientFactory

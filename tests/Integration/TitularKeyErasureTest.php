@@ -19,6 +19,7 @@ final class TitularPrivacyMockS3
     public function __construct(private int $destinationId, array &$store)
     {
         $this->store =& $store;
+        $this->store[$this->destinationId] ??= ['versions' => [], 'get_calls' => 0, 'head_calls' => 0];
     }
 
     public function putObject(array $arguments): array
@@ -60,6 +61,7 @@ final class TitularPrivacyMockS3
     public function deleteObject(array $arguments): array { return []; }
     public function getObject(array $arguments): array
     {
+        ++$this->store[$this->destinationId]['get_calls'];
         $matches = array_values(array_filter(
             $this->store[$this->destinationId]['versions'],
             static fn(array $entry): bool => $entry['Key'] === $arguments['Key'] && empty($entry['Marker'])
@@ -69,6 +71,7 @@ final class TitularPrivacyMockS3
     }
     public function headObject(array $arguments): array
     {
+        ++$this->store[$this->destinationId]['head_calls'];
         $exists = array_filter(
             $this->store[$this->destinationId]['versions'],
             static fn(array $entry): bool => $entry['Key'] === $arguments['Key'] && empty($entry['Marker'])
@@ -114,7 +117,7 @@ try {
         $store = [];
         $factory = static function (array $destination, array $credentials) use (&$store): object {
             $id = (int) $destination['id'];
-            $store[$id] ??= ['versions' => []];
+            $store[$id] ??= ['versions' => [], 'get_calls' => 0, 'head_calls' => 0];
             return new TitularPrivacyMockS3($id, $store);
         };
         $beforeProvision = $pdo->prepare('SELECT nome_completo, cpf FROM titulares WHERE id = :id');
@@ -138,6 +141,11 @@ try {
             $snapshotPlaintext,
             $factory
         );
+        $keyReads = array_sum(array_column($store, 'get_calls'));
+        $keyHeads = array_sum(array_column($store, 'head_calls'));
+        if ($keyReads !== 1 || $keyHeads !== 1) {
+            throw new RuntimeException($driver . ': snapshot encryption must reuse its successful key-envelope read and verify only the other active destinations.');
+        }
         $encryptedBytes = base64_decode(substr($snapshotCiphertext, 3), true);
         $firstEnvelope = json_decode((string) $store[$destIds[0]]['versions'][0]['Body'], true);
         $wrappedDek = is_array($firstEnvelope)
