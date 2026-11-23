@@ -6,7 +6,7 @@ function privacySnapshotLabelFields(): array
 {
     return [
         'planos' => ['nome'],
-        'perfis' => ['nome_perfil'],
+        'perfis_acesso' => ['nome_perfil'],
         'designs_carteirinha' => ['nome_layout'],
         'categorias_titular' => ['nome_categoria'],
         'destinos_backup' => ['nome'],

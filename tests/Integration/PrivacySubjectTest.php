@@ -249,6 +249,14 @@ try {
             throw $exception;
         }
     }
+    try {
+        privacySnapshotAssertNoPiiLabel('perfis_acesso', ['nome_perfil' => 'suporte joao@example.test']);
+        throw new RuntimeException('A profile label containing a personal contact must be rejected.');
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_LABEL_PII') {
+            throw $exception;
+        }
+    }
     privacySnapshotMinimizeOperationalRows('lotes_importacao', $importMetadata);
     if ($importMetadata['colunas_detectadas_json'] !== null || $importMetadata['mapa_de_para_usado_json'] !== null) {
         throw new RuntimeException('Import column metadata that may contain personal labels must be excluded from snapshots.');
