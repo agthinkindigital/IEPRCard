@@ -616,6 +616,16 @@ try {
     } catch (InvalidArgumentException) {
     }
 
+    $pdo->exec('CREATE TABLE tabela_privada_extension (id INTEGER PRIMARY KEY, email TEXT NOT NULL)');
+    try {
+        privacySnapshotBuildPayload($pdo, static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext));
+        throw new RuntimeException('Snapshots must fail closed when the active database has an unreviewed extra table.');
+    } catch (RuntimeException $exception) {
+        if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED') {
+            throw $exception;
+        }
+    }
+
     $pdo->exec('ALTER TABLE titulares ADD COLUMN campo_privado_nao_inventariado TEXT');
     try {
         privacySnapshotBuildPayload($pdo, static fn(int $subjectId, string $plaintext): string => 'v1:test:' . hash('sha256', $subjectId . ':' . $plaintext));

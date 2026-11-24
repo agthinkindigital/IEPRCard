@@ -114,6 +114,19 @@ try {
         putenv('IEPR_BACKUP_ACTIVE_DESTINATIONS_LIMIT');
         schemaAplicarMigracoes($pdo, 'test');
         schemaGarantirEstrutura($pdo, 'test');
+        $privacySnapshotInventory = privacySnapshotAssertReviewedSchema(\IEPRCard\Database\Schema\catalogoCanonico());
+        $unreviewedTable = 'privacy_snapshot_unreviewed_' . bin2hex(random_bytes(4));
+        $pdo->exec('CREATE TABLE ' . privacySnapshotQuoteIdentifier($unreviewedTable, (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) . ' (id INTEGER PRIMARY KEY)');
+        try {
+            privacySnapshotAssertDatabaseSchema($pdo, $privacySnapshotInventory);
+            throw new RuntimeException($driver . ': snapshot preflight allowed an unreviewed physical table.');
+        } catch (RuntimeException $exception) {
+            if ($exception->getMessage() !== 'PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED') {
+                throw $exception;
+            }
+        } finally {
+            $pdo->exec('DROP TABLE ' . privacySnapshotQuoteIdentifier($unreviewedTable, (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)));
+        }
         $superadminEmail = 'backup-test-' . bin2hex(random_bytes(6)) . '@example.test';
         $pdo->prepare(
             "INSERT INTO usuarios (papel_sistema, nome, email, senha_hash, ativo) "

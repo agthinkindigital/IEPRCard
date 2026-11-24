@@ -66,6 +66,24 @@ function privacySnapshotAssertReviewedSchema(array $catalog): array
 function privacySnapshotAssertDatabaseSchema(PDO $pdo, array $inventory): void
 {
     $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    if ($driver === 'sqlite') {
+        $actualTables = $pdo->query(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+        )->fetchAll(PDO::FETCH_COLUMN);
+    } elseif ($driver === 'mysql') {
+        $actualTables = $pdo->query(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'"
+        )->fetchAll(PDO::FETCH_COLUMN);
+    } else {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED');
+    }
+    $expectedTables = array_keys($inventory);
+    sort($actualTables, SORT_STRING);
+    sort($expectedTables, SORT_STRING);
+    if ($actualTables !== $expectedTables) {
+        throw new RuntimeException('PRIVACY_SNAPSHOT_DATABASE_SCHEMA_UNREVIEWED');
+    }
+
     foreach ($inventory as $table => $expectedColumns) {
         if ($driver === 'sqlite') {
             $statement = $pdo->query('PRAGMA table_info(' . privacySnapshotQuoteIdentifier($table, $driver) . ')');
