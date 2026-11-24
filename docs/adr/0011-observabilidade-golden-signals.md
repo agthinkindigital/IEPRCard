@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Decisão aceita em 2026-11-24; correlação HTTP implementada; persistência e propagação assíncrona pendentes |
+| Status | Decisão aceita em 2026-11-24; correlação HTTP implementada; mockup de consulta aprovado; persistência e propagação assíncrona pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
@@ -32,7 +32,7 @@
 
 - A telemetria de negócio e a telemetria operacional diária de lotes estão implementadas e documentadas em [`docs/08-telemetria.md`](../08-telemetria.md), incluindo painel por perfil, previsão configurável e aplicação de ajustes no início do worker.
 - A fatia #94 implementa correlation ID server-side nos 30 entrypoints PHP, ignora valores recebidos do cliente e compartilha o mesmo UUIDv4 entre a resposta MCP e sua auditoria; commit `dd34c1d`, CI [45424728843](https://github.com/agthinkindigital/IEPRCard/actions/runs/45424728843). A correlação ainda não atravessa jobs/outbox e integrações, e não há persistência geral de eventos técnicos.
-- O mantenedor escolheu persistência técnica separada e consulta exclusiva ao superadmin. A retenção proposta e os campos de escopo seguem em confirmação; mockup e guia da interface precisam de aprovação antes de implementar a tela. A fatia está registrada na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
+- O mantenedor escolheu persistência técnica separada e consulta exclusiva ao superadmin. Retenção e campos de escopo seguem em confirmação na [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). Mockup e guia da consulta foram aprovados em 2026-11-24; a tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), bloqueada pela persistência. A coordenação está na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 
 ## Alternativas consideradas
 

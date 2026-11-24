@@ -9,9 +9,9 @@ As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; 
 
 Eventos técnicos de requests e jobs terão armazenamento separado da telemetria de negócio e consulta exclusiva pelo superadmin. A primeira fatia da [E08.1](https://github.com/agthinkindigital/IEPRCard/issues/94) padroniza o correlation ID HTTP; a coleta persistida e a consulta seguem as demais fatias da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93). O contrato e as regras de minimização estão no [ADR-0011](adr/0011-observabilidade-golden-signals.md). Prazo de retenção e uso de IDs internos de Sede/unidade aguardam confirmação.
 
-### Proposta de consulta técnica — aguardando aprovação
+### Consulta técnica superadmin — mockup aprovado; implementação pendente
 
-O [mockup da consulta técnica](../design-system/mockups/admin-technical-events-mockup.svg) estende a telemetria somente para o superadmin; não altera a tela existente de Cliente/Subcliente. Esta proposta não indica que a coleta ou a interface já estejam implementadas.
+O [mockup da consulta técnica](../design-system/mockups/admin-technical-events-mockup.svg) e este guia foram aprovados em 2026-11-24. A implementação está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96) e depende da persistência da [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). A tela é exclusiva ao superadmin e não altera a visão existente de Cliente/Subcliente.
 
 - Filtrar por período, categoria, rota e correlation ID; pesquisar e navegar pelos resultados em páginas de até 50 eventos, mais recentes primeiro. Selecionar um correlation ID reaplica o filtro correspondente.
 - Exibir data/hora UTC, chave de evento, rota, resultado, duração e parte do correlation ID; os resultados só poderão usar campos allowlisted do [ADR-0011](adr/0011-observabilidade-golden-signals.md).
