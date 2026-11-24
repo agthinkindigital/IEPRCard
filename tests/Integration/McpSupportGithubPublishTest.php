@@ -155,6 +155,31 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         } catch (DomainException $exception) {
             if ($exception->getMessage() !== 'MCP_SUPPORT_GITHUB_INPUT_INVALID') throw $exception;
         }
+        foreach ([
+            'ghp_' . str_repeat('F', 32),
+            'gho_' . str_repeat('A', 32),
+            'ghu_' . str_repeat('B', 32),
+            'ghs_' . str_repeat('C', 32),
+            'ghr_' . str_repeat('D', 32),
+            'github_pat_' . str_repeat('G', 24),
+            'glpat-' . str_repeat('H', 24),
+            'sk-' . str_repeat('e', 40),
+            'xoxb-' . str_repeat('I', 24),
+            'AIza' . str_repeat('J', 35),
+            'AKIA' . str_repeat('K', 16),
+            'sk_live_' . str_repeat('L', 20),
+            "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----",
+        ] as $index => $secretFixture) {
+            try {
+                mcpSupportGithubPublish($pdo, $principal, array_replace($input, [
+                    'idempotency_key' => 'secret-op-' . str_pad((string) $index, 8, '0', STR_PAD_LEFT),
+                    'files' => [['path' => 'README.md', 'content' => 'example token: ' . $secretFixture]],
+                ]), $transport, $configuration);
+                throw new RuntimeException($driver . ': known integration tokens must be blocked from MCP publishing.');
+            } catch (DomainException $exception) {
+                if ($exception->getMessage() !== 'MCP_SUPPORT_GITHUB_SECRET_REJECTED') throw $exception;
+            }
+        }
     } finally {
         if (is_array($grant)) $pdo->prepare('DELETE FROM mcp_support_grants WHERE id = :id')->execute(['id' => $grant['id']]);
         $pdo->prepare('DELETE FROM mcp_support_github_config WHERE id = 1')->execute();

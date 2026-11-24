@@ -97,6 +97,17 @@ function mcpSupportGithubPathAllowed(string $path): bool
     return true;
 }
 
+function mcpSupportGithubContentContainsSecret(string $content): bool
+{
+    return preg_match(
+        '/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|'
+        . '\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|'
+        . 'sk-[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{20,}|AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16}|'
+        . '(?:sk|rk)_(?:live|test)_[0-9A-Za-z]{16,})\b/i',
+        $content
+    ) === 1;
+}
+
 /** @param array<string,mixed> $principal @param array<string,mixed> $input @param callable(string,string,array<string,string>,?string):array{status:int,body:string}|null $transport @param array<string,mixed>|null $configuration @return array<string,mixed> */
 function mcpSupportGithubPublish(PDO $pdo, array $principal, array $input, ?callable $transport = null, ?array $configuration = null): array
 {
@@ -128,7 +139,7 @@ function mcpSupportGithubPublish(PDO $pdo, array $principal, array $input, ?call
         if ($totalBytes > 262144 || array_key_exists($file['path'], $normalizedFiles)) {
             throw new DomainException('MCP_SUPPORT_GITHUB_INPUT_INVALID');
         }
-        if (preg_match('/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:github_pat_|ghp_|sk-proj-)\w{16,}/i', $file['content']) === 1) {
+        if (mcpSupportGithubContentContainsSecret($file['content'])) {
             throw new DomainException('MCP_SUPPORT_GITHUB_SECRET_REJECTED');
         }
         $normalizedFiles[$file['path']] = $file['content'];
