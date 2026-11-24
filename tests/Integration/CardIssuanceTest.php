@@ -100,11 +100,13 @@ foreach (tenantTestConnections() as $driver => $pdo) {
 
         $first = cardIssuanceCreateJob(
             $pdo, $context, $identity, $fixture['tenant_id'], null, $sourceLotId, $designId, 'webp',
-            'request-key-00000001', strtotime('2026-01-01 00:01:00 UTC')
+            'request-key-00000001', strtotime('2026-01-01 00:01:00 UTC'), null, null,
+            '3d2ac80c-5fb2-4de4-bfea-5e885e2b2318'
         );
         $retry = cardIssuanceCreateJob(
             $pdo, $context, $identity, $fixture['tenant_id'], null, $sourceLotId, $designId, 'webp',
-            'request-key-00000001', strtotime('2026-01-01 00:02:00 UTC')
+            'request-key-00000001', strtotime('2026-01-01 00:02:00 UTC'), null, null,
+            '9f02a78e-0fc6-4f36-8bc5-9de2130d8c0b'
         );
         $conflictRejected = false;
         try {
@@ -130,7 +132,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         }
 
         $jobs = $pdo->prepare(
-            'SELECT id, lote_origem_id, design_id, chave_idempotencia_hash, total_registros, status_lote '
+            'SELECT id, lote_origem_id, design_id, chave_idempotencia_hash, correlation_id, total_registros, status_lote '
             . 'FROM lotes_importacao WHERE lote_origem_id = :source ORDER BY id'
         );
         $jobs->execute(['source' => $sourceLotId]);
@@ -152,6 +154,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             || (int) $jobRows[0]['total_registros'] !== 1 || (int) $jobRows[1]['total_registros'] !== 1
             || $jobRows[0]['chave_idempotencia_hash'] === 'request-key-00000001'
             || $jobRows[1]['chave_idempotencia_hash'] === 'request-key-00000002'
+            || $jobRows[0]['correlation_id'] !== '3d2ac80c-5fb2-4de4-bfea-5e885e2b2318'
             || $jobRows[0]['status_lote'] !== 'na_fila' || $jobRows[1]['status_lote'] !== 'na_fila'
             || (int) $reservationRows[0]['quantidade'] !== 1 || (int) $reservationRows[1]['quantidade'] !== 1
             || $reservationRows[0]['estado'] !== 'reservada' || $reservationRows[1]['estado'] !== 'reservada') {
@@ -162,6 +165,17 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             if (!cardIssuanceWorkerRunOne($pdo, strtotime('2026-01-01 00:10:00 UTC') + ($attempt * 301))) {
                 throw new RuntimeException($driver . ': the worker must claim queued jobs and retry expired leases.');
             }
+        }
+        $workerEvents = $pdo->prepare(
+            'SELECT evento_chave, status_http FROM eventos_tecnicos WHERE correlation_id = :correlation AND rota = :route ORDER BY id'
+        );
+        $workerEvents->execute([
+            'correlation' => '3d2ac80c-5fb2-4de4-bfea-5e885e2b2318', 'route' => 'worker.card_issuance',
+        ]);
+        $workerEventRows = $workerEvents->fetchAll(PDO::FETCH_ASSOC);
+        if (count($workerEventRows) < 4 || (int) $workerEventRows[0]['status_http'] !== 0
+            || end($workerEventRows)['evento_chave'] !== 'issuance.job_failed') {
+            throw new RuntimeException($driver . ': worker lifecycle events must share the root request correlation ID without HTTP status.');
         }
         $failedJob = $pdo->prepare('SELECT status_lote, worker_attempts, worker_lease_until, erro_codigo FROM lotes_importacao WHERE id = :id');
         $failedJob->execute(['id' => $first['job_id']]);

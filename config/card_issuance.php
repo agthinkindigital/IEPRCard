@@ -20,7 +20,8 @@ function cardIssuanceCreateJob(
     string $idempotencyKey,
     ?int $now = null,
     mixed $mappingOverride = null,
-    ?int $titularId = null
+    ?int $titularId = null,
+    ?string $correlationId = null
 ): array {
     if ($tenantId < 1 || $designId < 1
         || (($sourceLotId === null) === ($titularId === null))
@@ -29,7 +30,8 @@ function cardIssuanceCreateJob(
         || ($subclienteId !== null && $subclienteId < 1)
         || !in_array($outputMode, ['webp', 'pdf_cr80', 'pdf_a4_8up', 'pdf_a4_10up'], true)
         || strlen($idempotencyKey) < 16 || strlen($idempotencyKey) > 200
-        || preg_match('/^[A-Za-z0-9._~-]+$/D', $idempotencyKey) !== 1) {
+        || preg_match('/^[A-Za-z0-9._~-]+$/D', $idempotencyKey) !== 1
+        || ($correlationId !== null && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iD', $correlationId) !== 1)) {
         throw new DomainException('ISSUANCE_REQUEST_INVALID');
     }
     $mappingOverrideJson = cardIssuanceEncodeMappingOverride($mappingOverride);
@@ -58,6 +60,7 @@ function cardIssuanceCreateJob(
             $outputMode,
             $idempotencyHash,
             $mappingOverrideJson,
+            $correlationId,
             $now,
             &$result
         ): void {
@@ -113,9 +116,9 @@ function cardIssuanceCreateJob(
             $createdAt = gmdate('Y-m-d H:i:s', $now ?? time());
             $insertJob = $pdo->prepare(
                 'INSERT INTO lotes_importacao (tenant_id, subcliente_id, usuario_id, design_id, lote_origem_id, titular_origem_id, '
-                . 'mapa_de_para_usado_json, chave_idempotencia_hash, origem_tipo, modo_saida, total_registros, processados_sucesso, '
+                . 'mapa_de_para_usado_json, chave_idempotencia_hash, correlation_id, origem_tipo, modo_saida, total_registros, processados_sucesso, '
                 . 'processados_erro, status_lote, criado_em) '
-                . 'VALUES (:tenant, :subclient, :user, :design, :source, :holder, :mapping, :key_hash, :origin, :mode, :total, 0, 0, :status, :created)'
+                . 'VALUES (:tenant, :subclient, :user, :design, :source, :holder, :mapping, :key_hash, :correlation, :origin, :mode, :total, 0, 0, :status, :created)'
             );
             $insertJob->execute([
                 'tenant' => $tenantId,
@@ -126,6 +129,7 @@ function cardIssuanceCreateJob(
                 'holder' => $titularId,
                 'mapping' => $mappingOverrideJson,
                 'key_hash' => $idempotencyHash,
+                'correlation' => $correlationId === null ? null : strtolower($correlationId),
                 'origin' => 'emissao',
                 'mode' => $outputMode,
                 'total' => $quantity,

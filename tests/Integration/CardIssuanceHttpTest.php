@@ -227,10 +227,14 @@ try {
     if ($status !== 303) throw new RuntimeException('A valid issuance request must redirect after enqueue; HTTP ' . $status . '.');
     [$status] = issuanceHttpRequest($url, $cookie, $host, 'POST', http_build_query($enqueuePayload));
     $jobCount = (int) $check->query("SELECT COUNT(*) FROM lotes_importacao WHERE origem_tipo = 'emissao'")->fetchColumn();
-    $jobQuantity = (int) $check->query("SELECT total_registros FROM lotes_importacao WHERE origem_tipo = 'emissao' AND tenant_id = " . $tenantId)->fetchColumn();
+    $jobStatement = $check->prepare("SELECT total_registros, correlation_id FROM lotes_importacao WHERE origem_tipo = 'emissao' AND tenant_id = :tenant");
+    $jobStatement->execute(['tenant' => $tenantId]);
+    $jobRecord = $jobStatement->fetch(PDO::FETCH_ASSOC);
+    $jobQuantity = is_array($jobRecord) ? (int) $jobRecord['total_registros'] : 0;
     $consumed = (int) $check->query('SELECT consumo_carteirinhas FROM tenants WHERE id = ' . $tenantId)->fetchColumn();
-    if ($status !== 303 || $jobCount !== 1 || $jobQuantity !== 1 || $consumed !== 1) {
-        throw new RuntimeException('Repeated confirmation must reuse one individual job and reserve exactly one unit of quota.');
+    if ($status !== 303 || $jobCount !== 1 || $jobQuantity !== 1 || $consumed !== 1
+        || !is_array($jobRecord) || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iD', (string) $jobRecord['correlation_id']) !== 1) {
+        throw new RuntimeException('Repeated confirmation must reuse one individual job, preserve its server correlation, and reserve exactly one unit of quota.');
     }
     unset($check);
     fwrite(STDOUT, "PASS: authenticated tenant sees the authorized issuance wizard sources and designs.\n");

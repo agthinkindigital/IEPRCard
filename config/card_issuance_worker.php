@@ -9,6 +9,7 @@ require_once dirname(__DIR__) . '/includes/card_pdf_renderer_a4.php';
 require_once __DIR__ . '/card_issuance_worker_output.php';
 require_once __DIR__ . '/card_issuance_worker_recovery.php';
 require_once __DIR__ . '/card_issuance_worker_storage.php';
+require_once __DIR__ . '/technical_events.php';
 
 /** Claims and processes one queued or expired emission job. */
 function cardIssuanceWorkerRunOne(PDO $pdo, ?int $now = null): bool
@@ -51,12 +52,41 @@ function cardIssuanceWorkerRunOne(PDO $pdo, ?int $now = null): bool
         throw $exception;
     }
 
+    $startedAt = microtime(true);
+    cardIssuanceWorkerRecordTechnicalEvent($pdo, $jobId, 'issuance.job_started', 0);
     try {
         cardIssuanceWorkerProcess($pdo, $jobId, $now);
+        cardIssuanceWorkerRecordTechnicalEvent($pdo, $jobId, 'issuance.job_completed', max(0, (int) ((microtime(true) - $startedAt) * 1000)));
     } catch (Throwable $exception) {
         cardIssuanceWorkerFailOrRetry($pdo, $jobId, $exception, $now);
+        $state = $pdo->prepare('SELECT status_lote FROM lotes_importacao WHERE id = :id LIMIT 1');
+        $state->execute(['id' => $jobId]);
+        $event = $state->fetchColumn() === 'na_fila' ? 'issuance.job_retry_scheduled' : 'issuance.job_failed';
+        cardIssuanceWorkerRecordTechnicalEvent($pdo, $jobId, $event, max(0, (int) ((microtime(true) - $startedAt) * 1000)));
     }
     return true;
+}
+
+function cardIssuanceWorkerRecordTechnicalEvent(PDO $pdo, int $jobId, string $eventKey, int $durationMs): void
+{
+    try {
+        $query = $pdo->prepare('SELECT correlation_id FROM lotes_importacao WHERE id = :id LIMIT 1');
+        $query->execute(['id' => $jobId]);
+        $correlationId = $query->fetchColumn();
+        if (!is_string($correlationId) || $correlationId === '') {
+            return;
+        }
+        technicalEventsRecord($pdo, [
+            'correlation_id' => $correlationId,
+            'categoria' => 'job',
+            'evento_chave' => $eventKey,
+            'rota' => 'worker.card_issuance',
+            'status_http' => 0,
+            'duracao_ms' => min(2_147_483_647, max(0, $durationMs)),
+        ]);
+    } catch (Throwable) {
+        // Worker telemetry is best-effort and must not change the job result.
+    }
 }
 
 /** @return array{processed:int,skipped:bool} */

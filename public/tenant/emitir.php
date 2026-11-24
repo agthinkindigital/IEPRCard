@@ -139,7 +139,8 @@ if ($method === 'POST') {
         if (($_POST['action'] ?? '') !== 'enqueue') throw new DomainException('ISSUANCE_REQUEST_INVALID');
         $created = cardIssuanceCreateJob(
             $pdo, $context, $identity, $tenantId, $selectedUnitId, $targetSourceLot, (int) $designId,
-            $outputMode, $requestKey, null, issuanceWizardDecodeMapping($mappingOverride), $targetHolder
+            $outputMode, $requestKey, null, issuanceWizardDecodeMapping($mappingOverride), $targetHolder,
+            httpRequestCorrelationId()
         );
         $_SESSION['tenant_issuance_notice'] = $created['reused']
             ? 'Esta solicitação já estava na fila. Job #' . $created['job_id'] . ' reutilizado.'

@@ -145,12 +145,12 @@ http_response_code($httpStatus);
                             <thead><tr><th scope="col">Data e hora UTC</th><th scope="col">Evento</th><th scope="col">Rota</th><th scope="col">Resultado</th><th scope="col">Duração</th><th scope="col">Correlation ID</th></tr></thead>
                             <tbody>
                             <?php foreach ($result['rows'] as $row): ?>
-                                <?php $status = (int) $row['status_http']; $severity = $status >= 500 ? 'error' : ($status >= 400 ? 'warning' : 'success'); $correlation = (string) $row['correlation_id']; ?>
+                                <?php $status = (int) $row['status_http']; $isWorkerEvent = $status === 0; $severity = $isWorkerEvent ? 'success' : ($status >= 500 ? 'error' : ($status >= 400 ? 'warning' : 'success')); $correlation = (string) $row['correlation_id']; ?>
                                 <tr>
                                     <td data-label="Data e hora UTC"><time datetime="<?= technicalEventsPageEscape(gmdate('Y-m-d\TH:i:s\Z', strtotime($row['criado_em'] . ' UTC'))) ?>"><?= technicalEventsPageEscape(gmdate('Y-m-d H:i:s', strtotime($row['criado_em'] . ' UTC'))) ?> UTC</time></td>
                                     <td data-label="Evento"><?= technicalEventsPageEscape($row['evento_chave']) ?></td>
                                     <td data-label="Rota"><code><?= technicalEventsPageEscape($row['rota']) ?></code></td>
-                                    <td data-label="Resultado"><span class="technical-result technical-result-<?= $severity ?>">HTTP <?= $status ?></span></td>
+                                    <td data-label="Resultado"><span class="technical-result technical-result-<?= $severity ?>"><?= $isWorkerEvent ? 'Worker · sem HTTP' : 'HTTP ' . $status ?></span></td>
                                     <td data-label="Duração"><?= number_format((int) $row['duracao_ms'], 0, ',', '.') ?> ms</td>
                                     <td data-label="Correlation ID"><a class="technical-correlation-link" href="/admin/eventos-tecnicos.php?<?= technicalEventsPageEscape(technicalEventsPageQueryString(['periodo' => $filters['periodo'], 'correlation_id' => $correlation])) ?>" aria-label="Filtrar por este correlation ID"><code><?= technicalEventsPageEscape(substr($correlation, 0, 8) . '…' . substr($correlation, -4)) ?></code></a></td>
                                 </tr>

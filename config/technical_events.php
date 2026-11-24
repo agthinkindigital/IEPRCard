@@ -11,14 +11,25 @@ function technicalEventsRecord(PDO $pdo, array $event): bool
         || preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iD', $event['correlation_id']) !== 1
         || !is_string($event['categoria'] ?? null)
         || !is_string($event['rota'] ?? null)
-        || !is_string($event['evento_chave'] ?? null) || $event['evento_chave'] !== 'http.response'
-        || !is_int($event['status_http'] ?? null) || $event['status_http'] < 100 || $event['status_http'] > 599
+        || !is_string($event['evento_chave'] ?? null)
+        || !is_int($event['status_http'] ?? null)
         || !is_int($event['duracao_ms'] ?? null) || $event['duracao_ms'] < 0 || $event['duracao_ms'] > 2_147_483_647) {
         throw new InvalidArgumentException('TECHNICAL_EVENT_INVALID');
     }
 
     $routes = technicalEventsRouteAllowlist();
     if (!isset($routes[$event['rota']]) || $routes[$event['rota']] !== $event['categoria']) {
+        throw new InvalidArgumentException('TECHNICAL_EVENT_INVALID');
+    }
+    $httpEvent = $event['evento_chave'] === 'http.response';
+    $workerEvent = in_array($event['evento_chave'], [
+        'issuance.job_started', 'issuance.job_completed', 'issuance.job_retry_scheduled', 'issuance.job_failed',
+    ], true);
+    if ($httpEvent) {
+        if ($event['categoria'] === 'job' || $event['status_http'] < 100 || $event['status_http'] > 599) {
+            throw new InvalidArgumentException('TECHNICAL_EVENT_INVALID');
+        }
+    } elseif (!$workerEvent || $event['rota'] !== 'worker.card_issuance' || $event['status_http'] !== 0) {
         throw new InvalidArgumentException('TECHNICAL_EVENT_INVALID');
     }
 
@@ -61,6 +72,7 @@ function technicalEventsRouteAllowlist(): array
         'portal.card' => 'portal', 'mcp.endpoint' => 'mcp', 'oauth.token' => 'oauth',
         'oauth.metadata' => 'oauth', 'oauth.protected_resource' => 'oauth', 'integration.gowa_validate' => 'integration',
         'integration.gowa_webhook' => 'integration', 'system.unmapped' => 'system',
+        'worker.card_issuance' => 'job',
     ];
 }
 

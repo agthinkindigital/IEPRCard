@@ -12,8 +12,8 @@ if ($technicalPageRoute !== ['categoria' => 'admin', 'rota' => 'admin.technical_
 
 foreach (tenantTestConnections() as $driver => $pdo) {
     $migrations = schemaAplicarMigracoes($pdo, 'test');
-    if (end($migrations) !== '0026_technical_events') {
-        throw new RuntimeException($driver . ': the technical event table must be introduced by its versioned migration.');
+    if (end($migrations) !== '0027_issuance_correlation') {
+        throw new RuntimeException($driver . ': correlation propagation must use the newest versioned migration.');
     }
     $pdo->exec('DELETE FROM eventos_tecnicos');
     $correlationId = '3d2ac80c-5fb2-4de4-bfea-5e885e2b2318';
@@ -21,8 +21,15 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         'correlation_id' => $correlationId, 'categoria' => 'admin', 'evento_chave' => 'http.response',
         'rota' => 'admin.telemetry', 'status_http' => 303, 'duracao_ms' => 18,
     ];
-    if (!technicalEventsRecord($pdo, $event) || technicalEventsRecord($pdo, $event)) {
-        throw new RuntimeException($driver . ': one server correlation ID must persist at most one technical event.');
+    if (!technicalEventsRecord($pdo, $event)) {
+        throw new RuntimeException($driver . ': the HTTP response event must be persisted.');
+    }
+    $workerEvent = [
+        'correlation_id' => $correlationId, 'categoria' => 'job', 'evento_chave' => 'issuance.job_started',
+        'rota' => 'worker.card_issuance', 'status_http' => 0, 'duracao_ms' => 0,
+    ];
+    if (!technicalEventsRecord($pdo, $workerEvent)) {
+        throw new RuntimeException($driver . ': the same trace must accept a worker event with no HTTP status.');
     }
     $stored = $pdo->prepare('SELECT correlation_id, categoria, evento_chave, rota, status_http, duracao_ms FROM eventos_tecnicos WHERE correlation_id = :id');
     $stored->execute(['id' => $correlationId]);
@@ -32,6 +39,13 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         || (int) $row['status_http'] !== 303 || (int) $row['duracao_ms'] !== 18
         || array_intersect(['tenant_id', 'subcliente_id', 'usuario_id', 'ip', 'user_agent', 'request_body'], array_keys($row)) !== []) {
         throw new RuntimeException($driver . ': persisted events must contain only the minimized allowlisted fields.');
+    }
+    $traceCount = $pdo->prepare('SELECT COUNT(*) FROM eventos_tecnicos WHERE correlation_id = :id');
+    $traceCount->execute(['id' => $correlationId]);
+    $storedWorkerEvent = $pdo->prepare('SELECT status_http FROM eventos_tecnicos WHERE correlation_id = :id AND evento_chave = :event');
+    $storedWorkerEvent->execute(['id' => $correlationId, 'event' => 'issuance.job_started']);
+    if ((int) $traceCount->fetchColumn() !== 2 || (int) $storedWorkerEvent->fetchColumn() !== 0) {
+        throw new RuntimeException($driver . ': a trace must link multiple allowlisted events and use zero only as non-HTTP status.');
     }
 
     $invalidRejected = false;
@@ -67,4 +81,4 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     }
 }
 
-fwrite(STDOUT, "PASS: technical event allowlist, deduplication and bounded retention (SQLite/MySQL when configured).\n");
+fwrite(STDOUT, "PASS: technical event allowlist, shared correlation, and bounded retention (SQLite/MySQL when configured).\n");
