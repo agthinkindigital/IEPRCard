@@ -12,6 +12,7 @@ require_once dirname(__DIR__) . '/config/motor_permissoes.php';
 require_once dirname(__DIR__) . '/config/business_telemetry.php';
 require_once dirname(__DIR__) . '/config/operational_batch_metrics.php';
 require_once dirname(__DIR__) . '/config/operational_configuration.php';
+require_once dirname(__DIR__) . '/config/technical_golden_signals.php';
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: private, no-store, max-age=0');
@@ -94,6 +95,12 @@ $configurationNotice = '';
 $csrfToken = '';
 $operationsEnvironment = '';
 $operationsFailed = false;
+$technicalSignals = null;
+$technicalSignalsFailed = false;
+$technicalQueueDepth = null;
+$technicalQueueUpdatedAt = null;
+$technicalQueueFailed = false;
+$technicalRetentionDays = 30;
 $scopeLabel = '';
 $role = '';
 $from = '';
@@ -322,6 +329,18 @@ try {
             } catch (Throwable) {
                 $operationsFailed = true;
             }
+            $technicalRetentionDays = (int) ($operationalConfigState['active']['configuracao']['retencao_eventos_tecnicos_dias'] ?? 30);
+            try {
+                $technicalSignals = technicalEventsGoldenSignals($pdo, $from, $to, $technicalRetentionDays);
+            } catch (Throwable) {
+                $technicalSignalsFailed = true;
+            }
+            try {
+                $technicalQueueDepth = operationalBatchMetricsQueueDepth($pdo);
+                $technicalQueueUpdatedAt = gmdate('d/m/Y H:i:s') . ' UTC';
+            } catch (Throwable) {
+                $technicalQueueFailed = true;
+            }
         }
     }
 } catch (InvalidArgumentException|DomainException) {
@@ -469,6 +488,61 @@ http_response_code(http_response_code() ?: $httpStatus);
                             <article class="metric-card"><h3>Maior fila observada</h3><strong class="metric-value"><?= $number($operations['maximum_queue_depth']) ?></strong><span>Na janela operacional</span></article>
                         </div>
                     <?php endif; ?>
+                </section>
+                <section class="panel technical-signals-panel" id="technical-signals-panel" aria-labelledby="technical-signals-title">
+                    <h2 id="technical-signals-title">Saúde técnica · somente Admin SaaS</h2>
+                    <p>Escopo global · janela do painel limitada à retenção técnica ativa de <?= $technicalRetentionDays ?> dias. A leitura HTTP registra somente eventos observados.</p>
+                    <div class="metric-grid technical-signals-grid">
+                        <article class="metric-card">
+                            <h3>Respostas HTTP observadas</h3>
+                            <?php if ($technicalSignalsFailed): ?>
+                                <strong class="metric-value">—</strong><span>Consulta indisponível</span>
+                            <?php elseif (!is_array($technicalSignals) || $technicalSignals['observed_count'] === 0): ?>
+                                <strong class="metric-value">—</strong><span>Sem amostra na janela retida</span>
+                            <?php else: ?>
+                                <strong class="metric-value"><?= $number($technicalSignals['observed_count']) ?></strong>
+                                <span>Registradas · <?= $technicalSignals['observed_per_hour'] === null ? 'média indisponível' : number_format((float) $technicalSignals['observed_per_hour'], 1, ',', '.') . ' por hora efetiva' ?></span>
+                            <?php endif; ?>
+                        </article>
+                        <article class="metric-card">
+                            <h3>Latência P95 observada</h3>
+                            <?php if ($technicalSignalsFailed): ?>
+                                <strong class="metric-value">—</strong><span>Consulta indisponível</span>
+                            <?php elseif (!is_array($technicalSignals) || $technicalSignals['sample_size'] === 0): ?>
+                                <strong class="metric-value">—</strong><span>Sem amostra na janela retida</span>
+                            <?php else: ?>
+                                <strong class="metric-value"><?= $number((int) $technicalSignals['p95_ms']) ?> ms</strong>
+                                <span>n = <?= $number($technicalSignals['sample_size']) ?><?= $technicalSignals['sampled'] ? ' · respostas mais recentes (amostra limitada)' : '' ?><?= $technicalSignals['sample_size'] < 20 ? ' · indicativo' : '' ?></span>
+                            <?php endif; ?>
+                        </article>
+                        <article class="metric-card">
+                            <h3>Respostas HTTP 5xx observadas</h3>
+                            <?php if ($technicalSignalsFailed): ?>
+                                <strong class="metric-value">—</strong><span>Consulta indisponível</span>
+                            <?php elseif (!is_array($technicalSignals) || $technicalSignals['observed_count'] === 0): ?>
+                                <strong class="metric-value">—</strong><span>Sem amostra na janela retida</span>
+                            <?php else: ?>
+                                <strong class="metric-value"><?= $number($technicalSignals['http_5xx_count']) ?> · <?= number_format((float) $technicalSignals['http_5xx_rate'] * 100, 2, ',', '.') ?>%</strong>
+                                <span>De <?= $number($technicalSignals['observed_count']) ?> respostas observadas</span>
+                            <?php endif; ?>
+                        </article>
+                        <article class="metric-card">
+                            <h3>Fila de emissão · agora</h3>
+                            <?php if ($technicalQueueFailed || $technicalQueueDepth === null): ?>
+                                <strong class="metric-value">—</strong><span>Consulta indisponível</span>
+                            <?php else: ?>
+                                <strong class="metric-value"><?= $number($technicalQueueDepth) ?> jobs</strong><span>Banco · atualizado às <?= telemetryPageEscape((string) $technicalQueueUpdatedAt) ?></span>
+                            <?php endif; ?>
+                        </article>
+                    </div>
+                    <p class="technical-signals-window">
+                        <?php if (is_array($technicalSignals) && $technicalSignals['window_from'] !== null): ?>
+                            Janela efetiva UTC: <?= telemetryPageEscape((new DateTimeImmutable($technicalSignals['window_from'], new DateTimeZone('UTC')))->format('d/m/Y H:i:s')) ?> — <?= telemetryPageEscape((new DateTimeImmutable((string) $technicalSignals['window_to'], new DateTimeZone('UTC')))->format('d/m/Y H:i:s')) ?>.
+                        <?php else: ?>
+                            <?php if ($technicalSignalsFailed): ?>Janela HTTP indisponível.<?php else: ?>O período selecionado não cruza a retenção ativa; sem amostra HTTP.<?php endif; ?>
+                        <?php endif; ?>
+                    </p>
+                    <p class="technical-signals-explanation">Fonte HTTP: eventos <code>http.response</code> persistidos em modo best-effort. Totais, P95 e taxa 5xx descrevem somente respostas observadas, podem subcontar tráfego real e não indicam completude. A fila é uma leitura instantânea. Sem PII ou IDs de escopo.</p>
                 </section>
                 <section class="panel configuration-panel" aria-labelledby="configuration-title">
                     <h2 id="configuration-title">Configuração de lotes</h2>

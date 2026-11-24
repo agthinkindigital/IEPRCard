@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Correlação HTTP, persistência minimizada, consulta superadmin e propagação na emissão/entrega WhatsApp implementadas; demais integrações assíncronas e golden signals pendentes |
+| Status | Correlação HTTP, persistência minimizada, consulta superadmin, golden signals globais e propagação na emissão/entrega WhatsApp implementadas; demais integrações assíncronas pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
@@ -18,7 +18,7 @@
 - A persistência de `http.response` no encerramento do request é best-effort. Agregados de tráfego, latência e 5xx derivados de `eventos_tecnicos` descrevem somente respostas observadas e podem subcontar requests; sem uma fonte independente, não se afirma completude nem uma taxa de perda.
 - O evento técnico usa apenas campos allowlisted necessários ao diagnóstico: correlation ID, categoria, chave de evento/rota, duração, resultado e horário UTC. Eventos HTTP contêm status HTTP; eventos do worker usam `status_http = 0` para “não aplicável”, nunca como código HTTP. Não registrar CPF, identificadores de titular/usuário, `tenant_id`, `subcliente_id`, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção.
 - A retenção padrão dos eventos técnicos é de 30 dias, configurável pelo superadmin entre 1 e 3650 dias no painel de telemetria existente; a nova versão entra em vigor no início da próxima execução agendada. O cron expurga registros vencidos em lotes limitados.
-- Golden signals planejados no gateway/entrypoint:
+- Expansões de golden signals ainda planejadas:
   - **Latência:** p95/p99 por rota e por motor de render; percentis HTTP derivados dos eventos atuais descrevem apenas respostas observadas;
   - **Tráfego:** requests/h por rota, lotes/h, carteirinhas/h e leituras QR/h; contagens HTTP persistidas são best-effort e podem subcontar; eventos técnicos não carregam IDs de tenant/unidade;
   - **Erros:** 5xx, `COTA_EXCEDIDA`, webhook rejeitado, falha de render, DLQ; a taxa HTTP usa apenas respostas observadas;
@@ -37,6 +37,7 @@
 - O mantenedor escolheu consulta exclusiva ao superadmin e omissão de IDs internos; mockup e guia da consulta foram aprovados em 2026-11-24. A tela foi concluída na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), commit `45adece`, com CI [45474514566](https://github.com/agthinkindigital/IEPRCard/actions/runs/45474514566) verde em MySQL 8.4, MariaDB 10.11 e PDF. A propagação assíncrona continua na E08.4 da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 - A propagação inicial para jobs de emissão foi implementada na [#97](https://github.com/agthinkindigital/IEPRCard/issues/97): o job conserva o correlation ID do request criador, mesmo quando a chave de idempotência é repetida. O worker registra eventos allowlisted sob a mesma correlação, sem IDs de escopo ou dados de titular; o inventário de snapshot inclui a coluna técnica sem classificá-la como PII. Outros produtores/consumidores assíncronos permanecem em E08.4.2.
 - A [#98](https://github.com/agthinkindigital/IEPRCard/issues/98) propaga a correlação do webhook GOWA ao job idempotente de emissão e ao worker agendado de entrega das imagens. A entrega consulta o correlation ID pela relação já existente com o job, sem nova coluna na conversa; eventos de início, conclusão e falha são allowlisted e não armazenam IDs internos ou conteúdo pessoal. Jobs antigos sem correlação continuam entregues sem eventos órfãos.
+- A [#99](https://github.com/agthinkindigital/IEPRCard/issues/99) adiciona ao painel global do superadmin sinais derivados de `http.response` observado (best-effort) e da fila atual. A consulta limita P95 às 5.000 respostas mais recentes, respeita retenção e janela UTC, não devolve IDs de escopo e mantém estados explícitos quando falta amostra ou a fonte falha. O contrato de apresentação fica em [`docs/08-telemetria.md`](../08-telemetria.md).
 
 ## Alternativas consideradas
 

@@ -38,6 +38,9 @@ h1 { margin: 0; font-size: clamp(27px, 4vw, 36px); line-height: 1.18; }
 .daily-row strong { text-align: right; font-variant-numeric: tabular-nums; }
 .daily-row progress { width: 100%; height: 10px; accent-color: #1d4ed8; }
 .operational-grid { margin-bottom: 0; }
+.technical-signals-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.technical-signals-panel > .technical-signals-window, .technical-signals-panel > .technical-signals-explanation { margin: 10px 0 0; color: #475569; font-size: 13px; line-height: 1.5; }
+.technical-signals-panel code { color: #334155; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
 .notice { padding: 14px 16px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; font-size: 14px; line-height: 1.5; }
 .notice-error { border-color: #fecaca; background: #fff7f7; color: #991b1b; }
 .notice-success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }

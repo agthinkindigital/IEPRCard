@@ -273,9 +273,16 @@ try {
         || !str_contains($body, 'Escopo global') || str_contains($body, 'holder.email@example.test')
         || !str_contains($body, 'Configuração de lotes') || !str_contains($body, 'Nenhuma versão ativa')
         || !str_contains($body, 'Consultar eventos técnicos')
+        || !str_contains($body, 'id="technical-signals-panel"')
+        || !str_contains($body, 'Respostas HTTP observadas')
+        || !str_contains($body, 'modo best-effort')
         || str_contains($body, 'Unidade alheia')
         || !str_contains(implode("\n", $headers), 'no-store')) {
         throw new RuntimeException('Admin dashboard assertion failed: status=' . $status . ', body=' . substr(trim(preg_replace('/\s+/', ' ', strip_tags($body))), 0, 1800) . ', cache=' . (telemetryDashboardHeaderValue($headers, 'Cache-Control') ?? 'missing'));
+    }
+    if (preg_match('/<section class="panel technical-signals-panel".*?<\/section>/s', $body, $technicalPanel) !== 1
+        || preg_match('/tenant_id|subcliente_id|correlation_id|holder\.email@example\.test|Unidade alheia/', $technicalPanel[0]) === 1) {
+        throw new RuntimeException('Technical golden signals must render as a global aggregate without scope identifiers or personal data.');
     }
     [$status, $body] = $request('/telemetria/?janela=7', 'admin.ieprcard.test', $adminCookie);
     if ($status !== 200 || !str_contains($body, 'últimos 7 dias UTC completos')
@@ -363,12 +370,12 @@ try {
         throw new RuntimeException('Admin forecast window below seven days must be rejected without reflecting the value.');
     }
     [$status, $body] = $request('/telemetria/?escopo=tenant&tenant_id=' . $fixture['tenant_id'], 'admin.ieprcard.test', $adminCookie);
-    if ($status !== 200 || !str_contains($body, 'Escopo da Sede')
+    if ($status !== 200 || !str_contains($body, 'Escopo da Sede') || !str_contains($body, 'id="technical-signals-panel"')
         || !str_contains($body, '<strong class="metric-value">6</strong>')) {
-        throw new RuntimeException('Admin may select a tenant-scoped business telemetry view.');
+        throw new RuntimeException('Admin may filter business telemetry while technical golden signals stay global.');
     }
     [$status, $body] = $request('/telemetria/?escopo=unit&tenant_id=' . $fixture['tenant_id'] . '&subcliente_id=' . $fixture['subcliente_id'], 'admin.ieprcard.test', $adminCookie);
-    if ($status !== 200 || !str_contains($body, 'Escopo da unidade')
+    if ($status !== 200 || !str_contains($body, 'Escopo da unidade') || !str_contains($body, 'id="technical-signals-panel"')
         || !str_contains($body, '<strong class="metric-value">2</strong>')
         || str_contains($body, '<strong class="metric-value">3</strong>')) {
         throw new RuntimeException('Admin may select one unit without leaking sibling-unit business aggregates.');
@@ -383,6 +390,7 @@ try {
         || !str_contains($body, '<strong class="metric-value">6</strong>')
         || str_contains($body, 'Fila atual') || str_contains($body, 'telemetria.rede')
         || str_contains($body, 'Configuração de lotes') || str_contains($body, 'Consultar eventos técnicos')
+        || str_contains($body, 'id="technical-signals-panel"')
         || str_contains($body, 'name="lote_maximo_registros"')) {
         throw new RuntimeException('Client dashboard must show only its own network and omit all operational metrics.');
     }
@@ -407,7 +415,7 @@ try {
         || str_contains($body, 'Visão da rede') || str_contains($body, 'Unidade Leste')
         || str_contains($body, 'Selecionar unidade') || str_contains($body, 'Fila atual')
         || str_contains($body, 'Configuração de lotes') || str_contains($body, 'Consultar eventos técnicos')
-        || str_contains($body, 'name="lote_maximo_registros"')) {
+        || str_contains($body, 'name="lote_maximo_registros"') || str_contains($body, 'id="technical-signals-panel"')) {
         throw new RuntimeException('Subclient dashboard must remain fixed to its own unit without operational metrics or unit filters.');
     }
     [$status, $body] = $request('/telemetria/?escopo=network', $unitHost, $unitCookie);
@@ -468,6 +476,42 @@ try {
             str_contains($body, '30 dias mais recentes com emissão') ? 1 : 0,
             str_contains($body, 'Dias sem emissão não aparecem') ? 1 : 0
         ));
+    }
+
+    $emptyTechnicalPdo = dbConnect($database);
+    $emptyTechnicalPdo->exec('DELETE FROM eventos_tecnicos');
+    unset($emptyTechnicalPdo);
+    [$status, $body] = $request('/telemetria/', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || preg_match('/<section class="panel technical-signals-panel".*?<\/section>/s', $body, $emptyPanel) !== 1
+        || !str_contains($emptyPanel[0], 'Sem amostra na janela retida')
+        || !str_contains($emptyPanel[0], '<strong class="metric-value">—</strong>')) {
+        throw new RuntimeException('Empty technical telemetry must show no sample instead of invented zero values.');
+    }
+
+    $technicalBackupTable = 'technical_events_failure_' . bin2hex(random_bytes(4));
+    $technicalFailurePdo = dbConnect($database);
+    if ($database['DB_DRIVER'] === 'mysql') {
+        $technicalFailurePdo->exec('RENAME TABLE eventos_tecnicos TO `' . $technicalBackupTable . '`');
+    } else {
+        $technicalFailurePdo->exec('ALTER TABLE eventos_tecnicos RENAME TO "' . $technicalBackupTable . '"');
+    }
+    unset($technicalFailurePdo);
+    try {
+        [$status, $body] = $request('/telemetria/', 'admin.ieprcard.test', $adminCookie);
+        if ($status !== 200 || !preg_match('/<section class="panel technical-signals-panel".*?<\/section>/s', $body, $failedPanel)
+            || substr_count($failedPanel[0], 'Consulta indisponível') !== 3
+            || !str_contains($failedPanel[0], 'Fila de emissão')
+            || str_contains($failedPanel[0], 'SQLSTATE') || str_contains($failedPanel[0], $technicalBackupTable)) {
+            throw new RuntimeException('Technical storage failures must show a safe unavailable state and retain the independent queue signal.');
+        }
+    } finally {
+        $restoreTechnicalPdo = dbConnect($database);
+        if ($database['DB_DRIVER'] === 'mysql') {
+            $restoreTechnicalPdo->exec('RENAME TABLE `' . $technicalBackupTable . '` TO eventos_tecnicos');
+        } else {
+            $restoreTechnicalPdo->exec('ALTER TABLE "' . $technicalBackupTable . '" RENAME TO eventos_tecnicos');
+        }
+        unset($restoreTechnicalPdo);
     }
 
     $backupTable = 'telemetria_diaria_failure_' . bin2hex(random_bytes(4));
