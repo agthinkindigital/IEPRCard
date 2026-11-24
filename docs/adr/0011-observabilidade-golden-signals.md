@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Proposta (preenche lacuna inexistente em `docs/00-17`) |
+| Status | Proposta; rastreamento técnico ponta a ponta ainda não implementado |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
 
 ## Contexto
 
-`docs/08` descreve telemetria de **negócio** (carteirinhas geradas, titulares, conversas, cota, QR, receita por nível Admin/Cliente/Subcliente). Não existe nada para latência, erros, saturação ou rastreabilidade de um lote desde o POST até o envio no WhatsApp. Sem isso, um incidente de "carteirinha não chegou" leva a caçar logs por IP e timestamp, sem conseguir correlacionar as camadas.
+`docs/08` descreve telemetria de **negócio** (carteirinhas geradas, titulares, conversas, cota, QR, receita por nível Admin/Cliente/Subcliente) e o painel de lotes já mostra demanda, previsão e capacidade recomendada. Ainda falta observabilidade de requisições: latência e erros por rota, sinais de saturação e rastreabilidade de um lote desde o POST até o envio no WhatsApp. O MCP cria um `correlation_id` para sua própria auditoria, mas esse identificador não é gerado nem propagado de forma geral. Sem isso, um incidente de "carteirinha não chegou" leva a caçar logs por IP e timestamp, sem conseguir correlacionar as camadas.
 
 ## Decisão
 
@@ -25,6 +25,12 @@
 - O Administrador edita lote e pico manualmente. A aplicação salva uma versão pendente; a ação `Reiniciar worker e aplicar` solicita a ativação. Em hospedagem compartilhada, a próxima execução agendada do worker aplica a versão; lotes em andamento mantêm a versão original. Ver ADR-0012 para o perfil de execução.
 - Alertas iniciais: cota > 80%, DLQ > 0, 5xx sustentado, WebP > 80 ms, disco > 80%, trial expirando, token de suporte utilizado.
 - OpenTelemetry fica como evolução; no MVP o `correlation_id` já dá rastreabilidade ponta-a-ponta.
+
+## Estado de implementação
+
+- A telemetria de negócio e a telemetria operacional diária de lotes estão implementadas e documentadas em [`docs/08-telemetria.md`](../08-telemetria.md), incluindo painel por perfil, previsão configurável e aplicação de ajustes no início do worker.
+- A observabilidade técnica descrita nesta proposta não está implementada de forma geral: entrypoints HTTP não compartilham um `correlation_id`, logs JSON não cobrem os fluxos e o identificador não atravessa jobs/outbox e integrações. A auditoria MCP é local ao protocolo MCP e não comprova correlação ponta a ponta.
+- A escolha de persistência e consulta dos eventos técnicos, seus limites de retenção e a superfície administrativa ainda precisam ser decididos antes de fatiar implementação. Não reutilizar `telemetria_eventos` de negócio para registrar eventos técnicos.
 
 ## Alternativas consideradas
 
