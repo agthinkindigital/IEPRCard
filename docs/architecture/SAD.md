@@ -229,7 +229,7 @@ C4Container
         Container(engines, "Motors de Dominio", "PHP", "RBAC, cotas, importacao, mapeamento, render, eventos, telemetria")
         Container(fila, "Fila em banco + outbox", "Tabela MySQL/SQLite", "Lotes, retry, DLQ e efeitos externos confiaveis")
         Container(worker, "cron.php / worker", "PHP CLI", "Processa lotes, agrega telemetria, expira trial, drena outbox")
-        Container(mcp, "MCP Server", "PHP JSON-RPC 2.0", "Tools read-only autenticadas e filtradas por escopo")
+        Container(mcp, "MCP Server", "PHP JSON-RPC 2.0", "Tools autenticadas por escopo; suporte temporário e publicação limitada a DEV")
         ContainerDb(db, "Banco Principal", "SQLite (dev) / MySQL 8 ou MariaDB 10.6 (prod)", "Dados transacionais, fila, outbox e auditoria")
         ContainerDb(storage, "Storage de artifacts", "Filesystem por tenant", "fundos de design, fotos, WebP e PDF")
     }
@@ -729,7 +729,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | Fase | Escopo | Gates | Saída |
 | --- | --- | --- | --- |
 | 0 — Alinhamento | Fechar C1–C10 e validar o plano de hospedagem, recuperação e política de dados | — | Schema canônico e limites operacionais confirmados |
-| 1 — Fundação | Épicos 1–2 (PDO dual, tenant, RBAC, cotas), schema de operações/privacidade e MCP autenticado read-only desde o primeiro lançamento | Gate 1 + 2 + segurança MCP | Isolamento comprovado, TDD-01/02/02B verdes e MCP com escopos/auditoria |
+| 1 — Fundação | Épicos 1–2 (PDO dual, tenant, RBAC, cotas), schema de operações/privacidade e MCP autenticado desde o primeiro lançamento | Gate 1 + 2 + segurança MCP | Isolamento comprovado, TDD-01/02/02B verdes e MCP com escopos/auditoria |
 | 2 — Produção de carteirinhas | Épicos 3–4 (importação, mapeamento, render, portal) | Gate 3 | Benchmarks definidos no Gate 3 e QR funcional |
 | 3 — Integrações e telemetria | Épicos ativos de IA/WhatsApp e telemetria; pagamentos e webhooks Asaas/MP explicitamente adiados | Gate 4 | Integrações ativas verificadas e visibilidade em 3 níveis |
 | 4 — Agentes e hardening | Evolução das tools MCP + outbox + observabilidade + CI/deploy | Gate 5 | MCP seguro, golden signals, deploy reversível |
