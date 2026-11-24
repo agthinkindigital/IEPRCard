@@ -7,6 +7,8 @@ As leituras aceitam janela UTC inclusiva de até 366 dias. Admin informa explici
 
 As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; seu cálculo e sua ativação seguem o [ADR-0011](adr/0011-observabilidade-golden-signals.md). A tabela operacional agrega por dia e ambiente e não guarda identificadores de tenant ou titular.
 
+Eventos técnicos de requests e jobs terão armazenamento separado da telemetria de negócio e consulta exclusiva pelo superadmin. A decisão, as regras de minimização e o escopo de implementação estão no [ADR-0011](adr/0011-observabilidade-golden-signals.md) e na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93). O prazo de retenção e o uso de IDs internos de Sede/unidade ainda aguardam confirmação.
+
 ## Métricas por nível
 | Métrica agregada | Admin | Cliente | Subcliente |
 | --- | --- | --- | --- |

@@ -131,6 +131,7 @@ O renderizador backend de frente/verso WebP, dependente dos três contratos conc
 
 * A exposição via MCP está fatiada na [#44](https://github.com/agthinkindigital/IEPRCard/issues/44). O painel e seus controles administrativos estão nas Issues [#70](https://github.com/agthinkindigital/IEPRCard/issues/70) e [#71](https://github.com/agthinkindigital/IEPRCard/issues/71).
 
+O escopo de correlação de requests e consulta de eventos técnicos, separado da telemetria de negócio da E06, está na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93) e no [ADR-0011](adr/0011-observabilidade-golden-signals.md).
 
 
 ### ÉPICO 7: Servidor MCP para Evolução e Edição Agêntica (Req 18)
