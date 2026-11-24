@@ -33,7 +33,8 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 * **GATE 5 — Servidor MCP & Prontidão de Produção (Após Épico 7):**
 * [x] `TDD-07`, incluindo `db.inspect`, passou na suíte CI SQLite/MySQL/MariaDB e no benchmark PDF: [run 45207558966](https://github.com/agthinkindigital/IEPRCard/actions/runs/45207558966), commit `39bc8b6`.
-* [x] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. Cliente externo oficial `mcp==2.3.0` completou descoberta e chamadas read-only com OAuth client credentials em SQLite isolado; credencial limitada não descobriu nem executou `telemetry.read`. Evidência e limite do cliente TypeScript estão na [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). `design.write` e `code.patch` estão fora do runtime e não são requisitos do MVP.
+* [x] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. Cliente externo oficial `mcp==2.3.0` completou descoberta e chamadas read-only com OAuth client credentials em SQLite isolado; credencial limitada não descobriu nem executou `telemetry.read`. Evidência e limite do cliente TypeScript estão na [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). Essa prova cobre somente a superfície read-only atual.
+* [ ] Implementar e revisar segurança da manutenção MCP privada, autorizada pelo superadmin por janela de 30 min a 24 h, conforme o contrato ainda pendente na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). `design.write`, SQL arbitrário e `code.patch` não estão autorizados pelo requisito atual.
 * [ ] Demonstrar RPO ≤ 1 h e RTO ≤ 4 h para snapshot/restauração isolada no perfil contratado, conforme [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e [#85](https://github.com/agthinkindigital/IEPRCard/issues/85).
 
 

@@ -16,6 +16,10 @@ As consultas de schema usam o catálogo e a introspecção dual SQLite/MySQL. Um
 
 ## Escopos sem tool implementada
 
-O registro OAuth também aceita `design.read` e `batch.dry_run` para provisionamento futuro; esses escopos não tornam uma tool visível por si só. `design.write` aguarda decisão de escopo e aprovação específica. `code.patch` não está implementado. Não configure escopos esperando funcionalidades que não aparecem em `tools/list`.
+O registro OAuth também aceita `design.read` e `batch.dry_run` para provisionamento futuro; esses escopos não tornam uma tool visível por si só. `design.write` e `code.patch` não estão implementados.
 
-O Gate 5 exige validação ponta a ponta com cliente MCP externo usando somente as tools read-only do MVP; a prova local está registrada na [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). `design.write` depende de decisão futura e `code.patch` não está implementado. Não há tool MCP que altere designs ou arquivos no runtime atual.
+## Manutenção interna por MCP
+
+O mantenedor confirmou que manutenção e correção assistidas por IA via MCP fazem parte do MVP, sem acesso MCP para clientes. O superadmin deverá gerar uma autorização de controle com validade escolhida entre `30m`, `1h`, `3h`, `6h`, `12h` e `24h`; após expirar, uma nova autorização será necessária. A definição de quais operações a IA pode executar, de quais mutações exigem aprovação, do escopo de tenant/alvo e do tratamento de código/schema está pendente na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). Até esse contrato ser fechado e revisado, o runtime continua read-only e não há autorização para SQL arbitrário ou `code.patch`.
+
+O Gate 5 já validou o transporte e as tools read-only com cliente MCP externo na [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). Essa evidência não cobre a autorização temporária nem tools de manutenção; a revisão de segurança e os testes dessa extensão serão necessários antes de considerar o suporte remoto entregue.
