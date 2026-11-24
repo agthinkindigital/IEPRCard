@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Correlação HTTP e persistência minimizada implementadas; consulta superadmin e propagação assíncrona pendentes |
+| Status | Correlação HTTP, persistência minimizada e consulta superadmin implementadas; propagação assíncrona pendente |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
@@ -33,7 +33,7 @@
 - A telemetria de negócio e a telemetria operacional diária de lotes estão implementadas e documentadas em [`docs/08-telemetria.md`](../08-telemetria.md), incluindo painel por perfil, previsão configurável e aplicação de ajustes no início do worker.
 - A #94 implementa correlation ID server-side nos 30 entrypoints PHP, ignora valores recebidos do cliente e compartilha o UUIDv4 entre resposta MCP e auditoria; commit `dd34c1d`, CI [45424728843](https://github.com/agthinkindigital/IEPRCard/actions/runs/45424728843).
 - A #95 adiciona `eventos_tecnicos`, persiste um evento allowlisted por request em modo best-effort, e expurga registros em lotes limitados usando retenção configurável (padrão de 30 dias, 1–3650) no início da execução agendada. O painel `/telemetria` mantém o valor ativo/pendente na configuração versionada existente. Não armazena PII, IDs internos, IP/UA, rota dinâmica, query string, headers, body ou erro livre. Persistência usa rota canônica de uma lista permitida. CI #45470771467 passou em MySQL 8.4, MariaDB 10.11 e PDF; revisão QA aprovada.
-- O mantenedor escolheu consulta exclusiva ao superadmin e omissão de IDs internos; mockup e guia da consulta foram aprovados em 2026-11-24. A tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), dependente da #95. A propagação assíncrona continua na E08.4 da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
+- O mantenedor escolheu consulta exclusiva ao superadmin e omissão de IDs internos; mockup e guia da consulta foram aprovados em 2026-11-24. A tela foi concluída na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), commit `45adece`, com CI [45474514566](https://github.com/agthinkindigital/IEPRCard/actions/runs/45474514566) verde em MySQL 8.4, MariaDB 10.11 e PDF. A propagação assíncrona continua na E08.4 da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 
 ## Alternativas consideradas
 

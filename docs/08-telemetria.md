@@ -9,9 +9,9 @@ As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; 
 
 Eventos técnicos HTTP são armazenados separados da telemetria de negócio; a consulta exclusiva pelo superadmin está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96). O correlation ID server-side está na [#94](https://github.com/agthinkindigital/IEPRCard/issues/94) e a persistência/expurgo na [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). O contrato e as regras de minimização estão no [ADR-0011](adr/0011-observabilidade-golden-signals.md). A retenção tem padrão de 30 dias, configurável pelo superadmin entre 1 e 3650 dias; eventos não armazenam `tenant_id` nem `subcliente_id`.
 
-### Consulta técnica superadmin — mockup aprovado; implementação pendente
+### Consulta técnica superadmin — implementada em DEV
 
-O [mockup da consulta técnica](../design-system/mockups/admin-technical-events-mockup.svg) e este guia foram aprovados em 2026-11-24. A implementação está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96) e depende da persistência da [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). A tela é exclusiva ao superadmin e não altera a visão existente de Cliente/Subcliente.
+O [mockup da consulta técnica](../design-system/mockups/admin-technical-events-mockup.svg) e este guia foram aprovados em 2026-11-24. A tela read-only foi concluída em [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), commit `45adece`, após a persistência da [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). O CI [45474514566](https://github.com/agthinkindigital/IEPRCard/actions/runs/45474514566) passou em MySQL 8.4, MariaDB 10.11 e PDF. O acesso ativo é validado no servidor para o superadmin global; o atalho aparece apenas na telemetria administrativa e a página não altera as visões de Cliente/Subcliente.
 
 - Filtrar por período, categoria, rota e correlation ID; pesquisar e navegar pelos resultados em páginas de até 50 eventos, mais recentes primeiro. Selecionar um correlation ID reaplica o filtro correspondente. Não há filtros por Sede/unidade, pois os IDs internos não serão armazenados.
 - Exibir data/hora UTC, chave de evento, rota, resultado, duração e parte do correlation ID; os resultados só poderão usar campos allowlisted do [ADR-0011](adr/0011-observabilidade-golden-signals.md).
