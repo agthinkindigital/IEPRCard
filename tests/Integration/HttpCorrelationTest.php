@@ -20,6 +20,7 @@ putenv('DB_SQLITE_PATH=' . $directory . DIRECTORY_SEPARATOR . 'http-correlation.
 $database = dbConnect();
 schemaGarantirEstrutura($database, 'dev');
 unset($database);
+unset($database);
 
 $portProbe = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
 if ($portProbe === false) {
@@ -47,6 +48,7 @@ try {
         $context = stream_context_create(['http' => [
             'method' => 'GET',
             'ignore_errors' => true,
+            'follow_location' => 0,
             'header' => "X-Correlation-ID: client-controlled-id\r\n",
             'timeout' => 2,
         ]]);
@@ -95,7 +97,7 @@ try {
         }
     }
     sort($entrypoints, SORT_STRING);
-    if (count($entrypoints) !== 30) {
+    if (count($entrypoints) !== 31) {
         throw new RuntimeException('The HTTP correlation coverage inventory must match all public PHP entrypoints; found ' . count($entrypoints) . '.');
     }
 
@@ -109,6 +111,7 @@ try {
             'validar.php' => '/validar',
             'portal/index.php' => '/portal',
             'portal/carteirinha.php' => '/portal/carteirinha/1/frente',
+            'admin/eventos-tecnicos.php' => '/admin/eventos-tecnicos.php',
             'telemetria.php' => '/telemetria',
             default => '/' . $entrypoint,
         };

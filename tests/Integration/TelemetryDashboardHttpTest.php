@@ -126,6 +126,18 @@ for ($offset = 1; $offset <= 3; $offset++) {
         'queue_depth' => $offset * 2, 'failures' => $offset % 2,
     ], time() - ($offset * 86400));
 }
+$technicalEventInsert = $pdo->prepare(
+    'INSERT INTO eventos_tecnicos (correlation_id, categoria, evento_chave, rota, status_http, duracao_ms, criado_em) '
+    . 'VALUES (:correlation, :category, :event_key, :route, :status, :duration, :created)'
+);
+$technicalEventNow = time();
+for ($offset = 1; $offset <= 52; $offset++) {
+    $technicalEventInsert->execute([
+        'correlation' => sprintf('e0000000-0000-4000-8000-%012d', $offset), 'category' => 'tenant',
+        'event_key' => 'http.response', 'route' => 'tenant.issuance', 'status' => $offset === 2 ? 500 : 200,
+        'duration' => $offset * 10, 'created' => gmdate('Y-m-d H:i:s', $technicalEventNow - $offset),
+    ]);
+}
 unset($pdo);
 
 $createSession = static function (string $name, array $values) use ($directory): string {
@@ -200,12 +212,57 @@ try {
     }
     if (!$ready) throw new RuntimeException('Telemetry dashboard HTTP test server did not become ready.');
 
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($technicalBody, 'Consulta de eventos técnicos')
+        || !str_contains($technicalBody, 'Correlation ID') || !str_contains($technicalBody, 'Atualizar resultados')) {
+        throw new RuntimeException('The technical events page must be reachable by an active superadmin and render its approved read-only filters. Status=' . $status . '; response=' . substr(trim(preg_replace('/\\s+/', ' ', strip_tags($technicalBody))), 0, 240));
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?categoria=tenant&rota=tenant.issuance&periodo=1', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($technicalBody, '1–50 de 52 eventos')
+        || !str_contains($technicalBody, 'e0000000…0001') || !str_contains($technicalBody, 'HTTP 500')
+        || str_contains($technicalBody, 'e0000000…0052')) {
+        throw new RuntimeException('Technical event filters must return only the newest fifty allowlisted records in stable order.');
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?categoria=tenant&rota=tenant.issuance&periodo=1&pagina=2', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($technicalBody, '51–52 de 52 eventos')
+        || !str_contains($technicalBody, 'e0000000…0052') || !str_contains($technicalBody, 'Página 2 de 2')) {
+        throw new RuntimeException('Technical event pagination must return the remaining records without loading the full history.');
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?categoria=tenant&rota=tenant.issuance&periodo=2', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($technicalBody, '1–50 de 52 eventos')) {
+        throw new RuntimeException('Technical event period filters must allow any whole-day window within the configured retention.');
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?correlation_id=not-a-uuid', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 400 || !str_contains($technicalBody, 'Não foi possível aplicar os filtros')) {
+        throw new RuntimeException('Technical event filters must reject malformed correlation IDs.');
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?correlation_id=ffffffff-ffff-4fff-8fff-ffffffffffff', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($technicalBody, 'Nenhum evento corresponde aos filtros selecionados.')) {
+        throw new RuntimeException('Technical event query must show a safe empty-result state for a valid unmatched correlation ID.');
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?periodo=90', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 400 || str_contains($technicalBody, '90')) {
+        throw new RuntimeException('Technical event filters must reject periods outside active retention.');
+    }
+    [$status, $technicalBody, $technicalHeaders] = $request('/admin/eventos-tecnicos.php?categoria=private', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 400 || !str_contains($technicalBody, 'Não foi possível aplicar os filtros')
+        || str_contains($technicalBody, 'holder.email@example.test')) {
+        throw new RuntimeException('Technical events page must reject categories outside its server allowlist without reflecting submitted values.');
+    }
+    [$status] = $postRequest('/admin/eventos-tecnicos.php', 'admin.ieprcard.test', $adminCookie, ['action' => 'delete']);
+    if ($status !== 405) throw new RuntimeException('Technical events page must reject every mutating request method.');
+    [$status, , $technicalHeaders] = $request('/admin/eventos-tecnicos.php', 'admin.ieprcard.test', $clientCookie);
+    if ($status !== 303 || telemetryDashboardHeaderValue($technicalHeaders, 'Location') !== '/admin/login.php') {
+        throw new RuntimeException('Technical events must remain inaccessible to tenant and unit sessions.');
+    }
+
     [$status, $body, $headers] = $request('/telemetria/', 'admin.ieprcard.test', $adminCookie);
     if ($status !== 200 || !str_contains($body, 'Carteirinhas geradas')
         || !str_contains($body, '<strong class="metric-value">105</strong>')
         || !str_contains($body, 'Histórico insuficiente') || !str_contains($body, 'Fila atual')
         || !str_contains($body, 'Escopo global') || str_contains($body, 'holder.email@example.test')
         || !str_contains($body, 'Configuração de lotes') || !str_contains($body, 'Nenhuma versão ativa')
+        || !str_contains($body, 'Consultar eventos técnicos')
         || str_contains($body, 'Unidade alheia')
         || !str_contains(implode("\n", $headers), 'no-store')) {
         throw new RuntimeException('Admin dashboard assertion failed: status=' . $status . ', body=' . substr(trim(preg_replace('/\s+/', ' ', strip_tags($body))), 0, 1800) . ', cache=' . (telemetryDashboardHeaderValue($headers, 'Cache-Control') ?? 'missing'));
@@ -315,7 +372,8 @@ try {
     if ($status !== 200 || !str_contains($body, 'Visão da rede')
         || !str_contains($body, '<strong class="metric-value">6</strong>')
         || str_contains($body, 'Fila atual') || str_contains($body, 'telemetria.rede')
-        || str_contains($body, 'Configuração de lotes') || str_contains($body, 'name="lote_maximo_registros"')) {
+        || str_contains($body, 'Configuração de lotes') || str_contains($body, 'Consultar eventos técnicos')
+        || str_contains($body, 'name="lote_maximo_registros"')) {
         throw new RuntimeException('Client dashboard must show only its own network and omit all operational metrics.');
     }
     [$status, $body] = $request('/telemetria/?escopo=unit&subcliente_id=' . $fixture['subcliente_id'], $rootHost, $clientCookie);
@@ -338,7 +396,8 @@ try {
         || !str_contains($body, '<strong class="metric-value">2</strong>')
         || str_contains($body, 'Visão da rede') || str_contains($body, 'Unidade Leste')
         || str_contains($body, 'Selecionar unidade') || str_contains($body, 'Fila atual')
-        || str_contains($body, 'Configuração de lotes') || str_contains($body, 'name="lote_maximo_registros"')) {
+        || str_contains($body, 'Configuração de lotes') || str_contains($body, 'Consultar eventos técnicos')
+        || str_contains($body, 'name="lote_maximo_registros"')) {
         throw new RuntimeException('Subclient dashboard must remain fixed to its own unit without operational metrics or unit filters.');
     }
     [$status, $body] = $request('/telemetria/?escopo=network', $unitHost, $unitCookie);

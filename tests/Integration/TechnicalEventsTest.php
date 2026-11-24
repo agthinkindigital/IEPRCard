@@ -5,6 +5,11 @@ require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/technical_events.php';
 
+$technicalPageRoute = technicalEventsCanonicalRoute('/admin/eventos-tecnicos.php?categoria=admin', '/admin/eventos-tecnicos.php');
+if ($technicalPageRoute !== ['categoria' => 'admin', 'rota' => 'admin.technical_events']) {
+    throw new RuntimeException('Technical events query page must use its canonical server-side route key and discard query parameters.');
+}
+
 foreach (tenantTestConnections() as $driver => $pdo) {
     $migrations = schemaAplicarMigracoes($pdo, 'test');
     if (end($migrations) !== '0026_technical_events') {

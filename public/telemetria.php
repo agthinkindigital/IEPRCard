@@ -386,6 +386,7 @@ http_response_code(http_response_code() ?: $httpStatus);
             <p class="eyebrow">DADOS AGREGADOS · <?= telemetryPageEscape($scopeLabel) ?></p>
             <h1><?= $role === 'superadmin' ? 'Telemetria e operação' : ($role === 'titular_cliente' ? 'Atividade da rede' : 'Atividade da unidade') ?></h1>
             <p class="intro">Período em UTC: <?= telemetryPageEscape($from) ?> a <?= telemetryPageEscape($to) ?>.</p>
+            <?php if ($role === 'superadmin'): ?><a class="technical-events-back" href="/admin/eventos-tecnicos.php">Consultar eventos técnicos</a><?php endif; ?>
         </section>
 
         <?php if ($errorMessage !== ''): ?>
