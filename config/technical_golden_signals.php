@@ -84,7 +84,7 @@ function technicalEventsGoldenSignals(
             ? $observedCount / ($elapsedSeconds / 3600) : null,
         'p95_ms' => $p95,
         'sample_size' => $sampleSize,
-        'sampled' => $observedCount > $sampleSize,
+        'sampled' => $observedCount >= $sampleLimit,
         'http_5xx_count' => $http5xxCount,
         'http_5xx_rate' => $observedCount > 0 ? $http5xxCount / $observedCount : null,
     ];

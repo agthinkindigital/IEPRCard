@@ -92,6 +92,11 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             'created' => '2026-11-24 11:00:00',
         ]);
     }
+    $atLimitSignals = technicalEventsGoldenSignals($pdo, '2026-11-24', '2026-11-24', 30, $metricsNow);
+    if ($atLimitSignals['observed_count'] !== 5000 || $atLimitSignals['sample_size'] !== 5000
+        || $atLimitSignals['sampled'] !== true) {
+        throw new RuntimeException($driver . ': reaching the 5000-response limit must be identified as a sampled percentile.');
+    }
     $metricSeed->execute([
         'id' => 'f1000000-0000-4000-8000-000000005001', 'key' => 'http.response',
         'category' => 'system', 'route' => 'system.index', 'status' => 200, 'duration' => 9000,
