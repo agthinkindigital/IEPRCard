@@ -115,7 +115,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 1. **Carga operacional:** painel Admin com dados diários, lote recomendado e pico previsto na janela X; ajustes manuais aplicam após pedido de reinício do worker. O cálculo e o comportamento estão definidos em ADR-0011.
 2. **SLA e recuperação:** objetivos internos de NFR-15/16 aceitos, sem compromisso comercial. Viabilidade no plano e condições de medição estão em ADR-0012.
 3. **Dados pessoais:** política em `docs/01`; requisitos de backup e restauração em ADR-0012.
-4. **MCP:** disponível desde o primeiro lançamento, inclusive em produção. Além das tools read-only, grants temporários exclusivos do superadmin delimitam tenants/unidades e podem habilitar publicação de arquivos rastreados somente em `DEV`, por GitHub API, com PAT cifrado e checks obrigatórios. A revisão final de segurança/CI está na #89. Não há escrita direta em `PROD`, SQL arbitrário ou shell. Ver [docs/09](../09-mcp.md) e ADR-0009.
+4. **MCP:** disponível desde o primeiro lançamento, inclusive em produção. Além das tools read-only, grants temporários exclusivos do superadmin delimitam tenants/unidades e podem habilitar publicação de arquivos rastreados somente em `DEV`, por GitHub API, com PAT cifrado e checks obrigatórios. A revisão final de segurança e o CI foram aprovados na #89 em 2026-11-24. Não há escrita direta em `PROD`, SQL arbitrário ou shell. Ver [docs/09](../09-mcp.md) e ADR-0009.
 5. **Região:** uma única região atende ao lançamento; multirregião não é requisito.
 6. **Domínios:** domínios próprios dos Clientes são requisito do lançamento. Cada domínio deve ser verificado, vinculado unicamente a um tenant e servido com TLS; a hospedagem precisa aceitar múltiplos nomes apontando para a mesma aplicação.
 7. **Pagamentos:** cobranças SaaS, cobranças de titulares e repasses estão fora do MVP. O fluxo plataforma→Cliente por marketplace/split é apenas uma direção futura, descrita em `docs/07` e ADR-0008; o código de webhook existente será referência para avaliação, sem integração no lançamento.
@@ -638,7 +638,7 @@ O alvo arquitetural usa eventos de domínio e outbox transacional, com efeitos e
 ### 6.3. APIs e contratos
 
 - **Portal do titular / validação QR:** rotas HTTP server-rendered; contrato de request/response documentado em OpenAPI 3.0 na Fase de contratos (payload de login, resposta de validação com `status`, `motivo_codigo`, sem CPF).
-- **MCP desde o primeiro lançamento:** JSON-RPC 2.0 sobre Streamable HTTP sem sessão no endpoint remoto; cada POST é autenticado e autorizado isoladamente, sem processo residente. O runtime read-only registra `system.read`, `telemetry.read` e `db.inspect`; grants superadmin podem habilitar publicação controlada somente em `DEV`, com alvos congelados, token de curta duração e revalidação. A revisão final de segurança/CI segue na #89. Não há escrita MCP em `PROD`, SQL arbitrário ou shell. Ver [docs/09](../09-mcp.md) e ADR-0009.
+- **MCP desde o primeiro lançamento:** JSON-RPC 2.0 sobre Streamable HTTP sem sessão no endpoint remoto; cada POST é autenticado e autorizado isoladamente, sem processo residente. O runtime read-only registra `system.read`, `telemetry.read` e `db.inspect`; grants superadmin podem habilitar publicação controlada somente em `DEV`, com alvos congelados, token de curta duração e revalidação. A revisão final de segurança/CI foi aprovada na #89 em 2026-11-24. Não há escrita MCP em `PROD`, SQL arbitrário ou shell. Ver [docs/09](../09-mcp.md) e ADR-0009.
 - **Integrações externas:** wrappers em `api/` com timeout, retry, circuit breaker e erro normalizado. Nenhuma credencial em log.
 - **Versionamento:** contratos de webhook e MCP versionados por campo `versao` no payload; mudanças quebráveis seguem Expand & Contract.
 
@@ -749,7 +749,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | [0006](../adr/0006-event-bus-e-outbox.md) | Event bus interno com outbox transacional | Proposta |
 | [0007](../adr/0007-renderizacao-nativa-e-fila.md) | Renderização WebP/PDF nativa e fila em banco | Aceita (baseline) |
 | [0008](../adr/0008-webhooks-idempotentes-e-segredos.md) | Webhooks idempotentes, HMAC e sigilo de credenciais | Aceita + ajustes |
-| [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP stateless com escopos e manutenção privilegiada temporária | Grants e publicação limitada a DEV implementados; validação final/CI na #89 |
+| [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP stateless com escopos e manutenção privilegiada temporária | Grants e publicação limitada a DEV implementados; revisão final/CI aprovados na #89 |
 | [0010](../adr/0010-self-healing-apenas-dev.md) | Self-healing restrito a dev/test e migrações expand-only | Proposta |
 | [0011](../adr/0011-observabilidade-golden-signals.md) | Observabilidade com `correlation_id` e golden signals | Proposta |
 | [0012](../adr/0012-ci-deploy-e-backup.md) | CI, perfil de hospedagem, deploy e recuperação | Proposta |

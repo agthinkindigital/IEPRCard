@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Transporte, grants temporários e publicação limitada a DEV implementados; CI passou em 2026-11-24, revisão humana de segurança continua obrigatória antes da promoção |
+| Status | Transporte, grants temporários e publicação limitada a DEV implementados; revisão final de segurança e CI aprovados em 2026-11-24; promoção PROD segue PR, CI e revisão do mantenedor |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + dono do produto + segurança |
 | Relacionados | [SAD §6.3, §9 R2](../architecture/SAD.md), ADR-0001, ADR-0011 |
