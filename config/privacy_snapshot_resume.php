@@ -177,7 +177,8 @@ function privacySnapshotResumeTransformRow(
     string $table,
     array $row,
     array $policies,
-    callable $encryptSubject
+    callable $encryptSubject,
+    ?PDOStatement $subjectLookup = null
 ): array {
     privacySnapshotAssertSupportedArtifacts($table, $row);
     privacySnapshotStripUnrecoverableSecrets($table, $row);
@@ -219,7 +220,7 @@ function privacySnapshotResumeTransformRow(
         throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_MISSING');
     }
     $recordType = privacySnapshotRecordType($table);
-    $lookup = $pdo->prepare(
+    $lookup = $subjectLookup ?? $pdo->prepare(
         'SELECT s.id, s.referencia, s.estado FROM privacy_subject_records r '
         . 'JOIN privacy_subjects s ON s.id = r.privacy_subject_id '
         . 'WHERE r.tipo_registro = :type AND r.registro_id = :record LIMIT 1'
@@ -280,6 +281,11 @@ function privacySnapshotResumeStage(
     $tableNames = array_keys($catalog);
     $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     $policies = privacySnapshotPersonalFields();
+    $subjectLookup = $pdo->prepare(
+        'SELECT s.id, s.referencia, s.estado FROM privacy_subject_records r '
+        . 'JOIN privacy_subjects s ON s.id = r.privacy_subject_id '
+        . 'WHERE r.tipo_registro = :type AND r.registro_id = :record LIMIT 1'
+    );
     $used = 0;
     $deadline = microtime(true) + $timeLimitSeconds;
     while ($state['table_index'] < count($tableNames) && $used < $rowLimit && microtime(true) < $deadline) {
@@ -322,7 +328,7 @@ function privacySnapshotResumeStage(
         $currentRow = $firstRow;
         do {
             $row = $currentRow;
-            $transformed = privacySnapshotResumeTransformRow($pdo, $table, $row, $policies, $encryptSubject);
+            $transformed = privacySnapshotResumeTransformRow($pdo, $table, $row, $policies, $encryptSubject, $subjectLookup);
             $entryBytes = strlen(json_encode(
                 ['row' => $transformed['row'], 'envelope' => $transformed['envelope']],
                 JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
