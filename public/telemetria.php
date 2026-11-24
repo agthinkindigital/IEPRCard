@@ -440,7 +440,7 @@ http_response_code(http_response_code() ?: $httpStatus);
 
             <section class="panel" aria-labelledby="daily-title">
                 <h2 id="daily-title">Demanda diária de emissão</h2>
-                <p>Carteirinhas solicitadas por dia. Os valores são agregados.</p>
+                <p>Exibindo até os 30 dias mais recentes com emissão no período selecionado. Dias sem emissão não aparecem; os valores são agregados.</p>
                 <?php $series = []; foreach ($rows as $row) if ($row['categoria'] === 'issuance' && $row['evento_chave'] === 'card.generated') $series[$row['dia']] = (int) $row['quantidade']; ksort($series); ?>
                 <?php if ($series === []): ?><p class="muted">Sem registros de emissão neste período.</p><?php else: ?>
                     <div class="daily-list" role="list" aria-label="Emissões diárias">

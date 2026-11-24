@@ -347,6 +347,49 @@ try {
         throw new RuntimeException('An empty business telemetry range must be shown as a readable page state.');
     }
 
+    $issuanceWindowStart = $today->modify('-50 days')->format('Y-m-d');
+    $issuanceWindowEnd = $today->modify('-1 day')->format('Y-m-d');
+    $issuancePdo = dbConnect($database);
+    $issuanceSeed = $issuancePdo->prepare(
+        'INSERT INTO telemetria_diaria (tenant_id, subcliente_id, subcliente_scope_id, dia, categoria, evento_chave, quantidade, atualizado_em) '
+        . 'VALUES (:tenant, NULL, 0, :day, \'issuance\', \'card.generated\', 1, :updated)'
+    );
+    for ($offset = 9; $offset <= 40; $offset++) {
+        $issuanceSeed->execute([
+            'tenant' => $fixture['tenant_id'], 'day' => $today->modify('-' . $offset . ' days')->format('Y-m-d'),
+            'updated' => gmdate('Y-m-d H:i:s'),
+        ]);
+    }
+    $totalQuery = $issuancePdo->prepare(
+        "SELECT COALESCE(SUM(quantidade), 0) FROM telemetria_diaria WHERE categoria = 'issuance' AND evento_chave = 'card.generated' "
+        . 'AND dia >= :window_start AND dia <= :window_end'
+    );
+    $totalQuery->execute(['window_start' => $issuanceWindowStart, 'window_end' => $issuanceWindowEnd]);
+    $expectedIssuedTotal = (int) $totalQuery->fetchColumn();
+    unset($issuancePdo);
+    [$status, $body] = $request(
+        '/telemetria/?de=' . $issuanceWindowStart . '&ate=' . $issuanceWindowEnd,
+        'admin.ieprcard.test', $adminCookie
+    );
+    $visibleEmissionDays = preg_match_all('/<div class="daily-row" role="listitem">/', $body);
+    $oldestSeededDay = $today->modify('-40 days')->format('Y-m-d');
+    $newestSeededDay = $today->modify('-9 days')->format('Y-m-d');
+    if ($status !== 200 || $visibleEmissionDays !== 30
+        || str_contains($body, 'datetime="' . $oldestSeededDay . '"')
+        || !str_contains($body, 'datetime="' . $newestSeededDay . '"')
+        || !str_contains($body, 'class="metric-value">' . number_format($expectedIssuedTotal, 0, ',', '.') . '</strong>')
+        || !str_contains($body, '30 dias mais recentes com emissão')
+        || !str_contains($body, 'Dias sem emissão não aparecem')) {
+        throw new RuntimeException(sprintf(
+            'The issuance chart must explain its 30-day data-bearing window while totals retain the full selected period. status=%d rows=%s oldest=%d newest=%d total=%d total-visible=%d caption=%d missing=%d',
+            $status, var_export($visibleEmissionDays, true), str_contains($body, 'datetime="' . $oldestSeededDay . '"') ? 1 : 0,
+            str_contains($body, 'datetime="' . $newestSeededDay . '"') ? 1 : 0, $expectedIssuedTotal,
+            str_contains($body, 'class="metric-value">' . number_format($expectedIssuedTotal, 0, ',', '.') . '</strong>') ? 1 : 0,
+            str_contains($body, '30 dias mais recentes com emissão') ? 1 : 0,
+            str_contains($body, 'Dias sem emissão não aparecem') ? 1 : 0
+        ));
+    }
+
     $backupTable = 'telemetria_diaria_failure_' . bin2hex(random_bytes(4));
     $failurePdo = dbConnect($database);
     if ($database['DB_DRIVER'] === 'mysql') {

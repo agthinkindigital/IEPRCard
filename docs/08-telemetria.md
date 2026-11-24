@@ -28,6 +28,7 @@ Os filtros de período usam janelas suportadas pelo serviço de leitura. A previ
 ### Guia funcional para aprovação da interface
 
 - Uma única página de painel adapta título, métricas e filtros ao escopo resolvido pela sessão. A seleção do período e da unidade afeta apenas as leituras permitidas ao perfil; nenhum ID enviado pelo navegador amplia o escopo autorizado.
+- A série diária de emissão lista até os 30 dias mais recentes com emissão dentro do período selecionado; datas sem emissão não aparecem. Os cartões de métricas continuam resumindo todo o período.
 - A visão Admin separa métricas de negócio e operação. Permite escolher global, cliente ou unidade. A configuração de lotes aparece apenas para quem tem permissão administrativa: valores ativos e pendentes, versão, janela de previsão, valores recomendados/previstos e campos editáveis. Salvar exige confirmação e cria uma versão pendente. A alteração entra em vigor no próximo início do worker, não reinicia PHP-FPM nem interrompe ou altera lotes em andamento; em hospedagem compartilhada, o próximo início é a execução agendada seguinte.
 - A visão Cliente resume a rede e permite filtrar uma unidade e o período. A visão Subcliente fixa a unidade no backend e não apresenta seletor de unidade.
 - Estados cobertos: carregando, sem dados no período, histórico insuficiente para previsão, falha de leitura e configuração salva aguardando worker. Estado e orientação aparecem em texto, não apenas por cor.
