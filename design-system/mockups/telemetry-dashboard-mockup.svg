@@ -84,27 +84,28 @@
 
   <rect x="84" y="978" width="1268" height="354" rx="12" class="card"/>
   <text x="108" y="1017" class="section">Saúde técnica · somente Admin SaaS</text>
-  <text x="108" y="1044" class="small muted">Escopo global · requests HTTP e fila de emissão · janela dos últimos 30 dias UTC · retenção ativa: 30 dias</text>
+  <text x="108" y="1044" class="small muted">Escopo global · respostas HTTP registradas e fila de emissão · janela dos últimos 30 dias UTC · retenção ativa: 30 dias</text>
   <rect x="108" y="1062" width="294" height="124" rx="10" class="lightblue"/>
-  <text x="126" y="1090" class="label muted">TRÁFEGO HTTP</text>
+  <text x="126" y="1090" class="label muted">RESPOSTAS HTTP OBSERVADAS</text>
   <text x="126" y="1134" class="heading">1.248</text>
-  <text x="126" y="1162" class="tiny muted">requests · 1,7 por hora em média</text>
+  <text x="126" y="1162" class="tiny muted">registradas · 1,7 por hora em média</text>
   <rect x="418" y="1062" width="294" height="124" rx="10" class="lightblue"/>
   <text x="436" y="1090" class="label muted">LATÊNCIA P95</text>
   <text x="436" y="1134" class="heading">148 ms</text>
-  <text x="436" y="1162" class="tiny muted">amostra recente · n = 1.248</text>
+  <text x="436" y="1162" class="tiny muted">amostra registrada · n = 1.248</text>
   <rect x="728" y="1062" width="294" height="124" rx="10" class="lightamber"/>
   <text x="746" y="1090" class="label muted">RESPOSTAS HTTP 5XX</text>
   <text x="746" y="1134" class="heading">12 · 0,96%</text>
-  <text x="746" y="1162" class="tiny muted">12 de 1.248 requests na janela</text>
+  <text x="746" y="1162" class="tiny muted">12 de 1.248 respostas registradas</text>
   <rect x="1038" y="1062" width="290" height="124" rx="10" class="lightgreen"/>
   <text x="1056" y="1090" class="label muted">FILA DE EMISSÃO · AGORA</text>
   <text x="1056" y="1134" class="heading">23 jobs</text>
   <text x="1056" y="1162" class="tiny muted">banco · atualizado às 09:42 UTC</text>
   <rect x="108" y="1202" width="1220" height="108" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
-  <text x="126" y="1232" class="small">Fontes: http.response e contagem de lotes aguardando_mapa/na_fila; workers não entram no tráfego HTTP.</text>
-  <text x="126" y="1258" class="small muted">P95 usa até 5.000 respostas HTTP mais recentes dentro da janela e mostra o tamanho da amostra; n &lt; 20 é indicativo.</text>
-  <text x="126" y="1284" class="small muted">Sem dados após retenção ativa: mostrar “sem amostra”. Sem PII, IP/UA, IDs internos, CPU, disco ou PHP-FPM.</text>
+  <text x="126" y="1232" class="small">Fonte HTTP: eventos http.response persistidos em modo best-effort; fila: lotes aguardando_mapa/na_fila.</text>
+  <text x="126" y="1258" class="small muted">Totais, P95 e taxa 5xx cobrem apenas respostas observadas; falhas de registro podem subcontar requests.</text>
+  <text x="126" y="1284" class="small muted">Sem indicador independente de completude. P95: até 5.000 respostas registradas; n &lt; 20 é indicativo.</text>
+  <text x="126" y="1304" class="small muted">Sem dados: “sem amostra”. Sem PII, IP/UA, IDs internos, CPU, disco ou PHP-FPM.</text>
 
   <!-- Cliente -->
   <g transform="translate(0,420)">
@@ -155,10 +156,10 @@
   <text x="576" y="2127" class="small">Todos os clientes · últimos 30 dias</text>
   <rect x="560" y="2154" width="320" height="170" rx="10" class="card"/>
   <text x="578" y="2182" class="label">Saúde técnica · global</text>
-  <text x="578" y="2210" class="small">1.248 requests · P95 148 ms · n=1.248</text>
-  <text x="578" y="2236" class="small">5xx: 12 (0,96%) · fila: 23 jobs agora</text>
+  <text x="578" y="2210" class="small">1.248 obs. · P95 148 ms · n=1.248</text>
+  <text x="578" y="2236" class="small">5xx: 12 (0,96% obs.) · fila: 23</text>
   <text x="578" y="2262" class="tiny muted">Últimos 30 dias UTC · fonte: banco</text>
-  <text x="578" y="2285" class="tiny muted">Sem PII ou IDs de escopo</text>
+  <text x="578" y="2285" class="tiny muted">HTTP best-effort; totais podem subcontar.</text>
   <g transform="translate(0,190)">
   <rect x="560" y="2154" width="320" height="80" rx="10" class="card"/>
   <text x="578" y="2182" class="tiny muted">PICO P95 · 30 DIAS COMPLETOS</text>

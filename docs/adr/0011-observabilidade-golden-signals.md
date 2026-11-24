@@ -15,12 +15,13 @@
 
 - Todo request recebe `correlation_id` (UUID v4) gerado no servidor e devolvido no header. A cobertura dos 30 entrypoints HTTP e a reutilização pelo MCP estão implementadas em #94; propagação para logs técnicos persistidos, outbox, worker, gateways e webhooks continua pendente.
 - Eventos técnicos estruturados são persistidos em armazenamento próprio e consultáveis somente pelo superadmin (#96). A implementação não reutiliza `telemetria_eventos`, que permanece exclusiva à telemetria de negócio.
+- A persistência de `http.response` no encerramento do request é best-effort. Agregados de tráfego, latência e 5xx derivados de `eventos_tecnicos` descrevem somente respostas observadas e podem subcontar requests; sem uma fonte independente, não se afirma completude nem uma taxa de perda.
 - O evento técnico usa apenas campos allowlisted necessários ao diagnóstico: correlation ID, categoria, chave de evento/rota, duração, resultado e horário UTC. Eventos HTTP contêm status HTTP; eventos do worker usam `status_http = 0` para “não aplicável”, nunca como código HTTP. Não registrar CPF, identificadores de titular/usuário, `tenant_id`, `subcliente_id`, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção.
 - A retenção padrão dos eventos técnicos é de 30 dias, configurável pelo superadmin entre 1 e 3650 dias no painel de telemetria existente; a nova versão entra em vigor no início da próxima execução agendada. O cron expurga registros vencidos em lotes limitados.
 - Golden signals planejados no gateway/entrypoint:
-  - **Latência:** p95/p99 por rota e por motor de render;
-  - **Tráfego:** requests/h por rota, lotes/h, carteirinhas/h e leituras QR/h; eventos técnicos não carregam IDs de tenant/unidade;
-  - **Erros:** 5xx, `COTA_EXCEDIDA`, webhook rejeitado, falha de render, DLQ;
+  - **Latência:** p95/p99 por rota e por motor de render; percentis HTTP derivados dos eventos atuais descrevem apenas respostas observadas;
+  - **Tráfego:** requests/h por rota, lotes/h, carteirinhas/h e leituras QR/h; contagens HTTP persistidas são best-effort e podem subcontar; eventos técnicos não carregam IDs de tenant/unidade;
+  - **Erros:** 5xx, `COTA_EXCEDIDA`, webhook rejeitado, falha de render, DLQ; a taxa HTTP usa apenas respostas observadas;
   - **Saturação:** sinais acessíveis à aplicação, como conexões MySQL e backlog da fila, quando houver fonte confiável. CPU, disco e `pm.max_children` não serão afirmados em hospedagem compartilhada sem fonte disponível.
 - Telemetria de negócio, operacional e técnica ficam separadas: `telemetria_eventos` é de negócio; métricas de lote alimentam dashboards operacionais; eventos técnicos são acessíveis somente pelo superadmin. Dados e métricas obedecem à política de privacidade em `docs/01` e `docs/08`.
 - Métricas operacionais de lote registram demanda diária, tempo em fila, duração, throughput, falhas/retries e saturação. `duracao_media_ms` usa média ponderada de milissegundos por registro processado. O painel mostra lote recomendado e pico previsto sobre janela X configurável; o cálculo inicial usa P95 dos picos diários, com 30 dias propostos como padrão e histórico insuficiente sinalizado abaixo de 7 dias.
