@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/config/request_correlation.php';
+
 require_once dirname(__DIR__) . '/config/conn.php';
 require_once dirname(__DIR__) . '/config/mcp_server.php';
 
@@ -51,7 +53,7 @@ function mcpHttpAuthenticateHeader(): string
 function mcpHttpAudit(?array $principal, string $method, string $result, float $startedAt, ?array $request = null): string
 {
     try {
-        return mcpServerWriteAudit(dbConnection(), $principal, $method, $result, $startedAt, $request);
+        return mcpServerWriteAudit(dbConnection(), $principal, $method, $result, $startedAt, $request, httpRequestCorrelationId());
     } catch (Throwable) {
         mcpHttpRespond(503, ['jsonrpc' => '2.0', 'error' => ['code' => -32603, 'message' => 'Service temporarily unavailable.']]);
     }

@@ -1,8 +1,26 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/config/request_correlation.php';
+
 $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
 $requestPath = is_string($requestPath) ? $requestPath : '/';
+if (preg_match('~^/\.well-known/oauth-authorization-server/?$~D', $requestPath) === 1) {
+    require __DIR__ . '/.well-known/oauth-authorization-server.php';
+    return true;
+}
+if (preg_match('~^/\.well-known/oauth-protected-resource/mcp/?$~D', $requestPath) === 1) {
+    require __DIR__ . '/.well-known/oauth-protected-resource-mcp.php';
+    return true;
+}
+if (preg_match('~^/oauth/token/?$~D', $requestPath) === 1) {
+    require __DIR__ . '/oauth/token.php';
+    return true;
+}
+if (preg_match('~^/mcp/?$~D', $requestPath) === 1) {
+    require __DIR__ . '/mcp.php';
+    return true;
+}
 if (preg_match('~^/validar(?:/([^/]+))?/?$~D', $requestPath, $matches) === 1) {
     if (isset($matches[1]) && $matches[1] !== '') {
         $_GET['codigo'] = rawurldecode($matches[1]);

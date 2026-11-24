@@ -129,6 +129,19 @@ try {
         || !in_array('cache-control: no-store', array_map('strtolower', $headers), true)) {
         throw new RuntimeException('MCP server/discover must return versioned stateless capability metadata: ' . $status . ' ' . (string) $response . ' ' . json_encode($headers));
     }
+    $correlationHeader = null;
+    foreach ($headers as $header) {
+        if (stripos($header, 'X-Correlation-ID:') === 0) {
+            $correlationHeader = trim(substr($header, strlen('X-Correlation-ID:')));
+            break;
+        }
+    }
+    $auditCorrelation = $pdo->query("SELECT correlation_id FROM mcp_audit_logs WHERE metodo = 'server/discover' ORDER BY id DESC LIMIT 1")->fetchColumn();
+    if (!is_string($correlationHeader)
+        || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $correlationHeader)
+        || $auditCorrelation !== $correlationHeader) {
+        throw new RuntimeException('MCP response and audit record must share the HTTP correlation ID.');
+    }
     $body = $rpc('ping');
     [$status, $response] = mcpServerHttpRequest($url, 'POST', $body, $rpcHeaders('ping', null, '2026-07-28', $token));
     if ($status !== 200 || !str_contains((string) $response, '"result":{}')) {

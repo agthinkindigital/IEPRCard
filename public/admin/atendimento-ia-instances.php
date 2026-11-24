@@ -1,3 +1,6 @@
+<?php
+require_once dirname(__DIR__, 2) . '/config/request_correlation.php';
+?>
 <section class="panel instance-panel" id="instances" aria-labelledby="instances-title">
     <h2 id="instances-title">Instâncias GOWA e webhooks</h2>
     <p>O cadastro fica desabilitado por padrão. Marque a opção para habilitá-lo nesta instância. Provisionamento e rotação revelam a URL do webhook uma única vez; a rotação invalida imediatamente a URL anterior.</p>

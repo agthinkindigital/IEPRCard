@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/config/request_correlation.php';
+
 require_once dirname(__DIR__) . '/config/conn.php';
 require_once dirname(__DIR__) . '/config/tenant_resolver.php';
 require_once dirname(__DIR__) . '/config/installation_profile.php';

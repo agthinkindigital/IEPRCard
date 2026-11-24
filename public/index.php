@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/config/request_correlation.php';
+
 $heartbeat = getenv('IEPRCARD_LOCAL_HEARTBEAT');
 if ($heartbeat !== false && $heartbeat !== '') {
     @file_put_contents($heartbeat, gmdate('c'), LOCK_EX);
