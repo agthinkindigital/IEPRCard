@@ -33,7 +33,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 
 * **GATE 5 — Servidor MCP & Prontidão de Produção (Após Épico 7):**
 * [x] `TDD-07`, incluindo `db.inspect`, passou na suíte CI SQLite/MySQL/MariaDB e no benchmark PDF: [run 45207558966](https://github.com/agthinkindigital/IEPRCard/actions/runs/45207558966), commit `39bc8b6`.
-* [ ] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. O gate ainda exige prova ponta a ponta com agente externo e preview WebP. A edição MCP aguarda a decisão de escopo de `design.write`; `code.patch` não está implementado. Ver ADR-0009 e [Issue #88](https://github.com/agthinkindigital/IEPRCard/issues/88).
+* [ ] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. Falta comprovar interoperabilidade ponta a ponta com cliente MCP externo usando somente as tools read-only do MVP, conforme ADR-0009 e [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). Preview WebP é validado no Gate 3; `design.write` e `code.patch` estão fora do runtime e não são requisitos do MVP.
 
 
 
