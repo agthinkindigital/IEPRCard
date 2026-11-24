@@ -10,6 +10,7 @@ function privacySnapshotLabelFields(): array
         'designs_carteirinha' => ['nome_layout', 'mapa_campos_json', 'mapeamento_fixo_json'],
         'categorias_titular' => ['nome_categoria'],
         'destinos_backup' => ['nome'],
+        'mcp_support_grants' => ['rotulo'],
     ];
 }
 

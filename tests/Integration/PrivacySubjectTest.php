@@ -292,6 +292,30 @@ try {
     if ($actorMetadata['alterado_por_usuario_id'] !== null) {
         throw new RuntimeException('Operational configuration must not retain a direct user link without its own subject envelope.');
     }
+    $supportGrant = [
+        'id' => 41, 'segredo_hash' => password_hash('live-support-secret', PASSWORD_DEFAULT),
+        'rotulo' => 'Temporary support by owner@example.test', 'criado_por_usuario_id' => 7,
+        'capacidades_json' => '["repo.publish"]', 'revogado_em' => null, 'ultimo_uso_em' => '2026-11-24 12:00:00',
+    ];
+    privacySnapshotStripUnrecoverableSecrets('mcp_support_grants', $supportGrant);
+    privacySnapshotMinimizeOperationalRows('mcp_support_grants', $supportGrant);
+    if ($supportGrant['rotulo'] !== 'Grant revogado no snapshot' || $supportGrant['criado_por_usuario_id'] !== null
+        || $supportGrant['capacidades_json'] !== '[]' || $supportGrant['revogado_em'] === null
+        || password_verify('live-support-secret', $supportGrant['segredo_hash'])) {
+        throw new RuntimeException('Snapshots must revoke MCP grants, remove their personal labels and disable their stored secrets.');
+    }
+    $supportAudit = [
+        'actor_user_id' => 7, 'grant_id' => 41, 'target_tenant_id' => 9, 'target_subcliente_id' => 10,
+        'operation_key' => 'support-operation-key', 'commit_sha' => str_repeat('a', 40), 'correlation_id' => 'support-correlation',
+    ];
+    privacySnapshotMinimizeOperationalRows('mcp_support_audit_logs', $supportAudit);
+    if (array_filter($supportAudit, static fn(mixed $value): bool => $value !== null) !== []) {
+        throw new RuntimeException('Support audit snapshots must remove actor, target and repository-operation identifiers.');
+    }
+    if (!in_array('mcp_support_grant_targets', privacySnapshotOmittedTables(), true)
+        || !in_array('mcp_support_github_config', privacySnapshotOmittedTables(), true)) {
+        throw new RuntimeException('Snapshot policy must omit frozen support targets and encrypted GitHub credentials from both full and resumable snapshots.');
+    }
     $integrationConfiguration = [
         'IEPR_INTEGRATION_KEY' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),
         'IEPR_ANONYMIZATION_KEY' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),

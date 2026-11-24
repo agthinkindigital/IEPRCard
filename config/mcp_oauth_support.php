@@ -29,6 +29,12 @@ function mcpOauthSupportedScopes(): array
     return ['batch.dry_run', 'db.inspect', 'design.read', 'system.read', 'telemetry.read'];
 }
 
+/** Scopes published in discovery include the superadmin-only support capability. */
+function mcpOauthAdvertisedScopes(): array
+{
+    return array_values(array_unique(array_merge(mcpOauthSupportedScopes(), ['repo.publish'])));
+}
+
 /** @param array<string, string>|null $configuration */
 function mcpOauthPublicBaseUrl(?array $configuration = null): string
 {

@@ -132,7 +132,7 @@ $modeLabel = match ($profile['modo'] ?? null) {
         <a href="#installation">Clientes</a><a href="#installation">Domínios</a>
         <a href="/admin/atualizar-schema.php">Operação</a>
         <a class="active" aria-current="page" href="/admin/instalacao.php">Instalação</a>
-        <a href="/admin/backup-destinos.php">Backup externo</a><a href="/admin/atendimento-ia.php">Atendimento e IA</a>
+        <a href="/admin/backup-destinos.php">Backup externo</a><a href="/admin/atendimento-ia.php">Atendimento e IA</a><a href="/admin/acesso-mcp.php">Acesso MCP</a>
     </nav>
     <div class="sidebar-user"><span class="avatar" aria-hidden="true">LN</span><span><strong><?= installationPageEscape($admin['nome']) ?></strong><small>Superadmin</small></span></div>
 </aside>

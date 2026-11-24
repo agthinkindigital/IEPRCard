@@ -1,13 +1,13 @@
 # Concessões de manutenção pelo MCP
 
-Esta proposta descreve como o superadmin autoriza suporte técnico por MCP. A página e as tools de manutenção ainda não estão implementadas; o runtime atual continua read-only. O contrato do MCP está no [ADR-0009](../adr/0009-mcp-escopos-e-patch-seguro.md) e as capacidades disponíveis estão em [`docs/09-mcp.md`](../09-mcp.md).
+Esta página descreve como o superadmin autoriza suporte técnico por MCP. O contrato do transporte e das capabilities está no [ADR-0009](../adr/0009-mcp-escopos-e-patch-seguro.md) e em [`docs/09-mcp.md`](../09-mcp.md).
 
 ## Criar uma concessão
 
-1. Acesse **Administração → Segurança → Acesso MCP** com a conta superadmin.
+1. Acesse **Administração → Acesso MCP** com a conta superadmin.
 2. Informe um rótulo que identifique a atividade e escolha `30m`, `1h`, `3h`, `6h`, `12h` ou `24h`.
-3. Selecione um ou mais tenants e/ou unidades. Selecionar uma Sede inclui todas as unidades subordinadas. Confira o resumo antes de continuar.
-4. Marque somente as capacidades necessárias. A concessão autoriza as ferramentas permitidas durante todo o período, sem confirmação por chamada.
+3. Selecione uma ou mais Sedes e/ou unidades. Selecionar uma Sede inclui e congela no grant todas as unidades que existem naquele instante; uma unidade criada depois exige nova concessão.
+4. Marque somente as capacidades necessárias. `repo.publish` só fica disponível depois que o PAT do repositório for configurado e testado. A concessão autoriza as ferramentas permitidas durante todo o período, sem confirmação por chamada.
 5. Gere a concessão e copie o segredo exibido uma única vez. Se perder o segredo, revogue a concessão e crie outra.
 
 Uma concessão expirada ou revogada deixa de autorizar chamadas. Para continuar o atendimento após a expiração, crie uma nova concessão com escopo e prazo atualizados. O prazo da concessão é separado do access token OAuth curto usado por cada conexão MCP.
@@ -18,8 +18,10 @@ A lista mostra quem criou cada concessão, os alvos e capacidades autorizados, p
 
 ## Publicação de código
 
-O requisito aprovado permite preparar mudanças de código via MCP e publicá-las somente em `DEV`. A integração GitHub, preservação da autoria Leonardo, execução de CI e gates, catálogo de operações e reversão ainda precisam ser definidos na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). `PROD` não é gravada pelo MCP; mudanças só chegam lá após verificação e revisão pelo fluxo normal do projeto.
+O superadmin configura um fine-grained PAT restrito ao repositório IEPRCard na área de integração da página. O sistema o cifra com `IEPR_INTEGRATION_KEY`, nunca permite recuperá-lo e não o apresenta à IA. A tela mostra apenas se a conexão está configurada e validada; para trocar, informe um novo token. A publicação identifica Leonardo como autor e só escreve em `DEV`. `PROD` exige CI aprovado, revisão e promoção pelo fluxo normal; se os checks ou a proteção da branch não estiverem ativos, a publicação deve ser recusada.
 
-## Aguardando implementação
+O catálogo de manutenção de dados continua desabilitado até haver operações tipadas, limitadas por alvo e auditáveis definidas na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). O MCP não oferece SQL arbitrário, shell ou filesystem irrestrito.
 
-O superadmin ainda não pode criar concessões nesta versão. As ferramentas de leitura listadas em [`docs/09-mcp.md`](../09-mcp.md) são o contrato atualmente implementado. A tela e as capacidades de manutenção só devem ser desenvolvidas após aprovação deste mockup/guia e conclusão da #89.
+## Limites operacionais
+
+O segredo do grant é exibido em uma única resposta após a criação e removido da sessão na primeira visualização. Um snapshot restaura grants como revogados e não inclui o PAT GitHub nem os alvos congelados; eles precisam ser configurados novamente após uma restauração isolada. Tools mutáveis de dados continuam fora do catálogo até haver operações tipadas e delimitadas aprovadas na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89).

@@ -185,7 +185,7 @@ function backupDestinationSafeDomainMessage(string $code): string
         <a href="/admin/migracao-banco.php">Visão geral</a><a href="#destinations">Clientes</a><a href="#destinations">Domínios</a>
         <a href="/admin/atualizar-schema.php">Operação</a><a class="active" aria-current="page" href="/admin/backup-destinos.php">Backup externo</a>
         <a href="/admin/instalacao.php">Instalação</a>
-        <a href="/admin/atendimento-ia.php">Atendimento e IA</a><a href="#help">Segurança</a>
+        <a href="/admin/atendimento-ia.php">Atendimento e IA</a><a href="/admin/acesso-mcp.php">Acesso MCP</a><a href="#help">Segurança</a>
     </nav>
     <div class="sidebar-user"><span class="avatar" aria-hidden="true">LN</span><span><strong><?= backupDestinationPageEscape($admin['nome']) ?></strong><small>Superadmin</small></span></div>
 </aside>

@@ -13,7 +13,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 * **GATE 2 — Multi-Tenancy, Domínios & RBAC (Após Épico 2):**
 * [x] Suíte `TDD-02` passou no CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 * [x] Isolamento por tenant/unidade e negação de acesso por ID adulterado passaram em testes de escopo e rotas HTTP no CI [45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
-* [ ] Suporte remoto MCP permanece no MVP, exclusivo do superadmin, com grant de 30 min a 24 h, múltiplos alvos (Sede inclui unidades), tools permitidas sem confirmação por chamada e publicação de código somente em `DEV`; mockup, catálogo e integração/gates aguardam aprovação e fechamento na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89).
+* [ ] Suporte remoto MCP permanece exclusivo do superadmin, com grants de 30 min a 24 h, múltiplos alvos congelados e publicação de código somente em `DEV`. A implementação está em validação na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89); aprovação do mockup não substitui revisão de segurança nem CI.
 
 
 
@@ -34,7 +34,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 * **GATE 5 — Servidor MCP & Prontidão de Produção (Após Épico 7):**
 * [x] `TDD-07`, incluindo `db.inspect`, passou na suíte CI SQLite/MySQL/MariaDB e no benchmark PDF: [run 45207558966](https://github.com/agthinkindigital/IEPRCard/actions/runs/45207558966), commit `39bc8b6`.
 * [x] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. Cliente externo oficial `mcp==2.3.0` completou descoberta e chamadas read-only com OAuth client credentials em SQLite isolado; credencial limitada não descobriu nem executou `telemetry.read`. Evidência e limite do cliente TypeScript estão na [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). Essa prova cobre somente a superfície read-only atual.
-* [ ] Implementar e revisar segurança da manutenção MCP privada, autorizada pelo superadmin por janela de 30 min a 24 h, conforme a [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). Mudanças de código exigem integração controlada para `DEV`; `design.write`, SQL arbitrário, escrita irrestrita no filesystem e o `code.patch` genérico não estão autorizados.
+* [ ] Revisar segurança e executar o CI completo da manutenção MCP privada e publicação limitada a `DEV`, conforme a [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). A implementação local inclui grants revogáveis, destinos congelados, PAT cifrado e testes obrigatórios de branch/CI; `design.write`, SQL arbitrário, escrita irrestrita no filesystem e `code.patch` genérico seguem fora do escopo.
 * [ ] Demonstrar RPO ≤ 1 h e RTO ≤ 4 h para snapshot/restauração isolada no perfil contratado, conforme [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e [#85](https://github.com/agthinkindigital/IEPRCard/issues/85).
 
 

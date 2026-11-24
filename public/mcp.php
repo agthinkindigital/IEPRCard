@@ -48,10 +48,10 @@ function mcpHttpAuthenticateHeader(): string
     return 'Bearer resource_metadata="' . $metadataUrl . '"';
 }
 
-function mcpHttpAudit(?array $principal, string $method, string $result, float $startedAt): string
+function mcpHttpAudit(?array $principal, string $method, string $result, float $startedAt, ?array $request = null): string
 {
     try {
-        return mcpServerWriteAudit(dbConnection(), $principal, $method, $result, $startedAt);
+        return mcpServerWriteAudit(dbConnection(), $principal, $method, $result, $startedAt, $request);
     } catch (Throwable) {
         mcpHttpRespond(503, ['jsonrpc' => '2.0', 'error' => ['code' => -32603, 'message' => 'Service temporarily unavailable.']]);
     }
@@ -105,12 +105,12 @@ if (!$requestObject instanceof stdClass || !is_array($request)
         && (!(($requestObject->params->_meta->{'io.modelcontextprotocol/clientInfo'}) instanceof stdClass)
             || !is_string($requestObject->params->_meta->{'io.modelcontextprotocol/clientInfo'}->name ?? null)
             || !is_string($requestObject->params->_meta->{'io.modelcontextprotocol/clientInfo'}->version ?? null))) {
-    $correlation = mcpHttpAudit($principal, 'invalid', 'error', microtime(true));
+    $correlation = mcpHttpAudit($principal, 'invalid', 'error', microtime(true), is_array($request) ? $request : null);
     mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32600, 'message' => 'Invalid JSON-RPC request.']], ['X-Correlation-ID' => $correlation]);
 }
 if (($request['method'] ?? null) === 'tools/call' && isset($requestObject->params->arguments)
     && !($requestObject->params->arguments instanceof stdClass)) {
-    $correlation = mcpHttpAudit($principal, 'tools/call', 'error', microtime(true));
+    $correlation = mcpHttpAudit($principal, 'tools/call', 'error', microtime(true), $request);
     mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => $request['id'] ?? null, 'error' => ['code' => -32602, 'message' => 'Invalid tool arguments.']], ['X-Correlation-ID' => $correlation]);
 }
 $method = is_string($request['method'] ?? null) ? $request['method'] : 'invalid';
@@ -121,10 +121,10 @@ $headerError = mcpServerHeaderValidation($request, [
 ]);
 $startedAt = microtime(true);
 if ($headerError !== null) {
-    $correlation = mcpHttpAudit($principal, $method, 'error', $startedAt);
+    $correlation = mcpHttpAudit($principal, $method, 'error', $startedAt, $request);
     mcpHttpRespond(400, ['jsonrpc' => '2.0', 'id' => $request['id'] ?? null, 'error' => $headerError], ['X-Correlation-ID' => $correlation]);
 }
 $handled = mcpServerHandleRequest(dbConnection(), $request, $principal);
 $result = $handled['status'] < 400 ? 'ok' : 'error';
-$correlation = mcpHttpAudit($principal, $method, $result, $startedAt);
+$correlation = mcpHttpAudit($principal, $method, $result, $startedAt, $request);
 mcpHttpRespond($handled['status'], $handled['response'], ['X-Correlation-ID' => $correlation]);

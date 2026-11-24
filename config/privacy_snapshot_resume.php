@@ -285,7 +285,7 @@ function privacySnapshotResumeStage(
     while ($state['table_index'] < count($tableNames) && $used < $rowLimit && microtime(true) < $deadline) {
         $tableIndex = (int) $state['table_index'];
         $table = $tableNames[$tableIndex];
-        if ($table === 'titular_chaves_backup') {
+        if (in_array($table, privacySnapshotOmittedTables(), true)) {
             ++$state['table_index'];
             $state['cursor'] = 0;
             $state['high_water_mark'] = null;

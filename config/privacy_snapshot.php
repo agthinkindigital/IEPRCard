@@ -8,7 +8,13 @@ require_once __DIR__ . '/titular_privacy_keys.php';
 require_once __DIR__ . '/privacy_snapshot_labels.php';
 require_once __DIR__ . '/privacy_snapshot_resume.php';
 
-const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '823b640e74818588532c745edd4ec3f2d2715eb7a7afd4390facb12b1f48de3c';
+const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '33b1e93a2bf66b8cc6c6094496741ca92a5513197702a5f93dfc9ff204edcd20';
+
+/** Tables containing snapshot-external key material or support authorization state. */
+function privacySnapshotOmittedTables(): array
+{
+    return ['titular_chaves_backup', 'mcp_support_grant_targets', 'mcp_support_github_config'];
+}
 
 function privacySnapshotCurrentSchemaVersion(): string
 {
@@ -155,7 +161,7 @@ function privacySnapshotBuildPayload(
     $tableData = [];
     $subjectData = [];
     foreach ($catalog as $table => $_definition) {
-        if (in_array($table, ['titular_chaves_backup'], true)) {
+        if (in_array($table, privacySnapshotOmittedTables(), true)) {
             $tableData[$table] = [];
             continue;
         }
@@ -773,6 +779,15 @@ function privacySnapshotStripUnrecoverableSecrets(string $table, array &$row): v
         $row['chave_hash'] = hash('sha256', 'snapshot-disabled-mcp-' . (string) ($row['id'] ?? ''));
         $row['ativo'] = 0;
     }
+    if ($table === 'mcp_support_grants') {
+        $id = (string) ($row['id'] ?? 'unknown');
+        $row['segredo_hash'] = password_hash('snapshot-disabled-support-grant-' . $id, PASSWORD_DEFAULT);
+        $row['rotulo'] = 'Grant revogado no snapshot';
+        $row['criado_por_usuario_id'] = null;
+        $row['capacidades_json'] = '[]';
+        $row['revogado_em'] = gmdate('Y-m-d H:i:s');
+        $row['ultimo_uso_em'] = null;
+    }
     if ($table === 'dominios_tenant') {
         $row['token_verificacao_hash'] = hash('sha256', 'snapshot-disabled-domain-' . (string) ($row['id'] ?? ''));
         $row['estado'] = 'pendente_verificacao';
@@ -884,6 +899,9 @@ function privacySnapshotMinimizeOperationalRows(string $table, array &$row): voi
         ],
         'telemetria_eventos' => ['subcliente_id', 'usuario_id', 'metadados_json'],
         'mcp_audit_logs' => ['api_key_id', 'correlation_id'],
+        'mcp_support_audit_logs' => [
+            'actor_user_id', 'grant_id', 'target_tenant_id', 'target_subcliente_id', 'operation_key', 'commit_sha', 'correlation_id',
+        ],
         'configuracoes_instalacao' => ['ator_usuario_id'],
         'configuracoes_operacionais' => ['alterado_por_usuario_id'],
         'usuarios' => ['criado_por_usuario_id'],

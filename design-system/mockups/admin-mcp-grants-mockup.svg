@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1710" viewBox="0 0 1440 1710" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1750" viewBox="0 0 1440 1750" role="img" aria-labelledby="title description">
   <title id="title">Concessões de manutenção MCP</title>
   <desc id="description">Proposta de tela superadmin para conceder acesso MCP temporário a vários tenants e unidades, selecionar ferramentas permitidas e revogar concessões.</desc>
   <defs>
@@ -20,8 +20,8 @@
   <text x="32" y="30" class="label muted">IEPRCARD · MOCKUP ADMINISTRATIVO · PROPOSTA · DADOS FICTÍCIOS</text>
 
   <!-- Navegação e formulário de concessão -->
-  <rect x="24" y="48" width="1392" height="1058" rx="14" class="panel" filter="url(#shadow)"/>
-  <rect x="24" y="48" width="224" height="1058" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <rect x="24" y="48" width="1392" height="1098" rx="14" class="panel" filter="url(#shadow)"/>
+  <rect x="24" y="48" width="224" height="1098" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/>
   <text x="48" y="88" font-size="18" font-weight="700">IEPRCard</text>
   <text x="48" y="126" class="tiny muted">ADMINISTRAÇÃO SAAS</text>
   <text x="48" y="170" class="body muted">Visão geral</text>
@@ -31,8 +31,8 @@
   <rect x="36" y="270" width="4" height="42" rx="2" fill="#1D4ED8"/>
   <text x="52" y="297" font-size="14" font-weight="700" fill="#1D4ED8">Acesso MCP</text>
   <text x="48" y="350" class="body muted">Auditoria</text>
-  <line x1="24" y1="1030" x2="248" y2="1030" class="line"/>
-  <text x="48" y="1065" class="small muted">Superadmin · Leonardo</text>
+  <line x1="24" y1="1070" x2="248" y2="1070" class="line"/>
+  <text x="48" y="1105" class="small muted">Superadmin · Leonardo</text>
 
   <text x="280" y="91" class="small muted">Administração / Segurança / Acesso MCP</text>
   <text x="280" y="132" class="title">Concessões de manutenção</text>
@@ -84,70 +84,76 @@
   <rect x="830" y="611" width="558" height="66" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
   <text x="848" y="637" class="label">MANUTENÇÃO DE DADOS</text>
   <text x="848" y="659" class="small muted">Catálogo e limites das operações em definição na #89.</text>
-  <rect x="830" y="690" width="558" height="72" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
-  <text x="848" y="716" class="label">CÓDIGO · PUBLICAÇÃO EM DEV</text>
-  <text x="848" y="739" class="small muted">Integração GitHub e gates pendentes na #89 · PROD não é acessível.</text>
+  <rect x="830" y="690" width="558" height="112" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="848" y="714" class="label">CÓDIGO · PUBLICAÇÃO EM DEV</text>
+  <rect x="848" y="728" width="18" height="18" rx="3" class="field"/>
+  <text x="878" y="742" class="small">Publicar alterações em DEV</text>
+  <rect x="1112" y="724" width="172" height="28" rx="5" class="field"/>
+  <text x="1122" y="743" class="tiny muted">Fine-grained PAT ·••••••</text>
+  <rect x="1290" y="724" width="82" height="28" rx="5" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="1302" y="743" class="tiny">Salvar/testar</text>
+  <text x="848" y="780" class="tiny muted">Restrito ao repositório · cifrado · nunca exibido · CI em DEV · PROD indisponível</text>
 
-  <rect x="280" y="780" width="1108" height="82" rx="9" fill="#EFF6FF" stroke="#BFDBFE"/>
-  <text x="304" y="809" class="label" fill="#1E40AF">PUBLICAÇÃO CONTROLADA</text>
-  <text x="304" y="835" class="small" fill="#1E3A8A">Mudanças de código seguem para DEV. PROD só recebe promoção após verificação e revisão pelo fluxo do projeto.</text>
-  <text x="280" y="900" class="small muted">O sistema valida o conjunto de alvos em cada chamada. Concessão expirada ou revogada é recusada imediatamente.</text>
-  <rect x="280" y="930" width="191" height="48" rx="8" fill="#1D4ED8"/>
-  <text x="304" y="960" font-size="14" font-weight="700" fill="#FFFFFF">Gerar concessão MCP</text>
-  <text x="487" y="960" class="small muted">O segredo será exibido uma única vez.</text>
+  <rect x="280" y="820" width="1108" height="82" rx="9" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="304" y="849" class="label" fill="#1E40AF">PUBLICAÇÃO CONTROLADA</text>
+  <text x="304" y="875" class="small" fill="#1E3A8A">Mudanças de código seguem para DEV. PROD só recebe promoção após CI, verificação e revisão.</text>
+  <text x="280" y="940" class="small muted">O sistema valida o conjunto congelado de alvos em cada chamada. Grant expirado ou revogado é recusado imediatamente.</text>
+  <rect x="280" y="970" width="191" height="48" rx="8" fill="#1D4ED8"/>
+  <text x="304" y="1000" font-size="14" font-weight="700" fill="#FFFFFF">Gerar concessão MCP</text>
+  <text x="487" y="1000" class="small muted">O segredo será exibido uma única vez.</text>
 
   <!-- Estado de criação com segredo mostrado uma vez -->
-  <rect x="280" y="995" width="1108" height="83" rx="9" fill="#F0FDF4" stroke="#86EFAC"/>
-  <text x="304" y="1023" class="label" fill="#166534">CONCESSÃO CRIADA · SEGREDO EXIBIDO UMA VEZ</text>
-  <rect x="304" y="1036" width="835" height="28" rx="5" fill="#FFFFFF" stroke="#86EFAC"/>
-  <text x="316" y="1055" class="small" font-family="monospace">mcp_grant_••••••••••••••••••••••••••••••••</text>
-  <rect x="1154" y="1036" width="208" height="28" rx="5" fill="#FFFFFF" stroke="#86EFAC"/>
-  <text x="1187" y="1055" class="small" fill="#166534">Copiar segredo</text>
+  <rect x="280" y="1035" width="1108" height="83" rx="9" fill="#F0FDF4" stroke="#86EFAC"/>
+  <text x="304" y="1063" class="label" fill="#166534">CONCESSÃO CRIADA · SEGREDO EXIBIDO UMA VEZ</text>
+  <rect x="304" y="1076" width="835" height="28" rx="5" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="316" y="1095" class="small" font-family="monospace">mcp_grant_••••••••••••••••••••••••••••••••</text>
+  <rect x="1154" y="1076" width="208" height="28" rx="5" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="1187" y="1095" class="small" fill="#166534">Copiar segredo</text>
 
   <!-- Lista de concessões -->
-  <rect x="24" y="1130" width="1392" height="540" rx="14" class="panel" filter="url(#shadow)"/>
-  <text x="56" y="1174" class="title">Concessões recentes</text>
-  <text x="56" y="1201" class="small muted">O segredo completo não volta a ser exibido. Revogue o acesso quando o trabalho terminar.</text>
-  <rect x="56" y="1228" width="1328" height="42" rx="6" fill="#F8FAFC"/>
-  <text x="72" y="1255" class="label muted">RÓTULO / CRIADO POR</text>
-  <text x="370" y="1255" class="label muted">ALVOS</text>
-  <text x="620" y="1255" class="label muted">FERRAMENTAS</text>
-  <text x="870" y="1255" class="label muted">EXPIRA</text>
-  <text x="1040" y="1255" class="label muted">ÚLTIMO USO</text>
-  <text x="1230" y="1255" class="label muted">ESTADO / AÇÃO</text>
-  <line x1="56" y1="1270" x2="1384" y2="1270" class="line"/>
-  <text x="72" y="1305" class="body" font-weight="700">Diagnóstico · Sede Esperança</text>
-  <text x="72" y="1328" class="tiny muted">Leonardo Nascimento · criada 14:20</text>
-  <text x="370" y="1307" class="small">Sede + 3 unidades</text>
-  <text x="620" y="1307" class="small">Leitura</text>
-  <text x="870" y="1307" class="small">15:20 · em 42 min</text>
-  <text x="1040" y="1307" class="small">14:38</text>
-  <rect x="1230" y="1287" width="73" height="25" rx="12" fill="#DCFCE7"/>
-  <text x="1245" y="1304" class="tiny" fill="#166534">Ativa</text>
-  <text x="1316" y="1304" class="small" fill="#B91C1C">Revogar</text>
-  <line x1="56" y1="1347" x2="1384" y2="1347" class="line"/>
-  <text x="72" y="1382" class="body" font-weight="700">Correção de importação</text>
-  <text x="72" y="1405" class="tiny muted">Leonardo Nascimento · criada ontem</text>
-  <text x="370" y="1384" class="small">Unidade Centro</text>
-  <text x="620" y="1384" class="small">Leitura</text>
-  <text x="870" y="1384" class="small">Ontem · 18:40</text>
-  <text x="1040" y="1384" class="small">Ontem · 18:12</text>
-  <rect x="1230" y="1364" width="73" height="25" rx="12" fill="#F1F5F9"/>
-  <text x="1240" y="1381" class="tiny muted">Expirada</text>
-  <text x="1316" y="1381" class="small muted">—</text>
-  <line x1="56" y1="1424" x2="1384" y2="1424" class="line"/>
-  <text x="72" y="1459" class="body" font-weight="700">Apoio técnico · Sede Caminho Novo</text>
-  <text x="72" y="1482" class="tiny muted">Leonardo Nascimento · criada 10:05</text>
-  <text x="370" y="1461" class="small">Sede + 2 unidades</text>
-  <text x="620" y="1461" class="small">Leitura</text>
-  <text x="870" y="1461" class="small">Revogada</text>
-  <text x="1040" y="1461" class="small">10:22</text>
-  <rect x="1230" y="1441" width="82" height="25" rx="12" fill="#FEE2E2"/>
-  <text x="1240" y="1458" class="tiny" fill="#991B1B">Revogada</text>
-  <text x="1316" y="1458" class="small muted">—</text>
+  <rect x="24" y="1170" width="1392" height="540" rx="14" class="panel" filter="url(#shadow)"/>
+  <text x="56" y="1214" class="title">Concessões recentes</text>
+  <text x="56" y="1241" class="small muted">O segredo completo não volta a ser exibido. Revogue o acesso quando o trabalho terminar.</text>
+  <rect x="56" y="1268" width="1328" height="42" rx="6" fill="#F8FAFC"/>
+  <text x="72" y="1295" class="label muted">RÓTULO / CRIADO POR</text>
+  <text x="370" y="1295" class="label muted">ALVOS</text>
+  <text x="620" y="1295" class="label muted">FERRAMENTAS</text>
+  <text x="870" y="1295" class="label muted">EXPIRA</text>
+  <text x="1040" y="1295" class="label muted">ÚLTIMO USO</text>
+  <text x="1230" y="1295" class="label muted">ESTADO / AÇÃO</text>
+  <line x1="56" y1="1310" x2="1384" y2="1310" class="line"/>
+  <text x="72" y="1345" class="body" font-weight="700">Diagnóstico · Sede Esperança</text>
+  <text x="72" y="1368" class="tiny muted">Leonardo Nascimento · criada 14:20</text>
+  <text x="370" y="1347" class="small">Sede + 3 unidades</text>
+  <text x="620" y="1347" class="small">Leitura</text>
+  <text x="870" y="1347" class="small">15:20 · em 42 min</text>
+  <text x="1040" y="1347" class="small">14:38</text>
+  <rect x="1230" y="1327" width="73" height="25" rx="12" fill="#DCFCE7"/>
+  <text x="1245" y="1344" class="tiny" fill="#166534">Ativa</text>
+  <text x="1316" y="1344" class="small" fill="#B91C1C">Revogar</text>
+  <line x1="56" y1="1387" x2="1384" y2="1387" class="line"/>
+  <text x="72" y="1422" class="body" font-weight="700">Correção de importação</text>
+  <text x="72" y="1445" class="tiny muted">Leonardo Nascimento · criada ontem</text>
+  <text x="370" y="1424" class="small">Unidade Centro</text>
+  <text x="620" y="1424" class="small">Leitura</text>
+  <text x="870" y="1424" class="small">Ontem · 18:40</text>
+  <text x="1040" y="1424" class="small">Ontem · 18:12</text>
+  <rect x="1230" y="1404" width="73" height="25" rx="12" fill="#F1F5F9"/>
+  <text x="1240" y="1421" class="tiny muted">Expirada</text>
+  <text x="1316" y="1421" class="small muted">—</text>
+  <line x1="56" y1="1464" x2="1384" y2="1464" class="line"/>
+  <text x="72" y="1499" class="body" font-weight="700">Apoio técnico · Sede Caminho Novo</text>
+  <text x="72" y="1522" class="tiny muted">Leonardo Nascimento · criada 10:05</text>
+  <text x="370" y="1501" class="small">Sede + 2 unidades</text>
+  <text x="620" y="1501" class="small">Leitura</text>
+  <text x="870" y="1501" class="small">Revogada</text>
+  <text x="1040" y="1501" class="small">10:22</text>
+  <rect x="1230" y="1481" width="82" height="25" rx="12" fill="#FEE2E2"/>
+  <text x="1240" y="1498" class="tiny" fill="#991B1B">Revogada</text>
+  <text x="1316" y="1498" class="small muted">—</text>
 
-  <rect x="56" y="1522" width="1328" height="104" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
-  <text x="80" y="1552" class="label">AUDITORIA</text>
-  <text x="80" y="1578" class="small muted">Registra ator, concessão, ferramenta, alvo autorizado, horário e resultado. Não guarda segredo, argumentos livres, IP bruto ou PII desnecessária.</text>
-  <text x="80" y="1604" class="small muted">Falhas e tentativas fora do escopo também ficam registradas com resultado mínimo.</text>
+  <rect x="56" y="1562" width="1328" height="104" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="80" y="1592" class="label">AUDITORIA</text>
+  <text x="80" y="1618" class="small muted">Registra ator, concessão, ferramenta, alvo autorizado, horário e resultado. Não guarda segredo, argumentos livres, IP bruto ou PII desnecessária.</text>
+  <text x="80" y="1644" class="small muted">Falhas e tentativas fora do escopo também ficam registradas com resultado mínimo.</text>
 </svg>

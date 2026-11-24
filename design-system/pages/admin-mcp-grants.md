@@ -7,9 +7,10 @@ O mockup [`admin-mcp-grants-mockup.svg`](../mockups/admin-mcp-grants-mockup.svg)
 ## Estrutura e comportamento
 
 - A página aparece somente na administração global do superadmin. Contas de tenant não recebem navegação nem endpoint de concessão.
-- O formulário aceita rótulo, validade entre 30 minutos e 24 horas, múltiplos tenants e unidades, e capacidades permitidas. A seleção de uma Sede inclui todas as unidades subordinadas; o backend resolve e valida essa lista em cada operação.
+- O formulário aceita rótulo, validade entre 30 minutos e 24 horas, múltiplos tenants e unidades, e capacidades permitidas. A seleção de uma Sede congela no grant todas as unidades subordinadas existentes naquele instante; novas unidades exigem outra concessão. O servidor valida o conjunto congelado em cada operação.
 - A concessão permite as tools selecionadas durante toda a janela, sem confirmação humana por chamada. O superadmin pode revogá-la a qualquer momento. Expiração e revogação negam chamadas imediatamente; uma nova janela exige nova concessão.
-- O mockup marca manutenção de dados e publicação de código em `DEV` como pendentes da #89. O catálogo de ferramentas e a integração GitHub/gates ainda não estão aprovados para implementação. Nunca disponibilizar escrita MCP direta em `PROD`.
+- A capacidade de publicação de código em `DEV` só aparece quando a integração GitHub está configurada e validada. O fine-grained PAT fica cifrado no servidor com `IEPR_INTEGRATION_KEY`, nunca é lido de volta nem enviado ao contexto MCP, e deve ser restrito ao repositório IEPRCard. CI e proteção de `PROD` são pré-requisitos; nenhuma tool escreve em `PROD`.
+- A manutenção de dados permanece desabilitada até existir um catálogo de operações tipadas e limitadas aprovado na #89. Não há SQL arbitrário, execução de shell nem acesso irrestrito ao filesystem.
 - O segredo da concessão aparece apenas após criação. A lista não permite recuperá-lo e mostra rótulo, criador, alvos, capacidades, criação, expiração, último uso, estado e ação de revogação.
 - A auditoria registra metadados mínimos da operação e resultado; não apresenta nem persiste segredo, parâmetros livres, IP bruto ou PII desnecessária.
 
@@ -24,4 +25,4 @@ O mockup [`admin-mcp-grants-mockup.svg`](../mockups/admin-mcp-grants-mockup.svg)
 
 ## Limite da proposta
 
-O desenho não define formato ou armazenamento de credenciais, catálogo de tools de manutenção, autorização de escrita em repositório, CI, rollback nem schema. Esses itens permanecem na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89). O runtime atual segue read-only até conclusão do contrato e revisão de segurança. Implementação da tela depende de aprovação explícita deste mockup e guia.
+O desenho exibe o estado da integração GitHub e permite testar, definir/substituir ou remover o PAT sem revelá-lo após salvar. O token fica cifrado com a chave definida em [ADR-0008](../../docs/adr/0008-webhooks-idempotentes-e-segredos.md). A tela, o guia e a extensão visual do controle de PAT foram aprovados em 2026-11-24. A implementação fica em `/admin/acesso-mcp.php`; as ferramentas mutáveis de dados continuam limitadas ao escopo aprovado na [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89).

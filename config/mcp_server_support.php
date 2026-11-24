@@ -105,13 +105,46 @@ function mcpServerHeaderValidation(array $request, array $headers): ?array
     return null;
 }
 
-/** @param array<string, mixed>|null $principal */
-function mcpServerWriteAudit(PDO $pdo, ?array $principal, string $method, string $result, float $startedAt): string
+/** @param array<string, mixed>|null $principal @param array<string,mixed>|null $request */
+function mcpServerWriteAudit(PDO $pdo, ?array $principal, string $method, string $result, float $startedAt, ?array $request = null): string
 {
     $correlationId = bin2hex(random_bytes(16));
     $knownMethods = ['ping', 'server/discover', 'tools/list', 'tools/call', 'resources/list', 'resources/read', 'prompts/list', 'prompts/get'];
     $safeMethod = in_array($method, $knownMethods, true) ? $method : 'unknown';
     $scope = is_array($principal['scopes'] ?? null) ? ($principal['scopes'][0] ?? null) : null;
+    if (($principal['kind'] ?? null) === 'support') {
+        $tool = $method === 'tools/call' && is_array($request['params'] ?? null) && is_string($request['params']['name'] ?? null)
+            ? $request['params']['name'] : $safeMethod;
+        $knownTools = ['system.read', 'telemetry.read', 'db.inspect', 'repo.publish'];
+        if (!in_array($tool, $knownTools, true)) $tool = 'unknown';
+        $arguments = $method === 'tools/call' && is_array($request['params']['arguments'] ?? null) ? $request['params']['arguments'] : [];
+        $tenantId = filter_var($arguments['tenant_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $subclientId = array_key_exists('subcliente_id', $arguments)
+            ? filter_var($arguments['subcliente_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) : null;
+        if ($tenantId === false || $tenantId === null || $subclientId === false
+            || !mcpSupportGrantAllowsTarget($principal, (int) $tenantId, $subclientId === null ? null : (int) $subclientId)) {
+            $tenantId = null;
+            $subclientId = null;
+        }
+        $statement = $pdo->prepare(
+            'INSERT INTO mcp_support_audit_logs (actor_user_id, grant_id, capability, tool, target_tenant_id, '
+            . 'target_subcliente_id, result, correlation_id, duration_ms, created_at) '
+            . 'VALUES (:actor, :grant, :capability, :tool, :tenant, :subclient, :result, :correlation, :duration, :created)'
+        );
+        $statement->execute([
+            'actor' => $principal['actor_user_id'] ?? null,
+            'grant' => $principal['grant_id'] ?? null,
+            'capability' => is_string($scope) ? $scope : null,
+            'tool' => $tool,
+            'tenant' => $tenantId,
+            'subclient' => $subclientId,
+            'result' => $result,
+            'correlation' => $correlationId,
+            'duration' => max(0, (int) round((microtime(true) - $startedAt) * 1000)),
+            'created' => gmdate('Y-m-d H:i:s'),
+        ]);
+        return $correlationId;
+    }
     $statement = $pdo->prepare(
         'INSERT INTO mcp_audit_logs (tenant_id, api_key_id, correlation_id, metodo, escopo, resultado, duracao_ms, criado_em) '
         . 'VALUES (:tenant_id, :api_key_id, :correlation_id, :method, :scope, :result, :duration, :created_at)'

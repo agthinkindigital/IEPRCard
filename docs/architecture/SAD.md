@@ -64,7 +64,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | C5 | RBAC em `includes/rbac.php` (pode()) × `includes/motor_permissoes.php` (tabelas `papeis`/`permissoes`) | `docs/04` × `docs/02` | Um único motor `motor_permissoes.php` expondo `pode()`; tabelas `perfis_acesso`/`permissoes`/`usuario_permissoes` | 0004 |
 | C6 | Evento `permissao.alterada` invalida cache, mas não está no catálogo de eventos | `docs/04` × `docs/05` | Incluir no catálogo; cache de RBAC por requisição | 0004 |
 | C7 | *Self-healing* automático de schema é descrito como mecanismo de produção | `docs/02`, `docs/11` ISSUE-002 | Restrito a dev/test; produção usa migrações versionadas expand-only | 0010 |
-| C8 | A proposta de `mcp.code.safe_patch` permitiria alteração remota | `docs/09`, `docs/11` ISSUE-017 | Manutenção via grant do superadmin foi requerida para o MVP; Sede inclui unidades, tools concedidas dispensam confirmação por chamada e código só pode ser publicado em DEV. Catálogo, integração GitHub/CI e rollback ficam restritos até revisão de segurança da #89 | 0009 |
+| C8 | A proposta de `mcp.code.safe_patch` permitiria alteração remota | `docs/09`, `docs/11` ISSUE-017 | Grant exclusivo do superadmin, com unidades congeladas na concessão; publicação via GitHub API somente em DEV, PAT cifrado e autoria Leonardo; falha fechada sem CI/proteção PROD. Manutenção de dados segue somente leitura até catálogo tipado | 0009 |
 | C9 | Suítes TDD contadas como 7, mas existe `TDD-02B` | `docs/10` × `docs/14` | 8 suítes canônicas (TDD-01…07 + 02B) | 0012 |
 | C10 | Nenhuma seção de disponibilidade, RPO/RTO, backup, deploy, CSRF/CSP, correlation id ou rate limiting | ausente em `docs/00-17` | Proposto em §2, §6, §7, §8 e §10 | 0006, 0011, 0012 |
 
@@ -115,7 +115,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 1. **Carga operacional:** painel Admin com dados diários, lote recomendado e pico previsto na janela X; ajustes manuais aplicam após pedido de reinício do worker. O cálculo e o comportamento estão definidos em ADR-0011.
 2. **SLA e recuperação:** objetivos internos de NFR-15/16 aceitos, sem compromisso comercial. Viabilidade no plano e condições de medição estão em ADR-0012.
 3. **Dados pessoais:** política em `docs/01`; requisitos de backup e restauração em ADR-0012.
-4. **MCP:** disponível desde o primeiro lançamento, inclusive em produção. O runtime atual registra `system.read`, `telemetry.read` e `db.inspect`, filtradas por escopo OAuth. Manutenção privilegiada via grant do superadmin foi decidida para o MVP; ferramentas mutáveis e publicação de código em `DEV` ainda não estão implementadas e seguem o contrato/revisão da #89. Não há escrita direta em `PROD`. Ver [docs/09](../09-mcp.md) e ADR-0009.
+4. **MCP:** disponível desde o primeiro lançamento, inclusive em produção. Além das tools read-only, grants temporários exclusivos do superadmin delimitam tenants/unidades e podem habilitar publicação de arquivos rastreados somente em `DEV`, por GitHub API, com PAT cifrado e checks obrigatórios. A revisão final de segurança/CI está na #89. Não há escrita direta em `PROD`, SQL arbitrário ou shell. Ver [docs/09](../09-mcp.md) e ADR-0009.
 5. **Região:** uma única região atende ao lançamento; multirregião não é requisito.
 6. **Domínios:** domínios próprios dos Clientes são requisito do lançamento. Cada domínio deve ser verificado, vinculado unicamente a um tenant e servido com TLS; a hospedagem precisa aceitar múltiplos nomes apontando para a mesma aplicação.
 7. **Pagamentos:** cobranças SaaS, cobranças de titulares e repasses estão fora do MVP. O fluxo plataforma→Cliente por marketplace/split é apenas uma direção futura, descrita em `docs/07` e ADR-0008; o código de webhook existente será referência para avaliação, sem integração no lançamento.
@@ -638,7 +638,7 @@ O alvo arquitetural usa eventos de domínio e outbox transacional, com efeitos e
 ### 6.3. APIs e contratos
 
 - **Portal do titular / validação QR:** rotas HTTP server-rendered; contrato de request/response documentado em OpenAPI 3.0 na Fase de contratos (payload de login, resposta de validação com `status`, `motivo_codigo`, sem CPF).
-- **MCP desde o primeiro lançamento:** JSON-RPC 2.0 sobre Streamable HTTP sem sessão no endpoint remoto; cada POST é autenticado e autorizado isoladamente, sem processo residente. O runtime atual registra `system.read`, `telemetry.read` e `db.inspect`, conforme os escopos do token. Manutenção privilegiada via grant do superadmin foi requerida: validade de 30 min a 24 h, múltiplos tenants/unidades, Sede abrangendo todas as unidades e tools permitidas sem confirmação por chamada. Mudanças de código devem publicar somente em `DEV`; não há escrita MCP em `PROD`. Catálogo, integração de publicação, gates, auditoria mutável e reversão seguem pendentes na #89. Ver [docs/09](../09-mcp.md) e ADR-0009.
+- **MCP desde o primeiro lançamento:** JSON-RPC 2.0 sobre Streamable HTTP sem sessão no endpoint remoto; cada POST é autenticado e autorizado isoladamente, sem processo residente. O runtime read-only registra `system.read`, `telemetry.read` e `db.inspect`; grants superadmin podem habilitar publicação controlada somente em `DEV`, com alvos congelados, token de curta duração e revalidação. A revisão final de segurança/CI segue na #89. Não há escrita MCP em `PROD`, SQL arbitrário ou shell. Ver [docs/09](../09-mcp.md) e ADR-0009.
 - **Integrações externas:** wrappers em `api/` com timeout, retry, circuit breaker e erro normalizado. Nenhuma credencial em log.
 - **Versionamento:** contratos de webhook e MCP versionados por campo `versao` no payload; mudanças quebráveis seguem Expand & Contract.
 
@@ -709,7 +709,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | # | Risco | Impacto | Mitigação | Prioridade | ADR |
 | --- | --- | --- | --- | --- | --- |
 | R1 | Self-healing alterando schema em produção | Perda de dados / downtime silencioso | Desligar em prod; migrações versionadas expand-only | Alta | 0010 |
-| R2 | Escrita remota MCP | Execução remota de código ou alteração indevida | Grant temporário exclusivo do superadmin (30 min a 24 h), alvos explícitos com Sede incluindo unidades, tools permitidas sem confirmação por chamada; código só publica em DEV. Catálogo, integração GitHub/CI, auditoria e reversão definidos antes de habilitar escrita | Alta | 0009 |
+| R2 | Escrita remota MCP | Execução remota de código ou alteração indevida | Grant temporário exclusivo do superadmin (30 min a 24 h), snapshot dos alvos, tools permitidas sem confirmação por chamada; GitHub API escreve somente em DEV com PAT cifrado, autoria Leonardo e CI. Proteção de PROD é pré-requisito; sem ela, publicação falha fechada. Dados seguem sem tools mutáveis até catálogo tipado | Alta | 0009 |
 | R3 | Corrida na cota entre operadores | Emissão acima do contrato | UPDATE condicional + unique key + reserva com TTL | Alta | 0004 |
 | R4 | Query fora do TenantScope | Vazamento cross-tenant | Helper obrigatório, testes negativos, code review | Alta | 0003 |
 | R5 | Ausência de CSRF/CSP/HttpOnly | ATO e XSS | NFR-20 + specs de segurança | Alta | 0008 |
@@ -749,7 +749,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | [0006](../adr/0006-event-bus-e-outbox.md) | Event bus interno com outbox transacional | Proposta |
 | [0007](../adr/0007-renderizacao-nativa-e-fila.md) | Renderização WebP/PDF nativa e fila em banco | Aceita (baseline) |
 | [0008](../adr/0008-webhooks-idempotentes-e-segredos.md) | Webhooks idempotentes, HMAC e sigilo de credenciais | Aceita + ajustes |
-| [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP stateless com escopos e manutenção privilegiada temporária | Transporte/leitura aceitos; manutenção requerida no MVP; catálogo e integração de publicação em DEV pendentes na #89 |
+| [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP stateless com escopos e manutenção privilegiada temporária | Grants e publicação limitada a DEV implementados; validação final/CI na #89 |
 | [0010](../adr/0010-self-healing-apenas-dev.md) | Self-healing restrito a dev/test e migrações expand-only | Proposta |
 | [0011](../adr/0011-observabilidade-golden-signals.md) | Observabilidade com `correlation_id` e golden signals | Proposta |
 | [0012](../adr/0012-ci-deploy-e-backup.md) | CI, perfil de hospedagem, deploy e recuperação | Proposta |

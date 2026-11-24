@@ -243,6 +243,59 @@ function telemetryBusinessReadForMcp(PDO $pdo, array $principal, array $window):
     ], $rows);
 }
 
+/** Read support telemetry only after the MCP grant has authorized this frozen tenant/unit target. */
+function telemetryBusinessReadForSupportMcp(PDO $pdo, int $tenantId, ?int $subclientId, array $window): array
+{
+    if ($tenantId < 1 || $subclientId !== null && $subclientId < 1) {
+        throw new DomainException('TELEMETRIA_IDENTIDADE_INVALIDA');
+    }
+    telemetryBusinessValidateWindow($window);
+    $tenant = $pdo->prepare(
+        "SELECT id FROM tenants WHERE id = :tenant AND parent_id IS NULL AND tipo = 'cliente' AND status_conta = 'ativo' LIMIT 1"
+    );
+    $tenant->execute(['tenant' => $tenantId]);
+    if ($tenant->fetchColumn() === false) {
+        throw new DomainException('TELEMETRIA_IDENTIDADE_INVALIDA');
+    }
+    if ($subclientId !== null) {
+        $unit = $pdo->prepare(
+            "SELECT id FROM tenants WHERE id = :unit AND parent_id = :tenant AND tipo = 'subcliente' AND status_conta = 'ativo' LIMIT 1"
+        );
+        $unit->execute(['unit' => $subclientId, 'tenant' => $tenantId]);
+        if ($unit->fetchColumn() === false) {
+            throw new DomainException('TELEMETRIA_IDENTIDADE_INVALIDA');
+        }
+    }
+
+    $allowedEvents = [];
+    $eventParams = [];
+    $eventIndex = 0;
+    foreach (BUSINESS_TELEMETRY_EVENTS as $category => $eventKeys) {
+        foreach ($eventKeys as $eventKey) {
+            $categoryParameter = 'allowed_category_' . $eventIndex;
+            $eventParameter = 'allowed_event_' . $eventIndex;
+            ++$eventIndex;
+            $allowedEvents[] = '(categoria = :' . $categoryParameter . ' AND evento_chave = :' . $eventParameter . ')';
+            $eventParams[$categoryParameter] = $category;
+            $eventParams[$eventParameter] = $eventKey;
+        }
+    }
+    $unitPredicate = $subclientId === null ? '' : ' AND subcliente_scope_id = :subclient';
+    $query = $pdo->prepare(
+        'SELECT dia, categoria, evento_chave, SUM(quantidade) AS quantidade FROM telemetria_diaria '
+        . 'WHERE tenant_id = :tenant AND dia >= :from_day AND dia <= :to_day' . $unitPredicate . ' '
+        . 'AND (' . implode(' OR ', $allowedEvents) . ') '
+        . 'GROUP BY dia, categoria, evento_chave ORDER BY dia, categoria, evento_chave'
+    );
+    $parameters = $eventParams + ['tenant' => $tenantId, 'from_day' => $window['from'], 'to_day' => $window['to']];
+    if ($subclientId !== null) $parameters['subclient'] = $subclientId;
+    $query->execute($parameters);
+    return array_map(static fn(array $row): array => [
+        'dia' => (string) $row['dia'], 'categoria' => (string) $row['categoria'],
+        'evento_chave' => (string) $row['evento_chave'], 'quantidade' => (int) $row['quantidade'],
+    ], $query->fetchAll(PDO::FETCH_ASSOC));
+}
+
 /**
  * Read daily totals for an explicit Admin scope or the authenticated tenant scope.
  * @param array<string, mixed> $identity Authenticated identity resolved from the server-side session.

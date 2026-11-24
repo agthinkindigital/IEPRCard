@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/tenant_resolver.php';
 require_once __DIR__ . '/mcp_oauth_support.php';
+require_once __DIR__ . '/mcp_support_grants.php';
 
 /** @return array{client_id:string,client_secret:string}|null */
 function mcpOauthReadBasicCredentials(?string $authorization): ?array
@@ -42,6 +43,9 @@ function mcpOauthIssueClientCredentialsToken(PDO $pdo, array $input, ?array $con
     }
     $clientId = $credentials['client_id'];
     $secret = $credentials['client_secret'];
+    if (str_starts_with($clientId, 'msp_')) {
+        return mcpOauthIssueSupportGrantToken($pdo, $clientId, $secret, $input['scope'], $baseUrl, $configuration, $rateDirectory);
+    }
     $query = $pdo->prepare(
         'SELECT k.id, k.tenant_id, k.chave_hash, k.escopos_json, k.limite_requisicoes_minuto, k.ativo, k.expira_em, '
         . 't.status_conta FROM mcp_api_keys k INNER JOIN tenants t ON t.id = k.tenant_id '
@@ -101,6 +105,68 @@ function mcpOauthIssueClientCredentialsToken(PDO $pdo, array $input, ?array $con
     return ['access_token' => $token, 'token_type' => 'Bearer', 'expires_in' => 300, 'scope' => implode(' ', $requested)];
 }
 
+/** @param array<string,string>|null $configuration */
+function mcpOauthIssueSupportGrantToken(
+    PDO $pdo,
+    string $clientId,
+    string $secret,
+    string $requestedScope,
+    string $baseUrl,
+    ?array $configuration,
+    ?string $rateDirectory
+): array {
+    $query = $pdo->prepare(
+        'SELECT id, segredo_hash, capacidades_json, expira_em, revogado_em FROM mcp_support_grants WHERE public_id = :id LIMIT 1'
+    );
+    $query->execute(['id' => $clientId]);
+    $grant = $query->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($grant) || !mcpOauthConsumeRateLimit('support-token:' . $clientId, 30, $rateDirectory)) {
+        throw new DomainException(is_array($grant) ? 'MCP_OAUTH_RATE_LIMITED' : 'MCP_OAUTH_INVALID_CLIENT');
+    }
+    $nowText = gmdate('Y-m-d H:i:s');
+    if (!password_verify($secret, (string) ($grant['segredo_hash'] ?? ''))
+        || $grant['revogado_em'] !== null || (string) $grant['expira_em'] <= $nowText) {
+        throw new DomainException('MCP_OAUTH_INVALID_CLIENT');
+    }
+    $granted = json_decode((string) $grant['capacidades_json'], true);
+    $requested = preg_split('/\s+/', trim($requestedScope), -1, PREG_SPLIT_NO_EMPTY);
+    if (!is_array($granted) || !is_array($requested) || $requested === []
+        || count($requested) !== count(array_unique($requested))) {
+        throw new DomainException('MCP_OAUTH_INVALID_SCOPE');
+    }
+    foreach ($requested as $scope) {
+        if (!is_string($scope) || !in_array($scope, $granted, true)
+            || !in_array($scope, MCP_SUPPORT_GRANT_CAPABILITIES, true)) {
+            throw new DomainException('MCP_OAUTH_INVALID_SCOPE');
+        }
+    }
+    if (!mcpOauthConsumeRateLimit('support-token-issue:' . $clientId, 30, $rateDirectory)) {
+        throw new DomainException('MCP_OAUTH_RATE_LIMITED');
+    }
+
+    $issuedAt = time();
+    $expiresAt = $issuedAt + 300;
+    $header = mcpOauthBase64UrlEncode(json_encode(['alg' => 'HS256', 'typ' => 'JWT'], JSON_THROW_ON_ERROR));
+    $payload = mcpOauthBase64UrlEncode(json_encode([
+        'iss' => $baseUrl,
+        'aud' => $baseUrl . '/mcp',
+        'sub' => $clientId,
+        'client_id' => $clientId,
+        'support_grant_id' => (int) $grant['id'],
+        'scope' => implode(' ', $requested),
+        'iat' => $issuedAt,
+        'nbf' => $issuedAt,
+        'exp' => $expiresAt,
+        'jti' => mcpOauthBase64UrlEncode(random_bytes(16)),
+    ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+    $signingInput = $header . '.' . $payload;
+    $token = $signingInput . '.' . mcpOauthBase64UrlEncode(hash_hmac('sha256', $signingInput, mcpOauthSigningKey($configuration), true));
+    $pdo->prepare('UPDATE mcp_support_grants SET ultimo_uso_em = :used WHERE id = :id AND revogado_em IS NULL')
+        ->execute(['used' => $nowText, 'id' => (int) $grant['id']]);
+
+    return ['access_token' => $token, 'token_type' => 'Bearer', 'expires_in' => 300, 'scope' => implode(' ', $requested)];
+}
+
 /** @param array<string, string>|null $configuration @return array<string, mixed> */
 function mcpOauthProtectedResourceMetadata(?array $configuration = null): array
 {
@@ -109,7 +175,7 @@ function mcpOauthProtectedResourceMetadata(?array $configuration = null): array
         'resource' => $baseUrl . '/mcp',
         'authorization_servers' => [$baseUrl],
         'bearer_methods_supported' => ['header'],
-        'scopes_supported' => mcpOauthSupportedScopes(),
+        'scopes_supported' => mcpOauthAdvertisedScopes(),
     ];
 }
 
@@ -123,6 +189,6 @@ function mcpOauthAuthorizationServerMetadata(?array $configuration = null): arra
         'grant_types_supported' => ['client_credentials'],
         'token_endpoint_auth_methods_supported' => ['client_secret_basic'],
         'response_types_supported' => [],
-        'scopes_supported' => mcpOauthSupportedScopes(),
+        'scopes_supported' => mcpOauthAdvertisedScopes(),
     ];
 }
