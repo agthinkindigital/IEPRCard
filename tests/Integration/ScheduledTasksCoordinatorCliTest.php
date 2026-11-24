@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/TenantIsolationFixture.php';
 require_once dirname(__DIR__, 2) . '/database/migrations/runner.php';
 require_once dirname(__DIR__, 2) . '/config/conn.php';
+require_once dirname(__DIR__, 2) . '/config/operational_configuration.php';
 
 function scheduledTasksTestRemoveTree(string $path): void
 {
@@ -47,6 +48,13 @@ try {
     putenv('DB_SQLITE_PATH=' . $databasePath);
     putenv('IEPR_PRIVATE_STORAGE_PATH=' . $storagePath);
     putenv('IEPR_ANONYMIZATION_KEY=' . base64_encode(random_bytes(32)));
+    $configurationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
+    $pendingConfiguration = operationalConfigSavePending($configurationPdo, [
+        'lote_maximo_registros' => 25,
+        'pico_previsto_diario' => 100,
+        'janela_previsao_dias' => 30,
+    ]);
+    $configurationPdo = null;
     $root = dirname(__DIR__, 2);
     $phpArguments = [];
     if (PHP_OS_FAMILY === 'Windows') {
@@ -80,11 +88,20 @@ try {
     $summary = json_decode((string) $stdout, true);
     if ($exitCode !== 0 || !is_array($summary) || ($summary['ok'] ?? null) !== true
         || array_keys($summary['tasks'] ?? []) !== [
-            'card_issuance', 'whatsapp_delivery', 'import_staging_cleanup', 'titular_anonymization',
+            'operational_configuration', 'card_issuance', 'whatsapp_delivery', 'import_staging_cleanup', 'titular_anonymization',
             'privacy_subject_retention', 'whatsapp_conversation_cleanup', 'privacy_backup', 'privacy_snapshot_retention',
         ]
+        || ($summary['tasks']['operational_configuration']['counts']['activated_pending'] ?? null) !== 1
         || str_contains((string) $stdout, $storagePath) || str_contains((string) $stderr, $databasePath)) {
         throw new RuntimeException('The scheduled task CLI must run bounded tasks and emit a private-data-free summary: ' . $stderr . $stdout);
+    }
+
+    $configurationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
+    $configurationState = operationalConfigReadState($configurationPdo);
+    $configurationPdo = null;
+    if (($configurationState['active']['id'] ?? null) !== $pendingConfiguration['id']
+        || $configurationState['pending'] !== null) {
+        throw new RuntimeException('The next scheduled worker invocation must activate the pending operational configuration.');
     }
 
     fwrite(STDOUT, "PASS: scheduled task CLI summary and output redaction.\n");

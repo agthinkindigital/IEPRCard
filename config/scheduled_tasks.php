@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/privacy_snapshot.php';
 require_once __DIR__ . '/privacy_subject_lifecycle.php';
+require_once __DIR__ . '/operational_configuration.php';
 
 /** @param array<string, callable():array<string, int>> $tasks @return array{ok:bool,tasks:array<string, array<string, mixed>>} */
 function scheduledTasksRun(array $tasks): array
@@ -86,6 +87,10 @@ function scheduledTasksBuild(PDO $pdo, int $maxIssuanceJobs = 1, int $maintenanc
     }
 
     return [
+        'operational_configuration' => static function () use ($pdo): array {
+            $snapshot = operationalConfigWorkerStart($pdo);
+            return ['activated_pending' => $snapshot !== null && $snapshot['ativou_pendente'] ? 1 : 0];
+        },
         'card_issuance' => static function () use ($pdo, $maxIssuanceJobs): array {
             $result = cardIssuanceWorkerRunBatch($pdo, $maxIssuanceJobs);
             return ['processed_jobs' => $result['processed'], 'skipped_lock' => $result['skipped'] ? 1 : 0];

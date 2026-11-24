@@ -7,17 +7,17 @@ As leituras aceitam janela UTC inclusiva de até 366 dias. Admin informa explici
 
 As métricas operacionais de lotes ficam separadas em `metricas_lotes_diarias`; seu cálculo e sua ativação seguem o [ADR-0011](adr/0011-observabilidade-golden-signals.md). A tabela operacional agrega por dia e ambiente e não guarda identificadores de tenant ou titular.
 
-Eventos técnicos de requests e jobs terão armazenamento separado da telemetria de negócio e consulta exclusiva pelo superadmin. A primeira fatia da [E08.1](https://github.com/agthinkindigital/IEPRCard/issues/94) padroniza o correlation ID HTTP; a coleta persistida e a consulta seguem as demais fatias da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93). O contrato e as regras de minimização estão no [ADR-0011](adr/0011-observabilidade-golden-signals.md). Prazo de retenção e uso de IDs internos de Sede/unidade aguardam confirmação.
+Eventos técnicos de requests e jobs terão armazenamento separado da telemetria de negócio e consulta exclusiva pelo superadmin. A primeira fatia da [E08.1](https://github.com/agthinkindigital/IEPRCard/issues/94) padroniza o correlation ID HTTP; a coleta persistida e a consulta seguem as demais fatias da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93). O contrato e as regras de minimização estão no [ADR-0011](adr/0011-observabilidade-golden-signals.md). A retenção terá padrão de 30 dias, configurável pelo superadmin entre 1 e 3650 dias. Eventos não armazenam `tenant_id` nem `subcliente_id`.
 
 ### Consulta técnica superadmin — mockup aprovado; implementação pendente
 
 O [mockup da consulta técnica](../design-system/mockups/admin-technical-events-mockup.svg) e este guia foram aprovados em 2026-11-24. A implementação está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96) e depende da persistência da [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). A tela é exclusiva ao superadmin e não altera a visão existente de Cliente/Subcliente.
 
-- Filtrar por período, categoria, rota e correlation ID; pesquisar e navegar pelos resultados em páginas de até 50 eventos, mais recentes primeiro. Selecionar um correlation ID reaplica o filtro correspondente.
+- Filtrar por período, categoria, rota e correlation ID; pesquisar e navegar pelos resultados em páginas de até 50 eventos, mais recentes primeiro. Selecionar um correlation ID reaplica o filtro correspondente. Não há filtros por Sede/unidade, pois os IDs internos não serão armazenados.
 - Exibir data/hora UTC, chave de evento, rota, resultado, duração e parte do correlation ID; os resultados só poderão usar campos allowlisted do [ADR-0011](adr/0011-observabilidade-golden-signals.md).
 - Mostrar estados textuais para lista vazia, nenhum resultado e falha de leitura. A interface não oferece exportação, alteração de eventos, SQL, IP/UA ou visualização de headers/bodies.
 - Em telas estreitas, apresentar cada resultado como cartão com os mesmos campos essenciais, sem rolagem horizontal.
-- O prazo de retenção e o uso de IDs internos de Sede/unidade continuam pendentes; por isso, a proposta não fixa um número de dias nem inclui filtro de tenant/unidade.
+- A retenção é configurável pelo superadmin no painel de telemetria existente: 30 dias por padrão, faixa de 1 a 3650 dias. A consulta técnica não filtra por Sede/unidade e não persiste IDs internos.
 
 ## Métricas por nível
 | Métrica agregada | Admin | Cliente | Subcliente |

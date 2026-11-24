@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Decisão aceita em 2026-11-24; correlação HTTP implementada; mockup de consulta aprovado; persistência e propagação assíncrona pendentes |
+| Status | Decisão aceita em 2026-11-24; correlação HTTP implementada; retenção definida; mockup de consulta aprovado; persistência e propagação assíncrona pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
@@ -15,8 +15,8 @@
 
 - Todo request recebe `correlation_id` (UUID v4) gerado no servidor e devolvido no header. A cobertura dos 30 entrypoints HTTP e a reutilização pelo MCP estão implementadas em #94; propagação para logs técnicos persistidos, outbox, worker, gateways e webhooks continua pendente.
 - Eventos técnicos estruturados serão persistidos em armazenamento próprio e consultáveis somente pelo superadmin. A implementação não reutiliza `telemetria_eventos`, que permanece exclusiva à telemetria de negócio.
-- O evento técnico usa apenas campos allowlisted necessários ao diagnóstico, como correlation ID, chave de evento/rota, duração, status, severidade e horário UTC. Não registrar CPF, identificadores de titular/usuário, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção. O uso de IDs internos de Sede/unidade ainda aguarda confirmação registrada na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
-- A retenção dos eventos é finita e será expurgada pelo cron; o prazo exato ainda aguarda confirmação na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
+- O evento técnico usa apenas campos allowlisted necessários ao diagnóstico: correlation ID, categoria, chave de evento/rota, duração, status HTTP e horário UTC. Não registrar CPF, identificadores de titular/usuário, `tenant_id`, `subcliente_id`, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção.
+- A retenção padrão dos eventos técnicos é de 30 dias, configurável pelo superadmin entre 1 e 3650 dias no painel de telemetria existente; a nova versão entra em vigor no início da próxima execução agendada. O cron expurga registros vencidos em lotes limitados.
 - Golden signals instrumentados no gateway/entrypoint:
   - **Latência:** p95/p99 por rota e por motor de render;
   - **Tráfego:** req/s por tenant, lotes/h, carteirinhas/h, leituras QR/h;
@@ -32,7 +32,7 @@
 
 - A telemetria de negócio e a telemetria operacional diária de lotes estão implementadas e documentadas em [`docs/08-telemetria.md`](../08-telemetria.md), incluindo painel por perfil, previsão configurável e aplicação de ajustes no início do worker.
 - A fatia #94 implementa correlation ID server-side nos 30 entrypoints PHP, ignora valores recebidos do cliente e compartilha o mesmo UUIDv4 entre a resposta MCP e sua auditoria; commit `dd34c1d`, CI [45424728843](https://github.com/agthinkindigital/IEPRCard/actions/runs/45424728843). A correlação ainda não atravessa jobs/outbox e integrações, e não há persistência geral de eventos técnicos.
-- O mantenedor escolheu persistência técnica separada e consulta exclusiva ao superadmin. Retenção e campos de escopo seguem em confirmação na [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). Mockup e guia da consulta foram aprovados em 2026-11-24; a tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), bloqueada pela persistência. A coordenação está na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
+- O mantenedor escolheu persistência técnica separada e consulta exclusiva ao superadmin; definiu retenção de 30 dias configurável (1–3650) e omissão de IDs internos na [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). A Issue depende da correção de ativação real de configurações no cron (#71). Mockup e guia da consulta foram aprovados em 2026-11-24; a tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), bloqueada pela persistência. A coordenação está na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 
 ## Alternativas consideradas
 

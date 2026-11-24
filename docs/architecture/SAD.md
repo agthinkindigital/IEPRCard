@@ -99,7 +99,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-16 | Recuperação | Objetivo interno aceito: RPO ≤ 1 h e RTO ≤ 4 h; evolução condicionada a alta disponibilidade | Requer cópia externa e restore demonstrado; ver ADR-0012 |
 | NFR-17 | Concorrência de cota | Débito de cota linearizável; zero emissão acima do teto sob requisições simultâneas | `UPDATE ... WHERE consumo < limite` + unique key; ver §5.3 |
 | NFR-18 | Resiliência de integração | Timeout ≤ 5 s, 3 tentativas com backoff exponencial, circuit breaker e DLQ para integrações externas ativas; Asaas/MP ficam fora do MVP | Evita que serviço externo derrube o request do operador |
-| NFR-19 | Observabilidade | 100% dos logs estruturados com `correlation_id`, `tenant_id`, `subcliente_id`; golden signals por endpoint | Ver §8 |
+| NFR-19 | Observabilidade | Eventos estruturados allowlisted com `correlation_id`, categoria, rota canônica, duração e status; sem PII nem IDs internos de Sede/unidade; golden signals somente com fontes disponíveis | Ver §8 e ADR-0011 |
 | NFR-20 | Segurança de transporte/navegador | TLS obrigatório, HSTS, CSP, `SameSite=Lax`, CSRF token em todo POST autenticado, `HttpOnly`+`Secure` em sessão | Base não cita CSRF/CSP; risco OWASP real |
 | NFR-21 | Rate limiting | 60 req/min por IP em login/QR e endpoints de webhook ativos; burst configurável | Mitiga força bruta e abuso de validação pública |
 | NFR-22 | Deploy | Atualização reversível; troca atômica quando suportada, janela curta de manutenção no perfil compartilhado se necessário; rollback testado | Ver §7.3 |
@@ -695,7 +695,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 
 ### 8.2. Logs, correlação e telemetria de negócio
 
-- Log estruturado JSON com `correlation_id`, `tenant_id`, `subcliente_id`, `ator_tipo`, `evento_chave`, `duracao_ms`, `status`. O `correlation_id` entra no request, segue para webhooks/IA/WhatsApp e volta no log do worker.
+- Eventos técnicos estruturados com `correlation_id`, categoria, chave do evento, rota canônica, duração, status HTTP e horário UTC. Não armazenam PII, `tenant_id` nem `subcliente_id`; a correlação assíncrona para jobs, outbox e integrações permanece pendente na E08.
 - **Telemetria de negócio** (`telemetria_eventos`, `telemetria_diaria`) permanece sem PII e com recortes Admin/Cliente/Subcliente (`docs/08`).
 - **Telemetria operacional** (golden signals) é separada da telemetria de negócio para não misturar fins e para não expor métricas de infraestrutura a Subclientes.
 - As tabelas de configuração e métricas dos lotes, assim como a fila de solicitações de anonimização, apoiam os fluxos descritos em ADR-0011, ADR-0012 e `docs/01`.
