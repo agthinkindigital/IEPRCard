@@ -178,7 +178,7 @@ function privacySnapshotResumeTransformRow(
     array $row,
     array $policies,
     callable $encryptSubject,
-    ?PDOStatement $subjectLookup = null
+    ?array $subjectLookupMap = null
 ): array {
     privacySnapshotAssertSupportedArtifacts($table, $row);
     privacySnapshotStripUnrecoverableSecrets($table, $row);
@@ -220,13 +220,17 @@ function privacySnapshotResumeTransformRow(
         throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_MISSING');
     }
     $recordType = privacySnapshotRecordType($table);
-    $lookup = $subjectLookup ?? $pdo->prepare(
-        'SELECT s.id, s.referencia, s.estado FROM privacy_subject_records r '
-        . 'JOIN privacy_subjects s ON s.id = r.privacy_subject_id '
-        . 'WHERE r.tipo_registro = :type AND r.registro_id = :record LIMIT 1'
-    );
-    $lookup->execute(['type' => $recordType, 'record' => $subjectRecordId]);
-    $subject = $lookup->fetch(PDO::FETCH_ASSOC);
+    if ($subjectLookupMap !== null) {
+        $subject = $subjectLookupMap[(int) $subjectRecordId] ?? null;
+    } else {
+        $lookup = $pdo->prepare(
+            'SELECT s.id, s.referencia, s.estado FROM privacy_subject_records r '
+            . 'JOIN privacy_subjects s ON s.id = r.privacy_subject_id '
+            . 'WHERE r.tipo_registro = :type AND r.registro_id = :record LIMIT 1'
+        );
+        $lookup->execute(['type' => $recordType, 'record' => $subjectRecordId]);
+        $subject = $lookup->fetch(PDO::FETCH_ASSOC);
+    }
     if (!is_array($subject)) {
         throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_MISSING');
     }
@@ -281,11 +285,7 @@ function privacySnapshotResumeStage(
     $tableNames = array_keys($catalog);
     $driver = (string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     $policies = privacySnapshotPersonalFields();
-    $subjectLookup = $pdo->prepare(
-        'SELECT s.id, s.referencia, s.estado FROM privacy_subject_records r '
-        . 'JOIN privacy_subjects s ON s.id = r.privacy_subject_id '
-        . 'WHERE r.tipo_registro = :type AND r.registro_id = :record LIMIT 1'
-    );
+    $artifactPolicies = privacySnapshotArtifactFields();
     $used = 0;
     $deadline = microtime(true) + $timeLimitSeconds;
     while ($state['table_index'] < count($tableNames) && $used < $rowLimit && microtime(true) < $deadline) {
@@ -310,6 +310,49 @@ function privacySnapshotResumeStage(
             privacySnapshotResumeWriteState($directory, $state);
         }
         $queryLimit = min(50, $rowLimit - $used);
+        $subjectLookupMap = [];
+        if (($policies[$table] ?? []) !== [] || ($artifactPolicies[$table] ?? []) !== []) {
+            $identifierColumns = $table === 'dominios_tenant' ? 'id, tenant_id' : 'id';
+            $identifierSql = 'SELECT ' . $identifierColumns . ' FROM ' . privacySnapshotQuoteIdentifier($table, $driver)
+                . ' WHERE id > :cursor AND id <= :high_water ORDER BY id LIMIT ' . $queryLimit;
+            $identifierQuery = $pdo->prepare($identifierSql);
+            $identifierQuery->execute(['cursor' => (int) $state['cursor'], 'high_water' => (int) $state['high_water_mark']]);
+            $subjectRecordIds = [];
+            while (($identifier = $identifierQuery->fetch(PDO::FETCH_ASSOC)) !== false) {
+                $recordId = $table === 'dominios_tenant' ? ($identifier['tenant_id'] ?? null) : ($identifier['id'] ?? null);
+                $validRecordId = filter_var($recordId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                if ($validRecordId === false) {
+                    throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_MISSING');
+                }
+                $subjectRecordIds[] = (int) $validRecordId;
+            }
+            $subjectRecordIds = array_values(array_unique($subjectRecordIds, SORT_NUMERIC));
+            if ($subjectRecordIds !== []) {
+                $parameters = ['type' => privacySnapshotRecordType($table)];
+                $placeholders = [];
+                foreach ($subjectRecordIds as $index => $recordId) {
+                    $parameter = 'record_' . $index;
+                    $placeholders[] = ':' . $parameter;
+                    $parameters[$parameter] = $recordId;
+                }
+                $subjectSql = 'SELECT r.registro_id, s.id, s.referencia, s.estado FROM privacy_subject_records r '
+                    . 'JOIN privacy_subjects s ON s.id = r.privacy_subject_id '
+                    . 'WHERE r.tipo_registro = :type AND r.registro_id IN (' . implode(', ', $placeholders) . ')';
+                $subjectQuery = $pdo->prepare($subjectSql);
+                $subjectQuery->execute($parameters);
+                while (($subject = $subjectQuery->fetch(PDO::FETCH_ASSOC)) !== false) {
+                    $recordId = (int) $subject['registro_id'];
+                    if (isset($subjectLookupMap[$recordId])) {
+                        throw new RuntimeException('PRIVACY_SNAPSHOT_SUBJECT_DUPLICATE');
+                    }
+                    $subjectLookupMap[$recordId] = [
+                        'id' => (int) $subject['id'],
+                        'referencia' => (string) $subject['referencia'],
+                        'estado' => (string) $subject['estado'],
+                    ];
+                }
+            }
+        }
         $sql = 'SELECT * FROM ' . privacySnapshotQuoteIdentifier($table, $driver)
             . ' WHERE id > :cursor AND id <= :high_water ORDER BY id LIMIT ' . $queryLimit;
         $query = $pdo->prepare($sql);
@@ -328,7 +371,7 @@ function privacySnapshotResumeStage(
         $currentRow = $firstRow;
         do {
             $row = $currentRow;
-            $transformed = privacySnapshotResumeTransformRow($pdo, $table, $row, $policies, $encryptSubject, $subjectLookup);
+            $transformed = privacySnapshotResumeTransformRow($pdo, $table, $row, $policies, $encryptSubject, $subjectLookupMap);
             $entryBytes = strlen(json_encode(
                 ['row' => $transformed['row'], 'envelope' => $transformed['envelope']],
                 JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
