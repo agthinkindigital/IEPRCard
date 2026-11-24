@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1510" viewBox="0 0 1440 1510" role="img" aria-labelledby="title desc">
+  <title id="title">Consulta de eventos técnicos do IEPRCard</title>
+  <desc id="desc">Proposta de consulta paginada exclusiva ao superadmin, com filtros por período, categoria, rota e correlation ID. A lista mostra apenas dados técnicos permitidos, sem dados pessoais, IP, user agent, headers ou conteúdo de requisições.</desc>
+  <defs>
+    <style>
+      text{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;fill:#0F172A}
+      .muted{fill:#475569}.white{fill:#FFFFFF}.tiny{font-size:13px}.small{font-size:15px}.body{font-size:17px}.label{font-size:14px;font-weight:600}.section{font-size:22px;font-weight:700}.heading{font-size:27px;font-weight:700}.title{font-size:34px;font-weight:750}.card{fill:#FFFFFF;stroke:#DCE3EC;stroke-width:1.5}.bg{fill:#F6F8FB}.blue{fill:#1D4ED8}.lightblue{fill:#EFF6FF}.green{fill:#166534}.lightgreen{fill:#F0FDF4}.amber{fill:#92400E}.lightamber{fill:#FFFBEB}.red{fill:#B91C1C}.lightred{fill:#FEF2F2}.line{stroke:#DCE3EC;stroke-width:1.5}
+    </style>
+  </defs>
+  <rect width="1440" height="1510" fill="#E8EDF4"/>
+  <text x="56" y="54" class="title">Consulta de eventos técnicos</text>
+  <text x="56" y="84" class="body muted">Proposta E08 · acesso exclusivo do superadmin · leitura paginada e minimizada</text>
+
+  <!-- Desktop review frame -->
+  <rect x="48" y="112" width="1344" height="780" rx="18" class="bg"/>
+  <rect x="48" y="112" width="1344" height="70" rx="18" fill="#FFFFFF"/>
+  <path d="M48 164h1344" class="line"/>
+  <rect x="76" y="132" width="34" height="34" rx="9" fill="#1D4ED8"/>
+  <text x="87" y="156" class="white" font-size="18" font-weight="700">I</text>
+  <text x="122" y="155" class="label">IEPRCard</text>
+  <text x="1130" y="155" class="small muted">Superadmin</text>
+
+  <text x="84" y="225" class="heading">Rastreabilidade</text>
+  <text x="84" y="253" class="small muted">Pesquise eventos técnicos para investigar uma falha. Dados pessoais e conteúdo das requisições não são exibidos.</text>
+  <rect x="1174" y="204" width="178" height="42" rx="8" fill="#1D4ED8"/>
+  <text x="1263" y="231" text-anchor="middle" class="small white">Atualizar resultados</text>
+
+  <rect x="84" y="276" width="1268" height="132" rx="12" class="card"/>
+  <text x="108" y="309" class="label">FILTROS</text>
+  <text x="108" y="342" class="tiny muted">PERÍODO</text>
+  <rect x="108" y="352" width="235" height="40" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="122" y="378" class="small">Últimas 24 horas ▾</text>
+  <text x="367" y="342" class="tiny muted">CATEGORIA</text>
+  <rect x="367" y="352" width="214" height="40" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="381" y="378" class="small">Todas ▾</text>
+  <text x="605" y="342" class="tiny muted">ROTA</text>
+  <rect x="605" y="352" width="255" height="40" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="619" y="378" class="small">Todas as rotas ▾</text>
+  <text x="884" y="342" class="tiny muted">CORRELATION ID</text>
+  <rect x="884" y="352" width="444" height="40" rx="7" fill="#FFFFFF" stroke="#94A3B8"/>
+  <text x="898" y="378" class="small muted">UUID completo</text>
+
+  <rect x="84" y="428" width="1268" height="356" rx="12" class="card"/>
+  <text x="108" y="466" class="section">Eventos encontrados</text>
+  <text x="108" y="492" class="small muted">1–50 de 126 eventos · mais recentes primeiro</text>
+  <rect x="108" y="512" width="1220" height="42" rx="6" fill="#F1F5F9"/>
+  <text x="122" y="539" class="tiny muted" font-weight="700">DATA E HORA UTC</text>
+  <text x="292" y="539" class="tiny muted" font-weight="700">EVENTO</text>
+  <text x="488" y="539" class="tiny muted" font-weight="700">ROTA</text>
+  <text x="708" y="539" class="tiny muted" font-weight="700">RESULTADO</text>
+  <text x="862" y="539" class="tiny muted" font-weight="700">DURAÇÃO</text>
+  <text x="1000" y="539" class="tiny muted" font-weight="700">CORRELATION ID</text>
+  <path d="M108 566h1220M108 622h1220M108 678h1220M108 734h1220" class="line"/>
+  <text x="122" y="600" class="small">14:32:08</text>
+  <text x="292" y="600" class="small">request.completed</text>
+  <text x="488" y="600" class="small">POST /tenant/emitir</text>
+  <rect x="708" y="580" width="94" height="28" rx="14" class="lightgreen"/>
+  <text x="755" y="599" text-anchor="middle" class="tiny green" font-weight="700">HTTP 200</text>
+  <text x="862" y="600" class="small">184 ms</text>
+  <text x="1000" y="600" class="tiny blue" font-family="monospace">9e7a0d51…f28c</text>
+  <text x="122" y="656" class="small">14:31:54</text>
+  <text x="292" y="656" class="small">request.failed</text>
+  <text x="488" y="656" class="small">POST /tenant/emitir</text>
+  <rect x="708" y="636" width="94" height="28" rx="14" class="lightred"/>
+  <text x="755" y="655" text-anchor="middle" class="tiny red" font-weight="700">HTTP 500</text>
+  <text x="862" y="656" class="small">2.4 s</text>
+  <text x="1000" y="656" class="tiny blue" font-family="monospace">8d81ce42…79a3</text>
+  <text x="122" y="712" class="small">14:29:11</text>
+  <text x="292" y="712" class="small">job.completed</text>
+  <text x="488" y="712" class="small">worker/card-issuance</text>
+  <rect x="708" y="692" width="94" height="28" rx="14" class="lightgreen"/>
+  <text x="755" y="711" text-anchor="middle" class="tiny green" font-weight="700">Concluído</text>
+  <text x="862" y="712" class="small">6.1 s</text>
+  <text x="1000" y="712" class="tiny blue" font-family="monospace">8d81ce42…79a3</text>
+  <text x="108" y="760" class="tiny muted">Clique no correlation ID para filtrar. Resultados e falhas têm rótulo textual além da cor.</text>
+  <text x="1180" y="760" class="small muted">‹ Anterior　 Próxima ›</text>
+  <text x="84" y="824" class="tiny muted">Limite de 50 registros por página. Detalhes técnicos mostram somente chaves e códigos permitidos; sem IP, user agent, query, headers ou bodies.</text>
+  <rect x="84" y="842" width="1268" height="32" rx="7" class="lightamber"/>
+  <text x="102" y="863" class="tiny amber">Os exemplos são sintéticos. Eventos e campos disponíveis dependem das fontes instrumentadas no servidor.</text>
+
+  <!-- Mobile reference -->
+  <text x="84" y="952" class="section">Adaptação mobile · viewport 390 px</text>
+  <text x="84" y="980" class="small muted">Filtros em coluna e resultados em cartões para evitar rolagem horizontal.</text>
+  <rect x="520" y="1002" width="400" height="474" rx="24" fill="#FFFFFF" stroke="#94A3B8" stroke-width="2"/>
+  <rect x="540" y="1020" width="360" height="438" rx="16" class="bg"/>
+  <rect x="540" y="1020" width="360" height="52" rx="16" fill="#FFFFFF"/>
+  <text x="560" y="1053" class="label">IEPRCard · Superadmin</text>
+  <text x="560" y="1107" class="heading">Rastreabilidade</text>
+  <text x="560" y="1132" class="tiny muted">Eventos técnicos · UTC</text>
+  <text x="560" y="1161" class="tiny muted">PERÍODO</text>
+  <rect x="560" y="1171" width="320" height="36" rx="7" class="card"/>
+  <text x="574" y="1195" class="small">Últimas 24 horas ▾</text>
+  <text x="560" y="1230" class="tiny muted">CORRELATION ID</text>
+  <rect x="560" y="1240" width="320" height="36" rx="7" class="card"/>
+  <text x="574" y="1264" class="small muted">UUID completo</text>
+  <rect x="560" y="1290" width="320" height="116" rx="10" class="card"/>
+  <text x="576" y="1317" class="label">request.failed</text>
+  <text x="576" y="1340" class="tiny muted">14:31:54 UTC · POST /tenant/emitir</text>
+  <text x="576" y="1363" class="tiny red">HTTP 500 · 2.4 s</text>
+  <text x="576" y="1386" class="tiny blue" font-family="monospace">8d81ce42…79a3</text>
+  <text x="560" y="1430" class="tiny muted">1–50 de 126 · Próxima página ›</text>
+</svg>
