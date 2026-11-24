@@ -68,12 +68,13 @@ if (!function_exists('whatsappConversationHandleIncoming')) {
 }
 
 try {
+    $correlationId = httpRequestCorrelationId();
     whatsappGatewayProcessWebhook(
         dbConnection(),
         $token,
         $payload,
-        static function (array $instance, array $message): void {
-            whatsappConversationHandleIncoming(dbConnection(), $instance, $message);
+        static function (array $instance, array $message) use ($correlationId): void {
+            whatsappConversationHandleIncoming(dbConnection(), $instance, $message, null, null, null, $correlationId);
         }
     );
     gowaWebhookRespond(204);

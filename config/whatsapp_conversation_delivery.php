@@ -2,6 +2,24 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/privacy_subject_lifecycle.php';
+require_once __DIR__ . '/technical_events.php';
+
+function whatsappConversationDeliveryRecordTechnicalEvent(PDO $pdo, mixed $correlationId, string $eventKey, int $durationMs): void
+{
+    if (!is_string($correlationId) || $correlationId === '') return;
+    try {
+        technicalEventsRecord($pdo, [
+            'correlation_id' => $correlationId,
+            'categoria' => 'job',
+            'evento_chave' => $eventKey,
+            'rota' => 'worker.whatsapp_delivery',
+            'status_http' => 0,
+            'duracao_ms' => max(0, $durationMs),
+        ]);
+    } catch (Throwable) {
+        // Telemetry must not alter the scheduled delivery result.
+    }
+}
 
 function whatsappConversationSend(PDO $pdo, array $instance, string $phone, string $text, ?callable $transport = null): void
 {
@@ -31,7 +49,7 @@ function whatsappConversationProcessPendingDeliveries(PDO $pdo, int $limit = 20,
 {
     if ($limit < 1 || $limit > 100) throw new InvalidArgumentException('WHATSAPP_DELIVERY_LIMIT_INVALID');
     $rows = $pdo->prepare(
-        "SELECT c.id, c.tenant_id, c.titular_id, c.job_id, c.etapa_entrega, i.device_id, t.whatsapp, "
+        "SELECT c.id, c.tenant_id, c.titular_id, c.job_id, c.etapa_entrega, job.correlation_id, i.device_id, t.whatsapp, "
         . 'card.webp_frente_url, card.webp_verso_url '
         . 'FROM whatsapp_conversas c JOIN whatsapp_instancias i ON i.id = c.instancia_id AND i.estado = \'ativa\' '
         . 'AND i.fluxo_cadastro_ativo = 1 JOIN titulares t ON t.id = c.titular_id AND t.tenant_id = c.tenant_id '
@@ -43,6 +61,8 @@ function whatsappConversationProcessPendingDeliveries(PDO $pdo, int $limit = 20,
     $processed = 0;
     $failed = 0;
     foreach ($rows->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $startedAt = microtime(true);
+        whatsappConversationDeliveryRecordTechnicalEvent($pdo, $row['correlation_id'] ?? null, 'whatsapp.delivery_started', 0);
         try {
             if (!is_string($row['whatsapp']) || $row['whatsapp'] === ''
                 || !is_string($row['device_id']) || $row['device_id'] === '') {
@@ -78,7 +98,15 @@ function whatsappConversationProcessPendingDeliveries(PDO $pdo, int $limit = 20,
                 . "WHERE id = :id AND estado = 'entrega_pendente' AND etapa_entrega = 2"
             );
             $complete->execute(['updated' => gmdate('Y-m-d H:i:s'), 'id' => (int) $row['id']]);
-            if ($complete->rowCount() === 1) ++$processed;
+            if ($complete->rowCount() === 1) {
+                ++$processed;
+                whatsappConversationDeliveryRecordTechnicalEvent(
+                    $pdo,
+                    $row['correlation_id'] ?? null,
+                    'whatsapp.delivery_completed',
+                    (int) floor((microtime(true) - $startedAt) * 1000)
+                );
+            }
         } catch (Throwable) {
             $failedUpdate = $pdo->prepare(
                 "UPDATE whatsapp_conversas SET tentativas_entrega = tentativas_entrega + 1, "
@@ -86,6 +114,12 @@ function whatsappConversationProcessPendingDeliveries(PDO $pdo, int $limit = 20,
             );
             $failedUpdate->execute(['updated' => gmdate('Y-m-d H:i:s'), 'id' => (int) $row['id']]);
             ++$failed;
+            whatsappConversationDeliveryRecordTechnicalEvent(
+                $pdo,
+                $row['correlation_id'] ?? null,
+                'whatsapp.delivery_failed',
+                (int) floor((microtime(true) - $startedAt) * 1000)
+            );
         }
     }
     return ['processed' => $processed, 'failed' => $failed];

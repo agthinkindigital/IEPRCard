@@ -14,7 +14,8 @@ function whatsappConversationConfirmRegistration(
     string $stamp,
     string $expiresAt,
     int $tenantId,
-    ?int $subclientId
+    ?int $subclientId,
+    ?string $correlationId = null
 ): void {
     if ($conversation['estado'] === 'aguardando_confirmacao') {
         if (whatsappConversationCommand((string) ($message['texto'] ?? '')) !== 'CONFIRMAR') {
@@ -98,7 +99,8 @@ function whatsappConversationConfirmRegistration(
                 'whatsapp.' . hash('sha256', (int) $resolvedInstance['id'] . ':' . $conversation['id'] . ':webp:v1'),
                 null,
                 null,
-                $holderId
+                $holderId,
+                $correlationId
             );
             $finish = $pdo->prepare(
                 "UPDATE whatsapp_conversas SET estado = 'emissao_pendente', job_id = :job, dados_cifrados = NULL, atualizado_em = :updated "

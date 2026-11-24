@@ -16,7 +16,8 @@ function whatsappConversationHandleRegistration(
     string $stamp,
     string $expiresAt,
     int $tenantId,
-    ?int $subclientId
+    ?int $subclientId,
+    ?string $correlationId = null
 ): void {
     if ($conversation['estado'] === 'aguardando_nome') {
         $inputText = $message['texto'] ?? '';
@@ -159,7 +160,7 @@ function whatsappConversationHandleRegistration(
     if ($conversation['estado'] === 'aguardando_confirmacao') {
         whatsappConversationConfirmRegistration(
             $pdo, $conversation, $resolvedInstance, $normalizedPhone, $message, $reply,
-            $stamp, $expiresAt, (int) $tenantId, $subclientId
+            $stamp, $expiresAt, (int) $tenantId, $subclientId, $correlationId
         );
     }
 }

@@ -24,12 +24,17 @@ function technicalEventsRecord(PDO $pdo, array $event): bool
     $httpEvent = $event['evento_chave'] === 'http.response';
     $workerEvent = in_array($event['evento_chave'], [
         'issuance.job_started', 'issuance.job_completed', 'issuance.job_retry_scheduled', 'issuance.job_failed',
+        'whatsapp.delivery_started', 'whatsapp.delivery_completed', 'whatsapp.delivery_failed',
     ], true);
     if ($httpEvent) {
         if ($event['categoria'] === 'job' || $event['status_http'] < 100 || $event['status_http'] > 599) {
             throw new InvalidArgumentException('TECHNICAL_EVENT_INVALID');
         }
-    } elseif (!$workerEvent || $event['rota'] !== 'worker.card_issuance' || $event['status_http'] !== 0) {
+    } elseif (!$workerEvent
+        || !in_array($event['rota'], ['worker.card_issuance', 'worker.whatsapp_delivery'], true)
+        || (($event['rota'] === 'worker.card_issuance') !== str_starts_with($event['evento_chave'], 'issuance.'))
+        || (($event['rota'] === 'worker.whatsapp_delivery') !== str_starts_with($event['evento_chave'], 'whatsapp.delivery_'))
+        || $event['status_http'] !== 0) {
         throw new InvalidArgumentException('TECHNICAL_EVENT_INVALID');
     }
 
@@ -73,6 +78,7 @@ function technicalEventsRouteAllowlist(): array
         'oauth.metadata' => 'oauth', 'oauth.protected_resource' => 'oauth', 'integration.gowa_validate' => 'integration',
         'integration.gowa_webhook' => 'integration', 'system.unmapped' => 'system',
         'worker.card_issuance' => 'job',
+        'worker.whatsapp_delivery' => 'job',
     ];
 }
 

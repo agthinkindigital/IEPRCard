@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Correlação HTTP, persistência minimizada e consulta superadmin implementadas; propagação assíncrona pendente |
+| Status | Correlação HTTP, persistência minimizada, consulta superadmin e propagação na emissão/entrega WhatsApp implementadas; demais integrações assíncronas e golden signals pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
 
 ## Contexto
 
-`docs/08` descreve telemetria de **negócio** e o painel de lotes. A fatia #94 gera e devolve correlation ID em todos os entrypoints HTTP e o reutiliza na auditoria MCP. A #95 persiste um evento minimizado no encerramento de cada request PHP coberto, e a #96 disponibiliza a consulta paginada ao superadmin. Ainda falta propagar o ID para jobs, outbox e integrações.
+`docs/08` descreve telemetria de **negócio** e o painel de lotes. A fatia #94 gera e devolve correlation ID em todos os entrypoints HTTP e o reutiliza na auditoria MCP. A #95 persiste um evento minimizado no encerramento de cada request PHP coberto, e a #96 disponibiliza a consulta paginada ao superadmin. As #97 e #98 propagam o ID pelos jobs de emissão e pela entrega WhatsApp; outras integrações assíncronas continuam pendentes.
 
 ## Decisão
 
@@ -35,6 +35,7 @@
 - A #95 adiciona `eventos_tecnicos`, persiste um evento allowlisted por request em modo best-effort, e expurga registros em lotes limitados usando retenção configurável (padrão de 30 dias, 1–3650) no início da execução agendada. O painel `/telemetria` mantém o valor ativo/pendente na configuração versionada existente. Não armazena PII, IDs internos, IP/UA, rota dinâmica, query string, headers, body ou erro livre. Persistência usa rota canônica de uma lista permitida. CI #45470771467 passou em MySQL 8.4, MariaDB 10.11 e PDF; revisão QA aprovada.
 - O mantenedor escolheu consulta exclusiva ao superadmin e omissão de IDs internos; mockup e guia da consulta foram aprovados em 2026-11-24. A tela foi concluída na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), commit `45adece`, com CI [45474514566](https://github.com/agthinkindigital/IEPRCard/actions/runs/45474514566) verde em MySQL 8.4, MariaDB 10.11 e PDF. A propagação assíncrona continua na E08.4 da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 - A propagação inicial para jobs de emissão foi implementada na [#97](https://github.com/agthinkindigital/IEPRCard/issues/97): o job conserva o correlation ID do request criador, mesmo quando a chave de idempotência é repetida. O worker registra eventos allowlisted sob a mesma correlação, sem IDs de escopo ou dados de titular; o inventário de snapshot inclui a coluna técnica sem classificá-la como PII. Outros produtores/consumidores assíncronos permanecem em E08.4.2.
+- A [#98](https://github.com/agthinkindigital/IEPRCard/issues/98) propaga a correlação do webhook GOWA ao job idempotente de emissão e ao worker agendado de entrega das imagens. A entrega consulta o correlation ID pela relação já existente com o job, sem nova coluna na conversa; eventos de início, conclusão e falha são allowlisted e não armazenam IDs internos ou conteúdo pessoal. Jobs antigos sem correlação continuam entregues sem eventos órfãos.
 
 ## Alternativas consideradas
 

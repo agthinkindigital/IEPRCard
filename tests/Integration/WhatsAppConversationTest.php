@@ -213,7 +213,8 @@ try {
         ['telefone' => '5511999991234', 'texto' => 'CONFIRMAR', 'id_mensagem' => 'confirm-registration', 'media' => null],
         $reply,
         $noAi,
-        1_800_000_480
+        1_800_000_480,
+        '4be64286-79a0-4a5a-b169-975e3cd7a801'
     );
     $conversation = $pdo->query('SELECT * FROM whatsapp_conversas')->fetch(PDO::FETCH_ASSOC);
     $holder = $pdo->query('SELECT * FROM titulares')->fetch(PDO::FETCH_ASSOC);
@@ -226,6 +227,7 @@ try {
     if (!is_array($holder) || $holder['cpf'] !== '12345678909' || $holder['whatsapp'] !== '+5511999991234'
         || (int) $holder['categoria_id'] !== $categoryId || !is_array($job) || (int) $job['design_id'] !== $designId
         || $job['modo_saida'] !== 'webp' || $job['status_lote'] !== 'na_fila'
+        || $job['correlation_id'] !== '4be64286-79a0-4a5a-b169-975e3cd7a801'
         || $conversation['estado'] !== 'emissao_pendente' || (int) $conversation['titular_id'] !== (int) $holder['id']
         || (int) $conversation['job_id'] !== (int) $job['id'] || $conversation['dados_cifrados'] !== null
         || !is_array($holderSubject) || !is_array($conversationSubject)

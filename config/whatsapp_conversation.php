@@ -31,7 +31,8 @@ function whatsappConversationHandleIncoming(
     array $message,
     ?callable $reply = null,
     ?callable $interpreter = null,
-    ?int $now = null
+    ?int $now = null,
+    ?string $correlationId = null
 ): void {
     $instanceId = filter_var($instance['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     $tenantId = filter_var($instance['tenant_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
@@ -186,7 +187,7 @@ function whatsappConversationHandleIncoming(
     }
     whatsappConversationHandleRegistration(
         $pdo, $conversation, $resolvedInstance, $normalizedPhone, $message, $reply,
-        $interpreter, $stamp, $expiresAt, (int) $tenantId, $subclientId
+        $interpreter, $stamp, $expiresAt, (int) $tenantId, $subclientId, $correlationId
     );
     return;
 }
