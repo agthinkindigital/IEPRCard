@@ -13,7 +13,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 * **GATE 2 — Multi-Tenancy, Domínios & RBAC (Após Épico 2):**
 * [x] Suíte `TDD-02` passou no CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 * [x] Isolamento por tenant/unidade e negação de acesso por ID adulterado passaram em testes de escopo e rotas HTTP no CI [45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
-* [ ] Suporte remoto auditável em três níveis não tem implementação/testes nem Issue filha ativa; aguardando decisão do mantenedor sobre permanecer no MVP.
+* [ ] Suporte remoto auditável em três níveis permanece no MVP por decisão do mantenedor; especificação e implementação aguardam as definições da [Issue #89](https://github.com/agthinkindigital/IEPRCard/issues/89).
 
 
 

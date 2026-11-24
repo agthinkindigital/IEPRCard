@@ -43,14 +43,7 @@
 * **Critério de Aceite:** Bloquear qualquer tentativa de escalonamento de privilégio (Subcliente tentando ativar permissão revogada pelo Cliente ou Admin).
 
 
-* **ISSUE-006: Painel de Gestão de Clientes, Subclientes e Suporte Remoto Auditável** — mockups/guias de unidades, equipe e cotas aprovados na [GitHub #50](https://github.com/agthinkindigital/IEPRCard/issues/50); telas de unidades [#56](https://github.com/agthinkindigital/IEPRCard/issues/56), equipe/permissões [#55](https://github.com/agthinkindigital/IEPRCard/issues/55) e alocação de cotas [#57](https://github.com/agthinkindigital/IEPRCard/issues/57) concluídas em `DEV`. A validação operacional de DNS/TLS segue em [#51](https://github.com/agthinkindigital/IEPRCard/issues/51).
-* **Arquivos:** `admin/clientes.php`, `painel/subclientes.php`, `includes/suporte.php`, `painel/suporte-remoto.php`
-
-
-* **Descrição:** Interfaces CRUD completas para o Admin gerenciar Clientes/Subclientes e para o Cliente gerenciar seus Subclientes, integrando o sistema de tokens temporários de suporte de `suporte.php`.
-
-
-* **Critério de Aceite:** Geração de token de suporte com expiração de 60 minutos e registro de auditoria (`usado_em`, `ip_usado`).
+* **ISSUE-006: Gestão de Clientes, Subclientes e suporte remoto auditável** — mockups/guias de unidades, equipe e cotas aprovados na [#50](https://github.com/agthinkindigital/IEPRCard/issues/50); telas [#55](https://github.com/agthinkindigital/IEPRCard/issues/55)–[#57](https://github.com/agthinkindigital/IEPRCard/issues/57) concluídas em `DEV`. O suporte remoto permanece no MVP; contrato, decisões pendentes e implementação estão rastreados na [E02.22 #89](https://github.com/agthinkindigital/IEPRCard/issues/89), sem duplicar seus critérios aqui.
 
 
 
