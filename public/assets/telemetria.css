@@ -47,8 +47,8 @@ h1 { margin: 0; font-size: clamp(27px, 4vw, 36px); line-height: 1.18; }
 .configuration-state p { margin: 7px 0 0; color: #475569; font-size: 13px; line-height: 1.55; }
 .pending-state { border-color: #fde68a; background: #fffbeb; }
 .configuration-form { display: grid; gap: 16px; margin-top: 18px; padding-top: 20px; border-top: 1px solid #dce3ec; }
-.configuration-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; }
-.configuration-fields label { align-self: end; color: #334155; font-size: 13px; font-weight: 700; line-height: 1.4; }
+.configuration-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 14px; }
+.configuration-fields label { display: grid; align-self: end; gap: 6px; color: #334155; font-size: 13px; font-weight: 700; line-height: 1.4; }
 .configuration-fields input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid #94a3b8; border-radius: 7px; background: #fff; color: #0f172a; font: inherit; }
 .configuration-fields input:focus-visible, .confirmation-check input:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
 .confirmation-check { display: flex; align-items: flex-start; gap: 10px; color: #334155; font-size: 14px; line-height: 1.45; }
@@ -69,4 +69,8 @@ h1 { margin: 0; font-size: clamp(27px, 4vw, 36px); line-height: 1.18; }
     .daily-row { grid-template-columns: 42px minmax(0, 1fr) 58px; gap: 9px; }
     .configuration-state-grid, .configuration-fields { grid-template-columns: 1fr; }
     .configuration-form .primary-button { width: 100%; }
+}
+
+@media (min-width: 721px) and (max-width: 1040px) {
+    .configuration-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

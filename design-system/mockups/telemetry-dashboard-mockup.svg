@@ -72,10 +72,12 @@
   <text x="338" y="846" class="tiny muted">PICO ESPERADO · EDITÁVEL</text><text x="338" y="870" class="body">420 por dia</text>
   <rect x="540" y="824" width="200" height="58" rx="8" fill="#FFFFFF" stroke="#64748B"/>
   <text x="554" y="846" class="tiny muted">JANELA · EDITÁVEL</text><text x="554" y="870" class="body">30 dias</text>
-  <rect x="756" y="824" width="180" height="58" rx="8" fill="#1D4ED8"/>
-  <text x="846" y="859" text-anchor="middle" class="small" fill="#FFFFFF">Salvar ajustes</text>
-  <rect x="952" y="824" width="376" height="58" rx="8" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
-  <text x="1140" y="859" text-anchor="middle" class="small" fill="#1D4ED8">Ativa no próximo início do worker</text>
+  <rect x="756" y="824" width="200" height="58" rx="8" fill="#FFFFFF" stroke="#64748B"/>
+  <text x="770" y="846" class="tiny muted">RETENÇÃO TÉCNICA · DIAS</text><text x="770" y="870" class="body">30 dias · editável</text>
+  <rect x="972" y="824" width="180" height="58" rx="8" fill="#1D4ED8"/>
+  <text x="1062" y="859" text-anchor="middle" class="small" fill="#FFFFFF">Salvar ajustes</text>
+  <rect x="1168" y="824" width="160" height="58" rx="8" fill="#FFFFFF" stroke="#1D4ED8" stroke-width="2"/>
+  <text x="1248" y="849" text-anchor="middle" class="tiny" fill="#1D4ED8">Ativa no próximo</text><text x="1248" y="869" text-anchor="middle" class="tiny" fill="#1D4ED8">início do worker</text>
   <rect x="108" y="892" width="1220" height="30" rx="8" class="lightamber"/>
   <text x="124" y="912" class="tiny amber">Salvar cria uma versão pendente. Ela entra em vigor no próximo início do worker; o lote atual conserva os parâmetros carregados.</text>
   <text x="84" y="954" class="tiny muted">P95 e lote recomendado usam dados diários completos; outros estados: sem dados, histórico insuficiente (&lt;7 dias) ou falha de leitura.</text>

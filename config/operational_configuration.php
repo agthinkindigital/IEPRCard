@@ -3,19 +3,22 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/operational_batch_metrics.php';
 
-/** @return array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int} */
+/** @return array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int,retencao_eventos_tecnicos_dias:int} */
 function operationalConfigValidateSettings(array $settings): array
 {
     $expected = ['janela_previsao_dias', 'lote_maximo_registros', 'pico_previsto_diario'];
     $keys = array_keys($settings);
     sort($keys, SORT_STRING);
-    if ($keys !== $expected
+    if (($keys !== $expected && $keys !== [...$expected, 'retencao_eventos_tecnicos_dias'])
         || !is_int($settings['lote_maximo_registros'] ?? null)
         || $settings['lote_maximo_registros'] < 1 || $settings['lote_maximo_registros'] > 500
         || !is_int($settings['pico_previsto_diario'] ?? null)
         || $settings['pico_previsto_diario'] < 0 || $settings['pico_previsto_diario'] > 1_000_000_000
         || !is_int($settings['janela_previsao_dias'] ?? null)
-        || $settings['janela_previsao_dias'] < 7 || $settings['janela_previsao_dias'] > 365) {
+        || $settings['janela_previsao_dias'] < 7 || $settings['janela_previsao_dias'] > 365
+        || (array_key_exists('retencao_eventos_tecnicos_dias', $settings)
+            && (!is_int($settings['retencao_eventos_tecnicos_dias'])
+                || $settings['retencao_eventos_tecnicos_dias'] < 1 || $settings['retencao_eventos_tecnicos_dias'] > 3650))) {
         throw new InvalidArgumentException('OPERATIONAL_CONFIG_INVALID');
     }
 
@@ -23,12 +26,13 @@ function operationalConfigValidateSettings(array $settings): array
         'lote_maximo_registros' => $settings['lote_maximo_registros'],
         'pico_previsto_diario' => $settings['pico_previsto_diario'],
         'janela_previsao_dias' => $settings['janela_previsao_dias'],
+        'retencao_eventos_tecnicos_dias' => $settings['retencao_eventos_tecnicos_dias'] ?? 30,
     ];
 }
 
 /**
  * @param array<string, mixed> $settings
- * @return array{id:int,versao:int,ambiente:string,estado:'pendente',configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int}}
+ * @return array{id:int,versao:int,ambiente:string,estado:'pendente',configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int,retencao_eventos_tecnicos_dias:int}}
  */
 function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId = null, ?int $now = null): array
 {
@@ -109,7 +113,7 @@ function operationalConfigSavePending(PDO $pdo, array $settings, ?int $actorId =
 
 /**
  * Read the active snapshot and newest pending version for the current runtime environment.
- * @return array{environment:string,active:?array{id:int,versao:int,configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int}},pending:?array{id:int,versao:int,configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int}}}
+ * @return array{environment:string,active:?array{id:int,versao:int,configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int,retencao_eventos_tecnicos_dias:int}},pending:?array{id:int,versao:int,configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int,retencao_eventos_tecnicos_dias:int}}}
  */
 function operationalConfigReadState(PDO $pdo): array
 {
@@ -142,7 +146,7 @@ function operationalConfigReadState(PDO $pdo): array
 /**
  * Applies the newest pending snapshot at the beginning of one worker invocation.
  *
- * @return array{id:int,versao:int,ambiente:string,estado:'ativa',configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int},ativou_pendente:bool}|null
+ * @return array{id:int,versao:int,ambiente:string,estado:'ativa',configuracao:array{lote_maximo_registros:int,pico_previsto_diario:int,janela_previsao_dias:int,retencao_eventos_tecnicos_dias:int},ativou_pendente:bool}|null
  */
 function operationalConfigWorkerStart(PDO $pdo, ?int $now = null): ?array
 {

@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 $root = dirname(__DIR__, 2);
+require_once $root . '/config/conn.php';
+require_once $root . '/config/schema_self_healing.php';
 $directory = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ieprcard-http-correlation-' . bin2hex(random_bytes(6));
 if (!mkdir($directory, 0700, true) && !is_dir($directory)) {
     throw new RuntimeException('Could not create HTTP correlation test storage.');
@@ -15,6 +17,9 @@ foreach (['APP_ENV', 'DB_DRIVER', 'DB_SQLITE_PATH'] as $key) {
 putenv('APP_ENV=dev');
 putenv('DB_DRIVER=sqlite');
 putenv('DB_SQLITE_PATH=' . $directory . DIRECTORY_SEPARATOR . 'http-correlation.sqlite');
+$database = dbConnect();
+schemaGarantirEstrutura($database, 'dev');
+unset($database);
 
 $portProbe = stream_socket_server('tcp://127.0.0.1:0', $errorCode, $errorMessage);
 if ($portProbe === false) {
@@ -70,6 +75,16 @@ try {
         || $correlationId === 'client-controlled-id') {
         throw new RuntimeException('Every HTTP response must return a server-generated UUID v4 correlation ID.');
     }
+    $eventPdo = dbConnect();
+    $eventQuery = $eventPdo->prepare('SELECT correlation_id, categoria, evento_chave, rota, status_http, duracao_ms FROM eventos_tecnicos WHERE correlation_id = :correlation');
+    $eventQuery->execute(['correlation' => $correlationId]);
+    $requestEvents = $eventQuery->fetchAll(PDO::FETCH_ASSOC);
+    if (count($requestEvents) !== 1 || $requestEvents[0]['categoria'] !== 'system'
+        || $requestEvents[0]['evento_chave'] !== 'http.response' || $requestEvents[0]['rota'] !== 'system.index'
+        || (int) $requestEvents[0]['status_http'] !== 200 || (int) $requestEvents[0]['duracao_ms'] < 0) {
+        throw new RuntimeException('An HTTP request must persist exactly one minimized event with its server correlation ID and canonical route.');
+    }
+    unset($eventQuery, $eventPdo);
 
     $publicRoot = $root . DIRECTORY_SEPARATOR . 'public';
     $entrypoints = [];
@@ -128,6 +143,20 @@ try {
         }
         $seenCorrelationIds[$entrypointCorrelationId] = true;
     }
+
+    $eventPdo = dbConnect();
+    $placeholders = implode(',', array_fill(0, count($seenCorrelationIds), '?'));
+    $eventLookup = $eventPdo->prepare('SELECT correlation_id, rota FROM eventos_tecnicos WHERE correlation_id IN (' . $placeholders . ')');
+    $eventLookup->execute(array_keys($seenCorrelationIds));
+    $persistedEvents = $eventLookup->fetchAll(PDO::FETCH_ASSOC);
+    $persistedIds = array_column($persistedEvents, 'correlation_id');
+    sort($persistedIds, SORT_STRING);
+    $expectedIds = array_keys($seenCorrelationIds);
+    sort($expectedIds, SORT_STRING);
+    if ($persistedIds !== $expectedIds || in_array('client-controlled-id', $persistedIds, true)) {
+        throw new RuntimeException('Each covered HTTP entrypoint must persist exactly one event using only the server-generated correlation ID.');
+    }
+    unset($eventLookup, $eventPdo);
 } finally {
     proc_terminate($process);
     proc_close($process);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/privacy_snapshot.php';
 require_once __DIR__ . '/privacy_subject_lifecycle.php';
 require_once __DIR__ . '/operational_configuration.php';
+require_once __DIR__ . '/technical_events.php';
 
 /** @param array<string, callable():array<string, int>> $tasks @return array{ok:bool,tasks:array<string, array<string, mixed>>} */
 function scheduledTasksRun(array $tasks): array
@@ -53,6 +54,7 @@ function scheduledTasksSafeErrorCode(Throwable $exception): string
         'SCHEDULED_TASK_CONFIGURATION_INVALID',
         'SCHEDULED_TASK_LIMIT_INVALID',
         'SCHEDULED_TASK_RESULT_INVALID',
+        'TECHNICAL_EVENT_RETENTION_LIMIT_INVALID',
         'WHATSAPP_CONVERSATION_CLEANUP_LIMIT_INVALID',
         'WHATSAPP_DELIVERY_LIMIT_INVALID',
     ];
@@ -86,10 +88,21 @@ function scheduledTasksBuild(PDO $pdo, int $maxIssuanceJobs = 1, int $maintenanc
         throw new InvalidArgumentException('SCHEDULED_TASK_LIMIT_INVALID');
     }
 
+    $activeOperationalConfiguration = null;
+    $operationalConfigurationAvailable = false;
+
     return [
-        'operational_configuration' => static function () use ($pdo): array {
-            $snapshot = operationalConfigWorkerStart($pdo);
-            return ['activated_pending' => $snapshot !== null && $snapshot['ativou_pendente'] ? 1 : 0];
+        'operational_configuration' => static function () use ($pdo, &$activeOperationalConfiguration, &$operationalConfigurationAvailable): array {
+            $activeOperationalConfiguration = operationalConfigWorkerStart($pdo);
+            $operationalConfigurationAvailable = true;
+            return ['activated_pending' => $activeOperationalConfiguration !== null && $activeOperationalConfiguration['ativou_pendente'] ? 1 : 0];
+        },
+        'technical_event_retention' => static function () use ($pdo, $maintenanceLimit, &$activeOperationalConfiguration, &$operationalConfigurationAvailable): array {
+            if (!$operationalConfigurationAvailable) {
+                return ['failed' => 1];
+            }
+            $retentionDays = $activeOperationalConfiguration['configuracao']['retencao_eventos_tecnicos_dias'] ?? 30;
+            return ['deleted' => technicalEventsPurgeExpired($pdo, $retentionDays, $maintenanceLimit)];
         },
         'card_issuance' => static function () use ($pdo, $maxIssuanceJobs): array {
             $result = cardIssuanceWorkerRunBatch($pdo, $maxIssuanceJobs);

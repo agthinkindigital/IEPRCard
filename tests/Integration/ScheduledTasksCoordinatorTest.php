@@ -70,8 +70,12 @@ fwrite(STDOUT, "PASS: scheduled task reported failure summary.\n");
 
 $pdo = new PDO('sqlite::memory:');
 $definitions = scheduledTasksBuild($pdo);
+$retentionWithoutConfiguration = $definitions['technical_event_retention']();
+if ($retentionWithoutConfiguration !== ['failed' => 1]) {
+    throw new RuntimeException('Technical retention must fail closed when the operational configuration task did not produce a snapshot.');
+}
 if (array_keys($definitions) !== [
-    'operational_configuration', 'card_issuance', 'whatsapp_delivery', 'import_staging_cleanup', 'titular_anonymization',
+    'operational_configuration', 'technical_event_retention', 'card_issuance', 'whatsapp_delivery', 'import_staging_cleanup', 'titular_anonymization',
     'privacy_subject_retention', 'whatsapp_conversation_cleanup', 'privacy_backup', 'privacy_snapshot_retention',
 ]) {
     throw new RuntimeException('The coordinator must register only the implemented tasks in deterministic order.');

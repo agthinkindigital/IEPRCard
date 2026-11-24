@@ -12,7 +12,13 @@ $settings = [
     'lote_maximo_registros' => 25,
     'pico_previsto_diario' => 100,
     'janela_previsao_dias' => 30,
+    'retencao_eventos_tecnicos_dias' => 45,
 ];
+$legacySettings = $settings;
+unset($legacySettings['retencao_eventos_tecnicos_dias']);
+if ((operationalConfigValidateSettings($legacySettings)['retencao_eventos_tecnicos_dias'] ?? null) !== 30) {
+    throw new RuntimeException('Existing operational snapshots without a technical retention setting must remain compatible with the 30-day default.');
+}
 
 try {
     foreach (tenantTestConnections() as $driver => $pdo) {
@@ -22,6 +28,8 @@ try {
             ['lote_maximo_registros' => 0, 'pico_previsto_diario' => 100, 'janela_previsao_dias' => 30],
             ['lote_maximo_registros' => 25, 'pico_previsto_diario' => -1, 'janela_previsao_dias' => 30],
             ['lote_maximo_registros' => 25, 'pico_previsto_diario' => 100, 'janela_previsao_dias' => 366],
+            ['lote_maximo_registros' => 25, 'pico_previsto_diario' => 100, 'janela_previsao_dias' => 30, 'retencao_eventos_tecnicos_dias' => 0],
+            ['lote_maximo_registros' => 25, 'pico_previsto_diario' => 100, 'janela_previsao_dias' => 30, 'retencao_eventos_tecnicos_dias' => 3651],
             ['lote_maximo_registros' => 25, 'pico_previsto_diario' => 100, 'janela_previsao_dias' => 30, 'unexpected' => true],
         ] as $invalidSettings) {
             $invalidRejected = false;

@@ -239,6 +239,14 @@ try {
         throw new RuntimeException('Operational configuration writes must reject out-of-range values generically.');
     }
     [$status, $body] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
+        'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200',
+        'pico_previsto_diario' => '450', 'janela_previsao_dias' => '21', 'retencao_eventos_tecnicos_dias' => '0',
+        'confirmar_aplicacao' => '1',
+    ]);
+    if ($status !== 400 || !str_contains($body, 'Não foi possível validar os ajustes')) {
+        throw new RuntimeException('Technical event retention must reject values below the supported minimum.');
+    }
+    [$status, $body] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
         'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200', 'pico_previsto_diario' => '450',
         'janela_previsao_dias' => '21',
     ]);
@@ -254,7 +262,7 @@ try {
     }
     [$status, $body, $headers] = $postRequest('/telemetria/', 'admin.ieprcard.test', $adminCookie, [
         'action' => 'save_operational_config', 'csrf_token' => $adminCsrf, 'lote_maximo_registros' => '200', 'pico_previsto_diario' => '450',
-        'janela_previsao_dias' => '21', 'confirmar_aplicacao' => '1',
+        'janela_previsao_dias' => '21', 'retencao_eventos_tecnicos_dias' => '45', 'confirmar_aplicacao' => '1',
     ]);
     if ($status !== 303 || telemetryDashboardHeaderValue($headers, 'Location') !== '/telemetria/') {
         throw new RuntimeException('A confirmed Admin configuration must save as pending and redirect before displaying the result.');
@@ -262,7 +270,9 @@ try {
     [$status, $body] = $request('/telemetria/', 'admin.ieprcard.test', $adminCookie);
     if ($status !== 200 || !str_contains($body, 'Versão pendente 1')
         || !str_contains($body, '200 registros') || !str_contains($body, '450 por dia')
-        || !str_contains($body, '21 dias') || !str_contains($body, 'próxima execução agendada do worker')) {
+        || !str_contains($body, '21 dias') || !str_contains($body, '45 dias')
+        || !str_contains($body, 'name="retencao_eventos_tecnicos_dias"')
+        || !str_contains($body, 'próxima execução agendada do worker')) {
         throw new RuntimeException('The Admin dashboard must show the saved pending version and shared-hosting activation timing.');
     }
     $configPdo = dbConnect($database);
@@ -272,7 +282,8 @@ try {
     }
     $newPendingConfigId = (int) $configRows[0]['id'];
     $activatedConfig = operationalConfigWorkerStart($configPdo);
-    if (($activatedConfig['id'] ?? null) !== $newPendingConfigId || ($activatedConfig['ativou_pendente'] ?? null) !== true) {
+    if (($activatedConfig['id'] ?? null) !== $newPendingConfigId || ($activatedConfig['ativou_pendente'] ?? null) !== true
+        || ($activatedConfig['configuracao']['retencao_eventos_tecnicos_dias'] ?? null) !== 45) {
         throw new RuntimeException('A pending dashboard configuration must activate only when the test invokes the worker-start hook.');
     }
     unset($configPdo);

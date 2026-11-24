@@ -53,7 +53,21 @@ try {
         'lote_maximo_registros' => 25,
         'pico_previsto_diario' => 100,
         'janela_previsao_dias' => 30,
+        'retencao_eventos_tecnicos_dias' => 45,
     ]);
+    $seedEvent = $configurationPdo->prepare(
+        'INSERT INTO eventos_tecnicos (correlation_id, categoria, evento_chave, rota, status_http, duracao_ms, criado_em) '
+        . 'VALUES (:id, :category, :event, :route, 200, 1, :created)'
+    );
+    $seedEvent->execute([
+        'id' => '4d2ac80c-5fb2-4de4-bfea-5e885e2b2318', 'category' => 'admin', 'event' => 'http.response',
+        'route' => 'admin.telemetry', 'created' => gmdate('Y-m-d H:i:s', time() - 46 * 86400),
+    ]);
+    $seedEvent->execute([
+        'id' => '5d2ac80c-5fb2-4de4-bfea-5e885e2b2318', 'category' => 'admin', 'event' => 'http.response',
+        'route' => 'admin.telemetry', 'created' => gmdate('Y-m-d H:i:s', time() - 44 * 86400),
+    ]);
+    $seedEvent = null;
     $configurationPdo = null;
     $root = dirname(__DIR__, 2);
     $phpArguments = [];
@@ -88,20 +102,25 @@ try {
     $summary = json_decode((string) $stdout, true);
     if ($exitCode !== 0 || !is_array($summary) || ($summary['ok'] ?? null) !== true
         || array_keys($summary['tasks'] ?? []) !== [
-            'operational_configuration', 'card_issuance', 'whatsapp_delivery', 'import_staging_cleanup', 'titular_anonymization',
+            'operational_configuration', 'technical_event_retention', 'card_issuance', 'whatsapp_delivery', 'import_staging_cleanup', 'titular_anonymization',
             'privacy_subject_retention', 'whatsapp_conversation_cleanup', 'privacy_backup', 'privacy_snapshot_retention',
         ]
         || ($summary['tasks']['operational_configuration']['counts']['activated_pending'] ?? null) !== 1
+        || ($summary['tasks']['technical_event_retention']['counts']['deleted'] ?? null) !== 1
         || str_contains((string) $stdout, $storagePath) || str_contains((string) $stderr, $databasePath)) {
         throw new RuntimeException('The scheduled task CLI must run bounded tasks and emit a private-data-free summary: ' . $stderr . $stdout);
     }
 
     $configurationPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
     $configurationState = operationalConfigReadState($configurationPdo);
-    $configurationPdo = null;
     if (($configurationState['active']['id'] ?? null) !== $pendingConfiguration['id']
         || $configurationState['pending'] !== null) {
         throw new RuntimeException('The next scheduled worker invocation must activate the pending operational configuration.');
+    }
+    $retainedEvents = $configurationPdo->query('SELECT correlation_id FROM eventos_tecnicos ORDER BY correlation_id')->fetchAll(PDO::FETCH_COLUMN);
+    $configurationPdo = null;
+    if ($retainedEvents !== ['5d2ac80c-5fb2-4de4-bfea-5e885e2b2318']) {
+        throw new RuntimeException('The same scheduled invocation must apply the newly active retention setting and preserve recent technical events.');
     }
 
     fwrite(STDOUT, "PASS: scheduled task CLI summary and output redaction.\n");

@@ -695,7 +695,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 
 ### 8.2. Logs, correlação e telemetria de negócio
 
-- Eventos técnicos estruturados com `correlation_id`, categoria, chave do evento, rota canônica, duração, status HTTP e horário UTC. Não armazenam PII, `tenant_id` nem `subcliente_id`; a correlação assíncrona para jobs, outbox e integrações permanece pendente na E08.
+- Eventos HTTP técnicos estruturados são persistidos em `eventos_tecnicos` pela #95 com `correlation_id`, categoria, chave do evento, rota canônica, duração, status HTTP e horário UTC. Não armazenam PII, `tenant_id` nem `subcliente_id`; consulta superadmin (#96) e propagação assíncrona para jobs, outbox e integrações permanecem pendentes na E08.
 - **Telemetria de negócio** (`telemetria_eventos`, `telemetria_diaria`) permanece sem PII e com recortes Admin/Cliente/Subcliente (`docs/08`).
 - **Telemetria operacional** (golden signals) é separada da telemetria de negócio para não misturar fins e para não expor métricas de infraestrutura a Subclientes.
 - As tabelas de configuração e métricas dos lotes, assim como a fila de solicitações de anonimização, apoiam os fluxos descritos em ADR-0011, ADR-0012 e `docs/01`.

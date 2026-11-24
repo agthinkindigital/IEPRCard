@@ -174,6 +174,7 @@ try {
             'lote_maximo_registros' => telemetryPagePostedInteger('lote_maximo_registros'),
             'pico_previsto_diario' => telemetryPagePostedInteger('pico_previsto_diario'),
             'janela_previsao_dias' => telemetryPagePostedInteger('janela_previsao_dias'),
+            'retencao_eventos_tecnicos_dias' => telemetryPagePostedInteger('retencao_eventos_tecnicos_dias') ?? 30,
         ];
         if (in_array(null, $settings, true)) {
             http_response_code(400);
@@ -361,6 +362,7 @@ $configurationFormValues = $pendingConfiguration['configuracao']
         'lote_maximo_registros' => 300,
         'pico_previsto_diario' => $operations['recommended_lot_size'] ?? 0,
         'janela_previsao_dias' => $forecastDays,
+        'retencao_eventos_tecnicos_dias' => 30,
     ];
 
 http_response_code(http_response_code() ?: $httpStatus);
@@ -475,7 +477,7 @@ http_response_code(http_response_code() ?: $httpStatus);
                             <h3>Configuração ativa</h3>
                             <?php if (is_array($activeConfiguration)): ?>
                                 <p><strong>Versão ativa <?= (int) $activeConfiguration['versao'] ?></strong></p>
-                                <p>Lote máximo: <?= $number($activeConfiguration['configuracao']['lote_maximo_registros']) ?> registros<br>Pico esperado: <?= $number($activeConfiguration['configuracao']['pico_previsto_diario']) ?> por dia<br>Janela: <?= $activeConfiguration['configuracao']['janela_previsao_dias'] ?> dias</p>
+                                <p>Lote máximo: <?= $number($activeConfiguration['configuracao']['lote_maximo_registros']) ?> registros<br>Pico esperado: <?= $number($activeConfiguration['configuracao']['pico_previsto_diario']) ?> por dia<br>Janela: <?= $activeConfiguration['configuracao']['janela_previsao_dias'] ?> dias<br>Retenção técnica: <?= $activeConfiguration['configuracao']['retencao_eventos_tecnicos_dias'] ?> dias</p>
                             <?php else: ?>
                                 <p>Nenhuma versão ativa. Esta instalação ainda não carregou uma configuração pelo worker.</p>
                             <?php endif; ?>
@@ -484,7 +486,7 @@ http_response_code(http_response_code() ?: $httpStatus);
                             <h3>Alteração pendente</h3>
                             <?php if (is_array($pendingConfiguration)): ?>
                                 <p><strong>Versão pendente <?= (int) $pendingConfiguration['versao'] ?></strong></p>
-                                <p><?= $number($pendingConfiguration['configuracao']['lote_maximo_registros']) ?> registros · <?= $number($pendingConfiguration['configuracao']['pico_previsto_diario']) ?> por dia · <?= $pendingConfiguration['configuracao']['janela_previsao_dias'] ?> dias</p>
+                                <p><?= $number($pendingConfiguration['configuracao']['lote_maximo_registros']) ?> registros · <?= $number($pendingConfiguration['configuracao']['pico_previsto_diario']) ?> por dia · <?= $pendingConfiguration['configuracao']['janela_previsao_dias'] ?> dias · retenção técnica <?= $pendingConfiguration['configuracao']['retencao_eventos_tecnicos_dias'] ?> dias</p>
                                 <p>Em hospedagem compartilhada, será ativada na próxima execução agendada do worker.</p>
                             <?php else: ?>
                                 <p>Não há alterações aguardando o worker.</p>
@@ -495,12 +497,10 @@ http_response_code(http_response_code() ?: $httpStatus);
                         <input type="hidden" name="action" value="save_operational_config">
                         <input type="hidden" name="csrf_token" value="<?= telemetryPageEscape($csrfToken) ?>">
                         <div class="configuration-fields">
-                            <label for="lote-maximo">Lote máximo · registros (1 a 500)</label>
-                            <input id="lote-maximo" name="lote_maximo_registros" type="number" min="1" max="500" step="1" value="<?= (int) $configurationFormValues['lote_maximo_registros'] ?>" required>
-                            <label for="pico-esperado">Pico esperado · registros por dia</label>
-                            <input id="pico-esperado" name="pico_previsto_diario" type="number" min="0" max="1000000000" step="1" value="<?= (int) $configurationFormValues['pico_previsto_diario'] ?>" required>
-                            <label for="janela-config">Janela da previsão · dias (7 a 365)</label>
-                            <input id="janela-config" name="janela_previsao_dias" type="number" min="7" max="365" step="1" value="<?= (int) $configurationFormValues['janela_previsao_dias'] ?>" required>
+                            <label for="lote-maximo">Lote máximo · registros (1 a 500)<input id="lote-maximo" name="lote_maximo_registros" type="number" min="1" max="500" step="1" value="<?= (int) $configurationFormValues['lote_maximo_registros'] ?>" required></label>
+                            <label for="pico-esperado">Pico esperado · registros por dia<input id="pico-esperado" name="pico_previsto_diario" type="number" min="0" max="1000000000" step="1" value="<?= (int) $configurationFormValues['pico_previsto_diario'] ?>" required></label>
+                            <label for="janela-config">Janela da previsão · dias (7 a 365)<input id="janela-config" name="janela_previsao_dias" type="number" min="7" max="365" step="1" value="<?= (int) $configurationFormValues['janela_previsao_dias'] ?>" required></label>
+                            <label for="retencao-eventos">Retenção de eventos técnicos · dias (1 a 3650)<input id="retencao-eventos" name="retencao_eventos_tecnicos_dias" type="number" min="1" max="3650" step="1" value="<?= (int) $configurationFormValues['retencao_eventos_tecnicos_dias'] ?>" required></label>
                         </div>
                         <label class="confirmation-check"><input type="checkbox" name="confirmar_aplicacao" value="1" required> Confirmo que desejo salvar estes ajustes como pendentes.</label>
                         <p class="configuration-guidance">Salvar não reinicia PHP-FPM nem altera um lote atual. O worker carrega esta versão na próxima inicialização; em hospedagem compartilhada, isso ocorre na próxima execução agendada.</p>

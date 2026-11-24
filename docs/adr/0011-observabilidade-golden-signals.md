@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Decisão aceita em 2026-11-24; correlação HTTP implementada; retenção definida; mockup de consulta aprovado; persistência e propagação assíncrona pendentes |
+| Status | Correlação HTTP e persistência minimizada implementadas; consulta superadmin e propagação assíncrona pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
 
 ## Contexto
 
-`docs/08` descreve telemetria de **negócio** (carteirinhas geradas, titulares, conversas, cota, QR, receita por nível Admin/Cliente/Subcliente) e o painel de lotes já mostra demanda, previsão e capacidade recomendada. A fatia #94 passou a gerar e devolver correlation ID em todos os entrypoints HTTP e a reutilizá-lo na auditoria MCP. Ainda faltam persistência de eventos técnicos e propagação para jobs, outbox e integrações; esses dados permitem investigar latência e falhas por rota e correlacionar um lote até o envio no WhatsApp sem depender de IP.
+`docs/08` descreve telemetria de **negócio** e o painel de lotes. A fatia #94 gera e devolve correlation ID em todos os entrypoints HTTP e o reutiliza na auditoria MCP. A #95 persiste um evento minimizado no encerramento de cada request PHP coberto; ainda falta propagar o ID para jobs, outbox e integrações.
 
 ## Decisão
 
@@ -17,9 +17,9 @@
 - Eventos técnicos estruturados serão persistidos em armazenamento próprio e consultáveis somente pelo superadmin. A implementação não reutiliza `telemetria_eventos`, que permanece exclusiva à telemetria de negócio.
 - O evento técnico usa apenas campos allowlisted necessários ao diagnóstico: correlation ID, categoria, chave de evento/rota, duração, status HTTP e horário UTC. Não registrar CPF, identificadores de titular/usuário, `tenant_id`, `subcliente_id`, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção.
 - A retenção padrão dos eventos técnicos é de 30 dias, configurável pelo superadmin entre 1 e 3650 dias no painel de telemetria existente; a nova versão entra em vigor no início da próxima execução agendada. O cron expurga registros vencidos em lotes limitados.
-- Golden signals instrumentados no gateway/entrypoint:
+- Golden signals planejados no gateway/entrypoint:
   - **Latência:** p95/p99 por rota e por motor de render;
-  - **Tráfego:** req/s por tenant, lotes/h, carteirinhas/h, leituras QR/h;
+  - **Tráfego:** requests/h por rota, lotes/h, carteirinhas/h e leituras QR/h; eventos técnicos não carregam IDs de tenant/unidade;
   - **Erros:** 5xx, `COTA_EXCEDIDA`, webhook rejeitado, falha de render, DLQ;
   - **Saturação:** sinais acessíveis à aplicação, como conexões MySQL e backlog da fila, quando houver fonte confiável. CPU, disco e `pm.max_children` não serão afirmados em hospedagem compartilhada sem fonte disponível.
 - Telemetria de negócio, operacional e técnica ficam separadas: `telemetria_eventos` é de negócio; métricas de lote alimentam dashboards operacionais; eventos técnicos são acessíveis somente pelo superadmin. Dados e métricas obedecem à política de privacidade em `docs/01` e `docs/08`.
@@ -31,8 +31,9 @@
 ## Estado de implementação
 
 - A telemetria de negócio e a telemetria operacional diária de lotes estão implementadas e documentadas em [`docs/08-telemetria.md`](../08-telemetria.md), incluindo painel por perfil, previsão configurável e aplicação de ajustes no início do worker.
-- A fatia #94 implementa correlation ID server-side nos 30 entrypoints PHP, ignora valores recebidos do cliente e compartilha o mesmo UUIDv4 entre a resposta MCP e sua auditoria; commit `dd34c1d`, CI [45424728843](https://github.com/agthinkindigital/IEPRCard/actions/runs/45424728843). A correlação ainda não atravessa jobs/outbox e integrações, e não há persistência geral de eventos técnicos.
-- O mantenedor escolheu persistência técnica separada e consulta exclusiva ao superadmin; definiu retenção de 30 dias configurável (1–3650) e omissão de IDs internos na [#95](https://github.com/agthinkindigital/IEPRCard/issues/95). A Issue depende da correção de ativação real de configurações no cron (#71). Mockup e guia da consulta foram aprovados em 2026-11-24; a tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), bloqueada pela persistência. A coordenação está na [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
+- A #94 implementa correlation ID server-side nos 30 entrypoints PHP, ignora valores recebidos do cliente e compartilha o UUIDv4 entre resposta MCP e auditoria; commit `dd34c1d`, CI [45424728843](https://github.com/agthinkindigital/IEPRCard/actions/runs/45424728843).
+- A #95 adiciona `eventos_tecnicos`, persiste um evento allowlisted por request em modo best-effort, e expurga registros em lotes limitados usando retenção configurável (padrão de 30 dias, 1–3650) no início da execução agendada. O painel `/telemetria` mantém o valor ativo/pendente na configuração versionada existente. Não armazena PII, IDs internos, IP/UA, rota dinâmica, query string, headers, body ou erro livre. Persistência usa rota canônica de uma lista permitida. CI e QA pendentes.
+- O mantenedor escolheu consulta exclusiva ao superadmin e omissão de IDs internos; mockup e guia da consulta foram aprovados em 2026-11-24. A tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), dependente da #95. A propagação assíncrona continua na E08.4 da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 
 ## Alternativas consideradas
 
