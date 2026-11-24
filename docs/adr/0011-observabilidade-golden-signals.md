@@ -14,7 +14,7 @@
 ## Decisão
 
 - Todo request recebe `correlation_id` (UUID v4) gerado no servidor e devolvido no header. A cobertura dos 30 entrypoints HTTP e a reutilização pelo MCP estão implementadas em #94; propagação para logs técnicos persistidos, outbox, worker, gateways e webhooks continua pendente.
-- Eventos técnicos estruturados serão persistidos em armazenamento próprio e consultáveis somente pelo superadmin. A implementação não reutiliza `telemetria_eventos`, que permanece exclusiva à telemetria de negócio.
+- Eventos técnicos estruturados são persistidos em armazenamento próprio e serão consultáveis somente pelo superadmin. A implementação não reutiliza `telemetria_eventos`, que permanece exclusiva à telemetria de negócio.
 - O evento técnico usa apenas campos allowlisted necessários ao diagnóstico: correlation ID, categoria, chave de evento/rota, duração, status HTTP e horário UTC. Não registrar CPF, identificadores de titular/usuário, `tenant_id`, `subcliente_id`, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção.
 - A retenção padrão dos eventos técnicos é de 30 dias, configurável pelo superadmin entre 1 e 3650 dias no painel de telemetria existente; a nova versão entra em vigor no início da próxima execução agendada. O cron expurga registros vencidos em lotes limitados.
 - Golden signals planejados no gateway/entrypoint:
@@ -32,7 +32,7 @@
 
 - A telemetria de negócio e a telemetria operacional diária de lotes estão implementadas e documentadas em [`docs/08-telemetria.md`](../08-telemetria.md), incluindo painel por perfil, previsão configurável e aplicação de ajustes no início do worker.
 - A #94 implementa correlation ID server-side nos 30 entrypoints PHP, ignora valores recebidos do cliente e compartilha o UUIDv4 entre resposta MCP e auditoria; commit `dd34c1d`, CI [45424728843](https://github.com/agthinkindigital/IEPRCard/actions/runs/45424728843).
-- A #95 adiciona `eventos_tecnicos`, persiste um evento allowlisted por request em modo best-effort, e expurga registros em lotes limitados usando retenção configurável (padrão de 30 dias, 1–3650) no início da execução agendada. O painel `/telemetria` mantém o valor ativo/pendente na configuração versionada existente. Não armazena PII, IDs internos, IP/UA, rota dinâmica, query string, headers, body ou erro livre. Persistência usa rota canônica de uma lista permitida. CI e QA pendentes.
+- A #95 adiciona `eventos_tecnicos`, persiste um evento allowlisted por request em modo best-effort, e expurga registros em lotes limitados usando retenção configurável (padrão de 30 dias, 1–3650) no início da execução agendada. O painel `/telemetria` mantém o valor ativo/pendente na configuração versionada existente. Não armazena PII, IDs internos, IP/UA, rota dinâmica, query string, headers, body ou erro livre. Persistência usa rota canônica de uma lista permitida. CI #45470771467 passou em MySQL 8.4, MariaDB 10.11 e PDF; revisão QA aprovada.
 - O mantenedor escolheu consulta exclusiva ao superadmin e omissão de IDs internos; mockup e guia da consulta foram aprovados em 2026-11-24. A tela está na [#96](https://github.com/agthinkindigital/IEPRCard/issues/96), dependente da #95. A propagação assíncrona continua na E08.4 da [E08](https://github.com/agthinkindigital/IEPRCard/issues/93).
 
 ## Alternativas consideradas
