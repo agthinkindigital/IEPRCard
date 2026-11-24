@@ -48,6 +48,31 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     if ((int) $traceCount->fetchColumn() !== 2 || (int) $storedWorkerEvent->fetchColumn() !== 0) {
         throw new RuntimeException($driver . ': a trace must link multiple allowlisted events and use zero only as non-HTTP status.');
     }
+    $scheduledCorrelationId = technicalEventsNewCorrelationId();
+    $scheduledRoute = technicalEventsScheduledTaskRoutes()['titular_anonymization'];
+    foreach ([
+        ['scheduled.run_started', 'worker.scheduled_tasks'],
+        ['scheduled.task_failed', $scheduledRoute],
+        ['scheduled.run_failed', 'worker.scheduled_tasks'],
+    ] as [$scheduledEventKey, $scheduledEventRoute]) {
+        if (!technicalEventsRecord($pdo, [
+            'correlation_id' => $scheduledCorrelationId,
+            'categoria' => 'job',
+            'evento_chave' => $scheduledEventKey,
+            'rota' => $scheduledEventRoute,
+            'status_http' => 0,
+            'duracao_ms' => 1,
+        ])) {
+            throw new RuntimeException($driver . ': scheduled run events must use the fixed technical allowlist.');
+        }
+    }
+    $scheduledTrace = $pdo->prepare('SELECT categoria, evento_chave, rota, status_http FROM eventos_tecnicos WHERE correlation_id = :id ORDER BY id');
+    $scheduledTrace->execute(['id' => $scheduledCorrelationId]);
+    $scheduledRows = $scheduledTrace->fetchAll(PDO::FETCH_ASSOC);
+    if (array_column($scheduledRows, 'evento_chave') !== ['scheduled.run_started', 'scheduled.task_failed', 'scheduled.run_failed']
+        || array_filter($scheduledRows, static fn (array $row): bool => $row['categoria'] !== 'job' || (int) $row['status_http'] !== 0) !== []) {
+        throw new RuntimeException($driver . ': scheduled event traces must retain one safe job correlation with no HTTP status.');
+    }
 
     $pdo->exec('DELETE FROM eventos_tecnicos');
     $metricsNow = strtotime('2026-11-24 12:00:00 UTC');

@@ -117,7 +117,9 @@ try {
         || $configurationState['pending'] !== null) {
         throw new RuntimeException('The next scheduled worker invocation must activate the pending operational configuration.');
     }
-    $retainedEvents = $configurationPdo->query('SELECT correlation_id FROM eventos_tecnicos ORDER BY correlation_id')->fetchAll(PDO::FETCH_COLUMN);
+    $retainedEvents = $configurationPdo->query(
+        "SELECT correlation_id FROM eventos_tecnicos WHERE categoria = 'admin' AND evento_chave = 'http.response' ORDER BY correlation_id"
+    )->fetchAll(PDO::FETCH_COLUMN);
     $configurationPdo = null;
     if ($retainedEvents !== ['5d2ac80c-5fb2-4de4-bfea-5e885e2b2318']) {
         throw new RuntimeException('The same scheduled invocation must apply the newly active retention setting and preserve recent technical events.');

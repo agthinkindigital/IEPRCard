@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Status | Correlação HTTP, persistência minimizada, consulta superadmin, golden signals globais e propagação na emissão/entrega WhatsApp implementadas; demais integrações assíncronas pendentes |
+| Status | Correlação HTTP, persistência minimizada, consulta superadmin, golden signals globais e propagação na emissão/entrega WhatsApp implementadas; observabilidade do cron em implementação e demais integrações assíncronas pendentes |
 | Data | 2026-11-18 |
 | Decisores | Arquiteto + operações |
 | Relacionados | [SAD §8](../architecture/SAD.md), ADR-0006, ADR-0009, ADR-0012 |
@@ -13,7 +13,7 @@
 
 ## Decisão
 
-- Todo request recebe `correlation_id` (UUID v4) gerado no servidor e devolvido no header. A cobertura dos 30 entrypoints HTTP e a reutilização pelo MCP estão implementadas em #94; propagação para logs técnicos persistidos, outbox, worker, gateways e webhooks continua pendente.
+- Todo request recebe `correlation_id` (UUID v4) gerado no servidor e devolvido no header. A cobertura dos 30 entrypoints HTTP e a reutilização pelo MCP estão implementadas em #94; a propagação assíncrona está implementada para emissão e WhatsApp (#97–#98), e está em andamento para execuções do cron (#100). Outbox e integrações sem runtime ativo continuam pendentes.
 - Eventos técnicos estruturados são persistidos em armazenamento próprio e consultáveis somente pelo superadmin (#96). A implementação não reutiliza `telemetria_eventos`, que permanece exclusiva à telemetria de negócio.
 - A persistência de `http.response` no encerramento do request é best-effort. Agregados de tráfego, latência e 5xx derivados de `eventos_tecnicos` descrevem somente respostas observadas e podem subcontar requests; sem uma fonte independente, não se afirma completude nem uma taxa de perda.
 - O evento técnico usa apenas campos allowlisted necessários ao diagnóstico: correlation ID, categoria, chave de evento/rota, duração, resultado e horário UTC. Eventos HTTP contêm status HTTP; eventos do worker usam `status_http = 0` para “não aplicável”, nunca como código HTTP. Não registrar CPF, identificadores de titular/usuário, `tenant_id`, `subcliente_id`, IP/UA, credenciais, query string, headers, bodies ou mensagem livre de exceção.
@@ -27,7 +27,7 @@
 - Métricas operacionais de lote registram demanda diária, tempo em fila, duração, throughput, falhas/retries e saturação. `duracao_media_ms` usa média ponderada de milissegundos por registro processado. O painel mostra lote recomendado e pico previsto sobre janela X configurável; o cálculo inicial usa P95 dos picos diários, com 30 dias propostos como padrão e histórico insuficiente sinalizado abaixo de 7 dias.
 - O Administrador edita lote e pico manualmente. A aplicação salva uma versão pendente; a ação `Reiniciar worker e aplicar` solicita a ativação. Em hospedagem compartilhada, a próxima execução agendada do worker aplica a versão; lotes em andamento mantêm a versão original. Ver ADR-0012 para o perfil de execução.
 - Alertas iniciais: cota > 80%, DLQ > 0, 5xx sustentado, WebP > 80 ms, disco > 80%, trial expirando, token de suporte utilizado.
-- OpenTelemetry fica como evolução; a correlação HTTP está na #94, e a E08 precisa propagar o ID para os fluxos assíncronos antes de afirmar rastreabilidade ponta a ponta.
+- OpenTelemetry fica como evolução; a correlação HTTP está na #94, e a E08 continua cobrindo somente os fluxos assíncronos implementados, sem afirmar rastreabilidade de outbox ou de integrações futuras.
 
 ## Estado de implementação
 

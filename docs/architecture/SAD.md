@@ -695,12 +695,12 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 
 ### 8.2. Logs, correlação e telemetria de negócio
 
-- Eventos técnicos HTTP e do worker de emissão são persistidos em `eventos_tecnicos` e consultados pelo superadmin na #96, com `correlation_id`, categoria, chave do evento/rota, duração, resultado e horário UTC. Não armazenam PII, `tenant_id` nem `subcliente_id`; a propagação ao job de emissão está na #97 e outbox/integrações permanecem pendentes na E08.
+- Eventos técnicos HTTP e dos workers de emissão, WhatsApp e cron são persistidos em `eventos_tecnicos` e consultados pelo superadmin na #96, com `correlation_id`, categoria, chave do evento/rota, duração, resultado e horário UTC. Não armazenam PII, `tenant_id` nem `subcliente_id`; emissão e WhatsApp estão cobertos em #97–#98, e o cron em #100. Outbox e integrações futuras continuam pendentes na E08.
 - **Telemetria de negócio** (`telemetria_eventos`, `telemetria_diaria`) permanece sem PII e com recortes Admin/Cliente/Subcliente (`docs/08`).
 - **Telemetria operacional** (golden signals) é separada da telemetria de negócio para não misturar fins e para não expor métricas de infraestrutura a Subclientes.
 - As tabelas de configuração e métricas dos lotes, assim como a fila de solicitações de anonimização, apoiam os fluxos descritos em ADR-0011, ADR-0012 e `docs/01`.
 - Alertas: cota > 80%, trial expirando, webhook rejeitado, falha de gateway, QR spike, disco, suporte token utilizado e solicitações de anonimização próximas do limite de 72 h.
-- Tracing distribuído (OpenTelemetry) fica como evolução; no MVP o `correlation_id` correlaciona requests HTTP. A extensão da correlação a jobs, outbox e integrações permanece pendente na E08.4.
+- Tracing distribuído (OpenTelemetry) fica como evolução; no MVP o `correlation_id` correlaciona requests HTTP e fluxos assíncronos já instrumentados. A extensão a outbox e integrações futuras permanece pendente na E08.4.
 
 ---
 

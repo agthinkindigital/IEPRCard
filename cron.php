@@ -39,7 +39,7 @@ try {
     }
 
     try {
-        $result = scheduledTasksRun(scheduledTasksBuild($pdo));
+        $result = scheduledTasksRun(scheduledTasksBuild($pdo), $pdo);
     } finally {
         flock($lock, LOCK_UN);
         fclose($lock);

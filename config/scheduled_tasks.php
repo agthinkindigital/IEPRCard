@@ -7,7 +7,7 @@ require_once __DIR__ . '/operational_configuration.php';
 require_once __DIR__ . '/technical_events.php';
 
 /** @param array<string, callable():array<string, int>> $tasks @return array{ok:bool,tasks:array<string, array<string, mixed>>} */
-function scheduledTasksRun(array $tasks): array
+function scheduledTasksRun(array $tasks, ?PDO $technicalEventsPdo = null): array
 {
     foreach ($tasks as $name => $task) {
         if (preg_match('/^[a-z][a-z0-9_]{0,47}$/D', (string) $name) !== 1 || !is_callable($task)) {
@@ -17,10 +17,25 @@ function scheduledTasksRun(array $tasks): array
 
     $ok = true;
     $results = [];
+    $correlationId = null;
+    if ($technicalEventsPdo !== null) {
+        try {
+            $correlationId = technicalEventsNewCorrelationId();
+        } catch (Throwable) {
+            // A correlation ID is telemetry state; entropy failure must not prevent scheduled work.
+        }
+    }
+    $runStartedAt = hrtime(true);
+    if ($technicalEventsPdo !== null && $correlationId !== null) {
+        scheduledTasksRecordTechnicalEvent($technicalEventsPdo, $correlationId, 'scheduled.run_started', 'worker.scheduled_tasks', 0);
+    }
     foreach ($tasks as $name => $task) {
+        $taskStartedAt = hrtime(true);
+        $taskFailed = false;
         try {
             $counts = scheduledTasksNormalizeCounts($task());
             $taskOk = ($counts['failed'] ?? 0) === 0;
+            $taskFailed = !$taskOk;
             $results[$name] = ['ok' => $taskOk, 'counts' => $counts];
             if (!$taskOk) {
                 $results[$name]['error_code'] = 'SCHEDULED_TASK_ERRORS';
@@ -28,11 +43,53 @@ function scheduledTasksRun(array $tasks): array
             }
         } catch (Throwable $exception) {
             $ok = false;
+            $taskFailed = true;
             $results[$name] = ['ok' => false, 'error_code' => scheduledTasksSafeErrorCode($exception)];
+        }
+        if ($taskFailed && $technicalEventsPdo !== null && $correlationId !== null) {
+            $route = technicalEventsScheduledTaskRoutes()[(string) $name] ?? technicalEventsScheduledTaskRoutes()['other'];
+            scheduledTasksRecordTechnicalEvent(
+                $technicalEventsPdo,
+                $correlationId,
+                'scheduled.task_failed',
+                $route,
+                scheduledTasksElapsedMilliseconds($taskStartedAt)
+            );
         }
     }
 
+    if ($technicalEventsPdo !== null && $correlationId !== null) {
+        scheduledTasksRecordTechnicalEvent(
+            $technicalEventsPdo,
+            $correlationId,
+            $ok ? 'scheduled.run_completed' : 'scheduled.run_failed',
+            'worker.scheduled_tasks',
+            scheduledTasksElapsedMilliseconds($runStartedAt)
+        );
+    }
+
     return ['ok' => $ok, 'tasks' => $results];
+}
+
+function scheduledTasksRecordTechnicalEvent(PDO $pdo, string $correlationId, string $eventKey, string $route, int $durationMs): void
+{
+    try {
+        technicalEventsRecord($pdo, [
+            'correlation_id' => $correlationId,
+            'categoria' => 'job',
+            'evento_chave' => $eventKey,
+            'rota' => $route,
+            'status_http' => 0,
+            'duracao_ms' => $durationMs,
+        ]);
+    } catch (Throwable) {
+        // Scheduled task telemetry is best-effort and cannot alter the CLI run.
+    }
+}
+
+function scheduledTasksElapsedMilliseconds(int $startedAt): int
+{
+    return max(0, (int) floor((hrtime(true) - $startedAt) / 1_000_000));
 }
 
 function scheduledTasksSafeErrorCode(Throwable $exception): string
