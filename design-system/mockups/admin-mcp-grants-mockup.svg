@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1710" viewBox="0 0 1440 1710" role="img" aria-labelledby="title description">
+  <title id="title">Concessões de manutenção MCP</title>
+  <desc id="description">Proposta de tela superadmin para conceder acesso MCP temporário a vários tenants e unidades, selecionar ferramentas permitidas e revogar concessões.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/></filter>
+    <style>
+      text { font-family: Inter, system-ui, "Segoe UI", sans-serif; fill: #0F172A; }
+      .muted { fill: #475569; }
+      .small { font-size: 13px; }
+      .tiny { font-size: 11px; }
+      .body { font-size: 15px; }
+      .label { font-size: 12px; font-weight: 700; letter-spacing: .35px; }
+      .title { font-size: 25px; font-weight: 700; }
+      .panel { fill: #FFFFFF; stroke: #DCE3EC; }
+      .field { fill: #FFFFFF; stroke: #94A3B8; }
+      .line { stroke: #DCE3EC; }
+    </style>
+  </defs>
+  <rect width="1440" height="1710" fill="#F6F8FB"/>
+  <text x="32" y="30" class="label muted">IEPRCARD · MOCKUP ADMINISTRATIVO · PROPOSTA · DADOS FICTÍCIOS</text>
+
+  <!-- Navegação e formulário de concessão -->
+  <rect x="24" y="48" width="1392" height="1058" rx="14" class="panel" filter="url(#shadow)"/>
+  <rect x="24" y="48" width="224" height="1058" rx="14" fill="#FFFFFF" stroke="#DCE3EC"/>
+  <text x="48" y="88" font-size="18" font-weight="700">IEPRCard</text>
+  <text x="48" y="126" class="tiny muted">ADMINISTRAÇÃO SAAS</text>
+  <text x="48" y="170" class="body muted">Visão geral</text>
+  <text x="48" y="210" class="body muted">Tenants</text>
+  <text x="48" y="250" class="body muted">Operadores</text>
+  <rect x="36" y="270" width="200" height="42" rx="8" fill="#EFF6FF"/>
+  <rect x="36" y="270" width="4" height="42" rx="2" fill="#1D4ED8"/>
+  <text x="52" y="297" font-size="14" font-weight="700" fill="#1D4ED8">Acesso MCP</text>
+  <text x="48" y="350" class="body muted">Auditoria</text>
+  <line x1="24" y1="1030" x2="248" y2="1030" class="line"/>
+  <text x="48" y="1065" class="small muted">Superadmin · Leonardo</text>
+
+  <text x="280" y="91" class="small muted">Administração / Segurança / Acesso MCP</text>
+  <text x="280" y="132" class="title">Concessões de manutenção</text>
+  <text x="280" y="160" class="small muted">Autorize ferramentas MCP por tempo limitado e para alvos escolhidos pelo superadmin.</text>
+  <rect x="280" y="180" width="1108" height="68" rx="9" fill="#FFFBEB" stroke="#FCD34D"/>
+  <circle cx="304" cy="204" r="8" fill="#92400E"/>
+  <text x="322" y="207" class="label" fill="#78350F">CONCESSÃO PRIVILEGIADA</text>
+  <text x="304" y="231" class="small" fill="#78350F">As ferramentas selecionadas podem agir sem confirmação por chamada até expirar ou serem revogadas.</text>
+
+  <text x="280" y="292" class="label">NOVA CONCESSÃO</text>
+  <text x="280" y="326" class="label">Identificação</text>
+  <rect x="280" y="340" width="525" height="48" rx="7" class="field"/>
+  <text x="296" y="370" class="body muted">Ex.: Diagnóstico do tenant Alfa</text>
+  <text x="830" y="326" class="label">Validade</text>
+  <rect x="830" y="340" width="558" height="48" rx="7" class="field"/>
+  <text x="848" y="370" class="body">1 hora</text>
+  <text x="1360" y="370" class="body muted">⌄</text>
+  <text x="830" y="408" class="tiny muted">30 min · 1 h · 3 h · 6 h · 12 h · 24 h</text>
+
+  <text x="280" y="454" class="label">ALVOS AUTORIZADOS</text>
+  <text x="280" y="478" class="small muted">Selecione várias Sedes ou unidades. Uma Sede inclui todas as unidades subordinadas.</text>
+  <rect x="280" y="493" width="525" height="236" rx="8" class="field"/>
+  <rect x="296" y="509" width="18" height="18" rx="3" fill="#1D4ED8" stroke="#1D4ED8"/>
+  <text x="300" y="523" font-size="13" fill="#FFFFFF">✓</text>
+  <text x="326" y="523" class="body" font-weight="700">Sede Esperança</text>
+  <text x="326" y="544" class="tiny muted">Inclui 3 unidades · 42 titulares</text>
+  <rect x="320" y="559" width="18" height="18" rx="3" fill="#1D4ED8" stroke="#1D4ED8"/>
+  <text x="324" y="573" font-size="13" fill="#FFFFFF">✓</text>
+  <text x="350" y="574" class="small">Unidade Centro</text>
+  <rect x="320" y="590" width="18" height="18" rx="3" fill="#1D4ED8" stroke="#1D4ED8"/>
+  <text x="324" y="604" font-size="13" fill="#FFFFFF">✓</text>
+  <text x="350" y="605" class="small">Unidade Norte</text>
+  <rect x="320" y="621" width="18" height="18" rx="3" fill="#1D4ED8" stroke="#1D4ED8"/>
+  <text x="324" y="635" font-size="13" fill="#FFFFFF">✓</text>
+  <text x="350" y="636" class="small">Unidade Sul</text>
+  <rect x="296" y="672" width="18" height="18" rx="3" class="field"/>
+  <text x="326" y="686" class="body">Sede Caminho Novo</text>
+  <text x="326" y="707" class="tiny muted">Inclui 2 unidades</text>
+
+  <text x="830" y="454" class="label">FERRAMENTAS</text>
+  <text x="830" y="478" class="small muted">A concessão vale para as capacidades marcadas durante todo o prazo.</text>
+  <rect x="830" y="493" width="558" height="105" rx="8" class="panel"/>
+  <text x="848" y="520" class="label">LEITURA DISPONÍVEL</text>
+  <rect x="848" y="536" width="18" height="18" rx="3" fill="#1D4ED8" stroke="#1D4ED8"/>
+  <text x="852" y="550" font-size="13" fill="#FFFFFF">✓</text>
+  <text x="878" y="550" class="small">Estado do sistema, telemetria e inspeção de schema</text>
+  <text x="848" y="576" class="tiny muted">system.read · telemetry.read · db.inspect</text>
+
+  <rect x="830" y="611" width="558" height="66" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="848" y="637" class="label">MANUTENÇÃO DE DADOS</text>
+  <text x="848" y="659" class="small muted">Catálogo e limites das operações em definição na #89.</text>
+  <rect x="830" y="690" width="558" height="72" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="848" y="716" class="label">CÓDIGO · PUBLICAÇÃO EM DEV</text>
+  <text x="848" y="739" class="small muted">Integração GitHub e gates pendentes na #89 · PROD não é acessível.</text>
+
+  <rect x="280" y="780" width="1108" height="82" rx="9" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="304" y="809" class="label" fill="#1E40AF">PUBLICAÇÃO CONTROLADA</text>
+  <text x="304" y="835" class="small" fill="#1E3A8A">Mudanças de código seguem para DEV. PROD só recebe promoção após verificação e revisão pelo fluxo do projeto.</text>
+  <text x="280" y="900" class="small muted">O sistema valida o conjunto de alvos em cada chamada. Concessão expirada ou revogada é recusada imediatamente.</text>
+  <rect x="280" y="930" width="191" height="48" rx="8" fill="#1D4ED8"/>
+  <text x="304" y="960" font-size="14" font-weight="700" fill="#FFFFFF">Gerar concessão MCP</text>
+  <text x="487" y="960" class="small muted">O segredo será exibido uma única vez.</text>
+
+  <!-- Estado de criação com segredo mostrado uma vez -->
+  <rect x="280" y="995" width="1108" height="83" rx="9" fill="#F0FDF4" stroke="#86EFAC"/>
+  <text x="304" y="1023" class="label" fill="#166534">CONCESSÃO CRIADA · SEGREDO EXIBIDO UMA VEZ</text>
+  <rect x="304" y="1036" width="835" height="28" rx="5" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="316" y="1055" class="small" font-family="monospace">mcp_grant_••••••••••••••••••••••••••••••••</text>
+  <rect x="1154" y="1036" width="208" height="28" rx="5" fill="#FFFFFF" stroke="#86EFAC"/>
+  <text x="1187" y="1055" class="small" fill="#166534">Copiar segredo</text>
+
+  <!-- Lista de concessões -->
+  <rect x="24" y="1130" width="1392" height="540" rx="14" class="panel" filter="url(#shadow)"/>
+  <text x="56" y="1174" class="title">Concessões recentes</text>
+  <text x="56" y="1201" class="small muted">O segredo completo não volta a ser exibido. Revogue o acesso quando o trabalho terminar.</text>
+  <rect x="56" y="1228" width="1328" height="42" rx="6" fill="#F8FAFC"/>
+  <text x="72" y="1255" class="label muted">RÓTULO / CRIADO POR</text>
+  <text x="370" y="1255" class="label muted">ALVOS</text>
+  <text x="620" y="1255" class="label muted">FERRAMENTAS</text>
+  <text x="870" y="1255" class="label muted">EXPIRA</text>
+  <text x="1040" y="1255" class="label muted">ÚLTIMO USO</text>
+  <text x="1230" y="1255" class="label muted">ESTADO / AÇÃO</text>
+  <line x1="56" y1="1270" x2="1384" y2="1270" class="line"/>
+  <text x="72" y="1305" class="body" font-weight="700">Diagnóstico · Sede Esperança</text>
+  <text x="72" y="1328" class="tiny muted">Leonardo Nascimento · criada 14:20</text>
+  <text x="370" y="1307" class="small">Sede + 3 unidades</text>
+  <text x="620" y="1307" class="small">Leitura</text>
+  <text x="870" y="1307" class="small">15:20 · em 42 min</text>
+  <text x="1040" y="1307" class="small">14:38</text>
+  <rect x="1230" y="1287" width="73" height="25" rx="12" fill="#DCFCE7"/>
+  <text x="1245" y="1304" class="tiny" fill="#166534">Ativa</text>
+  <text x="1316" y="1304" class="small" fill="#B91C1C">Revogar</text>
+  <line x1="56" y1="1347" x2="1384" y2="1347" class="line"/>
+  <text x="72" y="1382" class="body" font-weight="700">Correção de importação</text>
+  <text x="72" y="1405" class="tiny muted">Leonardo Nascimento · criada ontem</text>
+  <text x="370" y="1384" class="small">Unidade Centro</text>
+  <text x="620" y="1384" class="small">Leitura</text>
+  <text x="870" y="1384" class="small">Ontem · 18:40</text>
+  <text x="1040" y="1384" class="small">Ontem · 18:12</text>
+  <rect x="1230" y="1364" width="73" height="25" rx="12" fill="#F1F5F9"/>
+  <text x="1240" y="1381" class="tiny muted">Expirada</text>
+  <text x="1316" y="1381" class="small muted">—</text>
+  <line x1="56" y1="1424" x2="1384" y2="1424" class="line"/>
+  <text x="72" y="1459" class="body" font-weight="700">Apoio técnico · Sede Caminho Novo</text>
+  <text x="72" y="1482" class="tiny muted">Leonardo Nascimento · criada 10:05</text>
+  <text x="370" y="1461" class="small">Sede + 2 unidades</text>
+  <text x="620" y="1461" class="small">Leitura</text>
+  <text x="870" y="1461" class="small">Revogada</text>
+  <text x="1040" y="1461" class="small">10:22</text>
+  <rect x="1230" y="1441" width="82" height="25" rx="12" fill="#FEE2E2"/>
+  <text x="1240" y="1458" class="tiny" fill="#991B1B">Revogada</text>
+  <text x="1316" y="1458" class="small muted">—</text>
+
+  <rect x="56" y="1522" width="1328" height="104" rx="8" fill="#F8FAFC" stroke="#DCE3EC"/>
+  <text x="80" y="1552" class="label">AUDITORIA</text>
+  <text x="80" y="1578" class="small muted">Registra ator, concessão, ferramenta, alvo autorizado, horário e resultado. Não guarda segredo, argumentos livres, IP bruto ou PII desnecessária.</text>
+  <text x="80" y="1604" class="small muted">Falhas e tentativas fora do escopo também ficam registradas com resultado mínimo.</text>
+</svg>
