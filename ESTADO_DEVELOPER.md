@@ -7,7 +7,7 @@ paralelismo: sequencial
 ## Retomada — 2026-11-24
 
 - O clone global de `alltomatos/skills` está atualizado: `main` e `origin/main` em `2f6ae04`.
-- Tracker revisado: 91 Issues; 85 fechadas e seis abertas; nenhuma `ready-for-agent`. E01 e E03–E06 estão encerradas. E02 aguarda #51 e #89; E07 aguarda #84 e, depois, #85. A #89 está `needs-info`; as outras cinco Issues abertas estão `ready-for-human`.
+- Tracker revisado: 91 Issues; 85 fechadas e seis abertas; nenhuma `ready-for-agent`. A auditoria atual não encontrou checkbox de aceite pendente nas Issues fechadas, e E01/E03–E06 não referenciam Issues abertas entre suas slices. E02 aguarda #51 e #89; E07 aguarda #84 e, depois, #85. A #89 está `needs-info`; as outras cinco Issues abertas estão `ready-for-human`.
 - O mantenedor confirmou que suporte remoto auditável em três níveis permanece no MVP. Em 2026-11-24, ampliou o requisito: o MCP deve apoiar manutenção/correção internas por IA, sem acesso para clientes, com autorização gerada pelo superadmin e janela de 30 min, 1 h, 3 h, 6 h, 12 h ou 24 h. A [#89](https://github.com/agthinkindigital/IEPRCard/issues/89) registra a decisão e aguarda o catálogo de operações, autonomia/aprovação, limites de tenant/alvo, auditoria e reversão; o runtime continua read-only até essa definição.
 - #79 foi concluída e encerrada após a prova local de purga com SeaweedFS 4.55. O escopo e os limites estão na [Issue #79](https://github.com/agthinkindigital/IEPRCard/issues/79) e no [ADR-0012](docs/adr/0012-ci-deploy-e-backup.md).
 - #84 tem apenas a demonstração de RPO ≤ 1 h em hospedagem compartilhada e VPS pendente. A medição local e sua projeção estão no ADR-0012; não comprovam os hosts reais.
