@@ -138,6 +138,11 @@ for ($offset = 1; $offset <= 52; $offset++) {
         'duration' => $offset * 10, 'created' => gmdate('Y-m-d H:i:s', $technicalEventNow - $offset),
     ]);
 }
+$technicalEventInsert->execute([
+    'correlation' => 'f0000000-0000-4000-8000-000000000001', 'category' => 'job',
+    'event_key' => 'issuance.job_completed', 'route' => 'worker.card_issuance', 'status' => 0,
+    'duration' => 120, 'created' => gmdate('Y-m-d H:i:s', $technicalEventNow - 10),
+]);
 unset($pdo);
 
 $createSession = static function (string $name, array $values) use ($directory): string {
@@ -222,6 +227,11 @@ try {
         || !str_contains($technicalBody, 'e0000000…0001') || !str_contains($technicalBody, 'HTTP 500')
         || str_contains($technicalBody, 'e0000000…0052')) {
         throw new RuntimeException('Technical event filters must return only the newest fifty allowlisted records in stable order.');
+    }
+    [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?correlation_id=f0000000-0000-4000-8000-000000000001', 'admin.ieprcard.test', $adminCookie);
+    if ($status !== 200 || !str_contains($technicalBody, 'issuance.job_completed')
+        || !str_contains($technicalBody, 'Worker · sem HTTP')) {
+        throw new RuntimeException('Technical events page must clearly distinguish worker events from HTTP status results.');
     }
     [$status, $technicalBody] = $request('/admin/eventos-tecnicos.php?categoria=tenant&rota=tenant.issuance&periodo=1&pagina=2', 'admin.ieprcard.test', $adminCookie);
     if ($status !== 200 || !str_contains($technicalBody, '51–52 de 52 eventos')
