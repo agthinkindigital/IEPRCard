@@ -709,7 +709,7 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | # | Risco | Impacto | Mitigação | Prioridade | ADR |
 | --- | --- | --- | --- | --- | --- |
 | R1 | Self-healing alterando schema em produção | Perda de dados / downtime silencioso | Desligar em prod; migrações versionadas expand-only | Alta | 0010 |
-| R2 | Escrita remota MCP | Execução remota de código ou alteração indevida | Concessão temporária exclusiva do superadmin requerida para manutenção no MVP; catálogo de operações, aprovação, tenant, auditoria e reversão definidos antes de habilitar escrita | Alta | 0009 |
+| R2 | Escrita remota MCP | Execução remota de código ou alteração indevida | Concessão temporária exclusiva do superadmin, limitada a vários tenants/unidades explicitamente selecionados; herança entre Sede/unidades, catálogo de operações, aprovação, auditoria e reversão definidos antes de habilitar escrita | Alta | 0009 |
 | R3 | Corrida na cota entre operadores | Emissão acima do contrato | UPDATE condicional + unique key + reserva com TTL | Alta | 0004 |
 | R4 | Query fora do TenantScope | Vazamento cross-tenant | Helper obrigatório, testes negativos, code review | Alta | 0003 |
 | R5 | Ausência de CSRF/CSP/HttpOnly | ATO e XSS | NFR-20 + specs de segurança | Alta | 0008 |
