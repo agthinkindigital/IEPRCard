@@ -29,6 +29,11 @@ function tenantQuotaSetRootLimits(
             throw new DomainException('TENANT_QUOTA_DENIED');
         }
         $root = tenantQuotaLoadRoot($pdo, $tenantId);
+        $planQuery = $pdo->prepare('SELECT plano_id FROM tenants WHERE id = :id AND parent_id IS NULL AND tipo = \'cliente\' LIMIT 1');
+        $planQuery->execute(['id' => $tenantId]);
+        $planId = filter_var($planQuery->fetchColumn(), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($planId === false) throw new DomainException('TENANT_QUOTA_TARGET_INVALID');
+        tenantQuotaAssertWithinPlan($pdo, (int) $planId, $normalized);
         $childCount = tenantQuotaChildCount($pdo, $tenantId);
         if ($childCount > $normalized['limite_subclientes']) {
             throw new DomainException('TENANT_QUOTA_EXCEEDED');

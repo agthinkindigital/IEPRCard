@@ -125,6 +125,53 @@ function tenantQuotaNullableInteger(mixed $value): ?int
     return $integer === false ? null : (int) $integer;
 }
 
+/** @return array<string, string> */
+function tenantQuotaPlanFeatureMap(): array
+{
+    return [
+        'limite_subclientes' => 'subcliente.criar',
+        'limite_usuarios_equipe' => 'usuario.criar',
+        'limite_titulares' => 'titular.criar',
+        'limite_carteirinhas' => 'carteirinha.gerar',
+    ];
+}
+
+/** @return array<string, int|null> */
+function tenantQuotaPlanCeilings(PDO $pdo, int $planId): array
+{
+    if ($planId < 1) throw new DomainException('TENANT_PLAN_UNAVAILABLE');
+    $statement = $pdo->prepare(
+        'SELECT habilitado, limite_valor FROM plano_feature_flags WHERE plano_id = :plan AND feature_key = :feature LIMIT 1'
+    );
+    $ceilings = [];
+    foreach (tenantQuotaPlanFeatureMap() as $limitKey => $featureKey) {
+        $statement->execute(['plan' => $planId, 'feature' => $featureKey]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            $ceilings[$limitKey] = null;
+            continue;
+        }
+        if ((int) $row['habilitado'] !== 1) {
+            $ceilings[$limitKey] = 0;
+            continue;
+        }
+        $ceilings[$limitKey] = tenantQuotaNullableInteger($row['limite_valor']);
+    }
+
+    return $ceilings;
+}
+
+/** @param array<string, int|null> $limits */
+function tenantQuotaAssertWithinPlan(PDO $pdo, int $planId, array $limits): void
+{
+    $ceilings = tenantQuotaPlanCeilings($pdo, $planId);
+    foreach ($ceilings as $key => $ceiling) {
+        if ($ceiling !== null && $limits[$key] > $ceiling) {
+            throw new DomainException('TENANT_QUOTA_EXCEEDED');
+        }
+    }
+}
+
 function tenantQuotaRunLocked(PDO $pdo, int $tenantId, Closure $operation): void
 {
     if ($pdo->inTransaction()) {

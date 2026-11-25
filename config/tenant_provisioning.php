@@ -4,13 +4,19 @@ declare(strict_types=1);
 require_once __DIR__ . '/motor_permissoes.php';
 require_once __DIR__ . '/installation_profile.php';
 require_once __DIR__ . '/privacy_subjects.php';
+require_once __DIR__ . '/tenant_quota_policy_support.php';
 
 /** @param array<string,mixed> $identity @param array<string,mixed> $input @param array<string,string>|null $configuration @return array{tenant_id:int,owner_user_id:int} */
-function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity, array $input, ?array $configuration = null): array
+function tenantProvisionCreate(
+    PDO $pdo,
+    TenantContext $context,
+    array $identity,
+    array $input,
+    ?array $configuration = null,
+    ?array $initialLimits = null
+): array
 {
-    if ($pdo->inTransaction()) {
-        throw new RuntimeException('TENANT_PROVISION_FAILED');
-    }
+    $ownsTransaction = !$pdo->inTransaction();
     if ($context->tipo !== 'admin' || $context->tenantId !== null || $context->subclienteId !== null
         || !pode($pdo, $context, $identity, 'admin.clientes')) {
         throw new DomainException('TENANT_PROVISION_DENIED');
@@ -40,11 +46,16 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
         || preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/D', $slug) !== 1) {
         throw new DomainException('TENANT_PROVISION_INVALID');
     }
+    $normalizedLimits = $initialLimits === null ? null : tenantQuotaNormalizeLimits(
+        $initialLimits,
+        ['limite_subclientes', 'limite_usuarios_equipe', 'limite_titulares', 'limite_carteirinhas'],
+        false
+    );
     if (tenantProvisionSlugIsReserved($slug, $configuration)) {
         throw new DomainException('TENANT_PROVISION_RESERVED_SLUG');
     }
 
-    $pdo->beginTransaction();
+    if ($ownsTransaction) $pdo->beginTransaction();
     try {
         motorPermissoesCacheLimpar($pdo);
         if (!pode($pdo, $context, $identity, 'admin.clientes')) {
@@ -56,6 +67,9 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
         if ($plan->fetchColumn() === false) {
             throw new DomainException('TENANT_PLAN_UNAVAILABLE');
         }
+        if ($normalizedLimits !== null) {
+            tenantQuotaAssertWithinPlan($pdo, (int) $planId, $normalizedLimits);
+        }
 
         $existingSlug = $pdo->prepare('SELECT id FROM tenants WHERE slug_subdominio = :slug LIMIT 1');
         $existingSlug->execute(['slug' => $slug]);
@@ -66,8 +80,10 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
         $now = gmdate('Y-m-d H:i:s');
         $insertTenant = $pdo->prepare(
             "INSERT INTO tenants (parent_id, plano_id, tipo, nome_organizacao, nome_responsavel, slug_subdominio, "
-            . "status_conta, permissoes_unidade_json, criado_em) "
-            . "VALUES (NULL, :plan_id, 'cliente', :organization, :owner_name, :slug, :status, :permissions, :created_at)"
+            . "status_conta, limite_subclientes, limite_usuarios_equipe, limite_titulares, limite_carteirinhas, "
+            . "permissoes_unidade_json, criado_em) "
+            . "VALUES (NULL, :plan_id, 'cliente', :organization, :owner_name, :slug, :status, :limit_units, "
+            . ":limit_users, :limit_holders, :limit_cards, :permissions, :created_at)"
         );
         $insertTenant->execute([
             'plan_id' => (int) $planId,
@@ -75,6 +91,10 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
             'owner_name' => $ownerName,
             'slug' => $slug,
             'status' => $status,
+            'limit_units' => $normalizedLimits['limite_subclientes'] ?? null,
+            'limit_users' => $normalizedLimits['limite_usuarios_equipe'] ?? null,
+            'limit_holders' => $normalizedLimits['limite_titulares'] ?? null,
+            'limit_cards' => $normalizedLimits['limite_carteirinhas'] ?? null,
             'permissions' => '[]',
             'created_at' => $now,
         ]);
@@ -99,6 +119,10 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
         $ownerSubject = privacySubjectCreate($pdo, 'pessoa', $tenantId, $now);
         privacySubjectLinkRecord($pdo, $ownerSubject['id'], 'usuario', $ownerUserId);
         privacySubjectLinkRecord($pdo, $ownerSubject['id'], 'tenant_contato', $tenantId);
+        if ($status === 'pendente') {
+            $pdo->prepare("UPDATE privacy_subjects SET estado = 'inativo', inativado_em = :inactive WHERE id = :id")
+                ->execute(['inactive' => $now, 'id' => $ownerSubject['id']]);
+        }
 
         $auditAfter = json_encode([
             'plano_id' => (int) $planId,
@@ -122,16 +146,16 @@ function tenantProvisionCreate(PDO $pdo, TenantContext $context, array $identity
             'created_at' => $now,
         ]);
 
-        $pdo->commit();
+        if ($ownsTransaction) $pdo->commit();
 
         return ['tenant_id' => $tenantId, 'owner_user_id' => $ownerUserId];
     } catch (DomainException $exception) {
-        if ($pdo->inTransaction()) {
+        if ($ownsTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
         throw $exception;
     } catch (Throwable) {
-        if ($pdo->inTransaction()) {
+        if ($ownsTransaction && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
         throw new RuntimeException('TENANT_PROVISION_FAILED');

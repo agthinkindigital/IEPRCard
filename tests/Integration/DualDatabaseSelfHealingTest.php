@@ -102,6 +102,7 @@ $expectedMvpTables = [
     'whatsapp_config_global', 'whatsapp_instancias', 'webhook_gowa_eventos', 'titular_chaves_backup', 'whatsapp_conversas',
     'privacy_subjects', 'privacy_subject_records', 'design_fundos_privacidade', 'importacao_linhas_staging',
     'mcp_support_grants', 'mcp_support_grant_targets', 'mcp_support_audit_logs', 'mcp_support_github_config', 'eventos_tecnicos',
+    'tenant_owner_invites',
 ];
 $schemaPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => ':memory:']);
 schemaGarantirEstrutura($schemaPdo, 'test');

@@ -313,8 +313,9 @@ try {
         throw new RuntimeException('Support audit snapshots must remove actor, target and repository-operation identifiers.');
     }
     if (!in_array('mcp_support_grant_targets', privacySnapshotOmittedTables(), true)
-        || !in_array('mcp_support_github_config', privacySnapshotOmittedTables(), true)) {
-        throw new RuntimeException('Snapshot policy must omit frozen support targets and encrypted GitHub credentials from both full and resumable snapshots.');
+        || !in_array('mcp_support_github_config', privacySnapshotOmittedTables(), true)
+        || !in_array('tenant_owner_invites', privacySnapshotOmittedTables(), true)) {
+        throw new RuntimeException('Snapshot policy must omit frozen support targets, encrypted GitHub credentials, and one-time Sede invitations.');
     }
     $integrationConfiguration = [
         'IEPR_INTEGRATION_KEY' => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),

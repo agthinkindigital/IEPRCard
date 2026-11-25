@@ -8,12 +8,12 @@ require_once __DIR__ . '/titular_privacy_keys.php';
 require_once __DIR__ . '/privacy_snapshot_labels.php';
 require_once __DIR__ . '/privacy_snapshot_resume.php';
 
-const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = 'c6c41d7bf779a64741420fad67b623f2b04c7caab7cf24e31f763fc407e239b5';
+const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '9d896626c665513c25ac4b9bf4bcb581ea9186460bb1d059520573c25753d744';
 
-/** Tables containing snapshot-external key material or support authorization state. */
+/** Tables containing snapshot-external key material, support grants, or one-time invitation state. */
 function privacySnapshotOmittedTables(): array
 {
-    return ['titular_chaves_backup', 'mcp_support_grant_targets', 'mcp_support_github_config'];
+    return ['titular_chaves_backup', 'mcp_support_grant_targets', 'mcp_support_github_config', 'tenant_owner_invites'];
 }
 
 function privacySnapshotCurrentSchemaVersion(): string
