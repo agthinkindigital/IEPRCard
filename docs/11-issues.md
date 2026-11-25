@@ -43,7 +43,7 @@
 * **Critério de Aceite:** Bloquear qualquer tentativa de escalonamento de privilégio (Subcliente tentando ativar permissão revogada pelo Cliente ou Admin).
 
 
-* **ISSUE-006: Gestão de Clientes, Subclientes e suporte remoto auditável** — mockups/guias de unidades, equipe e cotas aprovados na [#50](https://github.com/agthinkindigital/IEPRCard/issues/50); telas [#55](https://github.com/agthinkindigital/IEPRCard/issues/55)–[#57](https://github.com/agthinkindigital/IEPRCard/issues/57) concluídas em `DEV`. O suporte via MCP é exclusivo do superadmin, usa grant temporário para alvos escolhidos (Sede inclui unidades), autoriza tools durante a janela sem confirmação por chamada e publica código somente em `DEV`; catálogo, GitHub/CI, auditoria e reversão estão na [E02.22 #89](https://github.com/agthinkindigital/IEPRCard/issues/89), sem duplicar seus critérios aqui.
+* **ISSUE-006: Gestão de Clientes, Subclientes e suporte remoto auditável** — mockups/guias de unidades, equipe e cotas aprovados na [#50](https://github.com/agthinkindigital/IEPRCard/issues/50); telas [#55](https://github.com/agthinkindigital/IEPRCard/issues/55)–[#57](https://github.com/agthinkindigital/IEPRCard/issues/57) concluídas em `DEV`. O suporte via MCP é exclusivo do superadmin, usa grant temporário para alvos escolhidos (Sede inclui unidades), autoriza tools durante a janela sem confirmação por chamada e publica código somente em `DEV`; catálogo, GitHub/CI, auditoria e reversão estão na [E02.22 #89](https://github.com/agthinkindigital/IEPRCard/issues/89). A proposta de painel global Master para planos, Sedes e acessos aguarda aprovação visual na [E02.23 #101](https://github.com/agthinkindigital/IEPRCard/issues/101).
 
 
 
