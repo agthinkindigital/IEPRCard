@@ -13,7 +13,10 @@ if ($technicalPageRoute !== ['categoria' => 'admin', 'rota' => 'admin.technical_
 
 foreach (tenantTestConnections() as $driver => $pdo) {
     $migrations = schemaAplicarMigracoes($pdo, 'test');
-    if (end($migrations) !== '0027_issuance_correlation') {
+    $migrationFiles = glob(dirname(__DIR__, 2) . '/database/migrations/[0-9][0-9][0-9][0-9]_*.php') ?: [];
+    sort($migrationFiles, SORT_STRING);
+    $latestMigration = $migrationFiles === [] ? null : basename($migrationFiles[array_key_last($migrationFiles)], '.php');
+    if ($migrations === [] || end($migrations) !== $latestMigration) {
         throw new RuntimeException($driver . ': correlation propagation must use the newest versioned migration.');
     }
     $pdo->exec('DELETE FROM eventos_tecnicos');

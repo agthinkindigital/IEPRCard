@@ -32,10 +32,13 @@ function installationProfileValidate(PDO $pdo, array $input): array
         throw new InvalidArgumentException('Perfil de instalação inválido.');
     }
     if ($mode === 'local_host') {
-        $tenantId = filter_var($input['tenant_local_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        if ($tenantId === false) {
-            throw new InvalidArgumentException('Selecione uma Sede ativa para Local Host.');
+        $rawTenantId = is_string($input['tenant_local_id'] ?? null)
+            ? trim($input['tenant_local_id']) : ($input['tenant_local_id'] ?? null);
+        if ($rawTenantId === null || $rawTenantId === '') {
+            return ['modo' => 'local_host', 'tenant_local_id' => null, 'hostname_plataforma' => null, 'dominio_base' => null];
         }
+        $tenantId = filter_var($rawTenantId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($tenantId === false) throw new InvalidArgumentException('A Sede selecionada é inválida.');
         $query = $pdo->prepare("SELECT 1 FROM tenants WHERE id = :id AND tipo = 'cliente' AND parent_id IS NULL AND status_conta = 'ativo' LIMIT 1");
         $query->execute(['id' => $tenantId]);
         if ($query->fetchColumn() === false) {
@@ -113,6 +116,14 @@ function installationProfileNormalizeHostHeader(string $value): ?string
 
 function installationProfileTenantContext(PDO $pdo, array $profile): ?TenantContext
 {
+    if (session_status() === PHP_SESSION_ACTIVE && session_name() === 'IEPRCARDADMIN'
+        && isset($_SESSION['admin_user_id'])) {
+        $adminQuery = $pdo->prepare(
+            "SELECT 1 FROM usuarios WHERE id = :id AND tenant_id IS NULL AND subcliente_id IS NULL AND papel_sistema = 'superadmin' AND ativo = 1 LIMIT 1"
+        );
+        $adminQuery->execute(['id' => $_SESSION['admin_user_id']]);
+        if ($adminQuery->fetchColumn() !== false) return new TenantContext('admin', null, null, []);
+    }
     $tenantId = filter_var($profile['tenant_local_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if ($tenantId === false) return null;
 
@@ -156,14 +167,6 @@ function installationProfileTenantContext(PDO $pdo, array $profile): ?TenantCont
         }
         $rootName = (string) $row['nome_organizacao'];
     } else {
-        if (session_status() === PHP_SESSION_ACTIVE && session_name() === 'IEPRCARDADMIN'
-            && isset($_SESSION['admin_user_id'])) {
-            $adminQuery = $pdo->prepare(
-                "SELECT 1 FROM usuarios WHERE id = :id AND tenant_id IS NULL AND subcliente_id IS NULL AND papel_sistema = 'superadmin' AND ativo = 1 LIMIT 1"
-            );
-            $adminQuery->execute(['id' => $_SESSION['admin_user_id']]);
-            if ($adminQuery->fetchColumn() !== false) return new TenantContext('admin', null, null, []);
-        }
         $query = $pdo->prepare("SELECT nome_organizacao FROM tenants WHERE id = :id AND parent_id IS NULL AND tipo = 'cliente' AND status_conta = 'ativo'");
         $query->execute(['id' => $tenantId]);
         $rootName = $query->fetchColumn();

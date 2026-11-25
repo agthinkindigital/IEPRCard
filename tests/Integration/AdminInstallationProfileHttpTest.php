@@ -70,7 +70,7 @@ try {
         throw new RuntimeException('A newly authenticated superadmin must land on installation setup when no profile exists.');
     }
     [$status] = installationProfileHttpRequest($base . '/admin/migracao-banco.php', 'GET', null, $cookie);
-    if ($status !== 303) throw new RuntimeException('Protected admin routes must remain blocked until the installation profile is saved.');
+    if ($status !== 200) throw new RuntimeException('The authenticated superadmin must access global admin routes before choosing a Sede or installation profile.');
     [$status, $page] = installationProfileHttpRequest($base . '/admin/instalacao.php', 'GET', null, $cookie);
     if ($status !== 200 || !str_contains((string) $page, 'Modo de hospedagem')
         || !str_contains((string) $page, 'Hospedado') || !str_contains((string) $page, 'Local Host')
@@ -106,16 +106,17 @@ try {
     }
     [$status, , $savedHeaders] = installationProfileHttpRequest($base . '/admin/instalacao.php', 'POST', http_build_query([
         'action' => 'save', 'csrf_token' => $savedToken[1], 'modo' => 'local_host',
-        'tenant_local_id' => (string) $tenantId, 'confirm_impact' => '1',
+        'tenant_local_id' => '', 'confirm_impact' => '1',
     ]), $cookie);
-    if ($status !== 303 || installationProfileHttpHeader($savedHeaders, 'Location') !== '/admin/migracao-banco.php?salvo=1') {
-        throw new RuntimeException('A valid Local Host profile must be saved through the HTTP form.');
+    if ($status !== 303 || installationProfileHttpHeader($savedHeaders, 'Location') !== '/admin/instalacao.php?salvo=1') {
+        throw new RuntimeException('A valid Local Host profile must be saveable before any Sede exists.');
     }
     [$status, $page] = installationProfileHttpRequest($base . '/admin/instalacao.php?salvo=1', 'GET', null, $cookie);
     if ($status !== 200 || !str_contains((string) $page, 'Local Host ativo')
-        || !str_contains((string) $page, '1 unidade ativa')
+        || !str_contains((string) $page, 'Nenhuma Sede selecionada')
+        || !str_contains((string) $page, 'O superadmin continua no painel global')
         || !str_contains((string) $page, 'id="hosted-fields" hidden')) {
-        throw new RuntimeException('Saved Local Host must show its selected Sede and unit count without hosted hostname fields.');
+        throw new RuntimeException('Saved Local Host without a Sede must keep global administration available.');
     }
     [$status] = installationProfileHttpRequest($base . '/admin/migracao-banco.php', 'GET', null, $cookie);
     if ($status !== 200) throw new RuntimeException('Saving an installation profile must release the protected superadmin routes.');
@@ -151,9 +152,9 @@ try {
     }
     $pdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $databasePath]);
     $currentProfile = $pdo->query('SELECT modo, tenant_local_id FROM configuracoes_instalacao ORDER BY id DESC LIMIT 1')->fetch(PDO::FETCH_ASSOC);
-    if (!is_array($currentProfile) || $currentProfile['modo'] !== 'local_host' || (int) $currentProfile['tenant_local_id'] !== $tenantId
+    if (!is_array($currentProfile) || $currentProfile['modo'] !== 'local_host' || $currentProfile['tenant_local_id'] !== null
         || (int) $pdo->query('SELECT COUNT(*) FROM configuracoes_instalacao')->fetchColumn() !== 1) {
-        throw new RuntimeException('A failed reconfiguration must preserve the previously active Local Host profile.');
+        throw new RuntimeException('A failed reconfiguration must preserve the Local Host profile without a Sede.');
     }
     unset($pdo);
 
@@ -194,7 +195,7 @@ try {
     }
 }
 
-fwrite(STDOUT, "PASS: installation mode setup is authenticated, CSRF-protected, auditable, and blocks routes until saved.\n");
+fwrite(STDOUT, "PASS: installation mode setup is authenticated and auditable; global admin access works without a Sede.\n");
 return 'pass';
 
 /** @return array{int,string|null,list<string>} */

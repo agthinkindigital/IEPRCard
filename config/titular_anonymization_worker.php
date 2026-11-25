@@ -47,8 +47,8 @@ function titularAnonymizationQueueExpiredInactive(PDO $pdo, string $key, string 
     $holders->execute(['cutoff' => $cutoff]);
     $driver = strtolower((string) $pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
     $insertSql = $driver === 'mysql'
-        ? "INSERT IGNORE INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, estado, solicitado_em, prazo_em) VALUES (:request_id, :reference, 'pendente', :requested, :deadline)"
-        : "INSERT INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, estado, solicitado_em, prazo_em) VALUES (:request_id, :reference, 'pendente', :requested, :deadline) ON CONFLICT(solicitacao_id) DO NOTHING";
+        ? "INSERT IGNORE INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, origem, estado, solicitado_em, prazo_em) VALUES (:request_id, :reference, 'retencao_12m', 'pendente', :requested, :deadline)"
+        : "INSERT INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, origem, estado, solicitado_em, prazo_em) VALUES (:request_id, :reference, 'retencao_12m', 'pendente', :requested, :deadline) ON CONFLICT(solicitacao_id) DO NOTHING";
     $insert = $pdo->prepare($insertSql);
     foreach ($holders->fetchAll(PDO::FETCH_ASSOC) as $holder) {
         $tenantId = (int) $holder['tenant_id'];
@@ -64,6 +64,16 @@ function titularAnonymizationQueueExpiredInactive(PDO $pdo, string $key, string 
     }
 }
 
+function titularAnonymizationCancelRetentionRequest(PDO $pdo, int $requestId, string $nowText): void
+{
+    $cancel = $pdo->prepare(
+        "UPDATE solicitacoes_anonimizacao SET estado = 'cancelada', referencia_titular_cifrada = '', "
+        . 'concluido_em = :cancelled, erro_codigo = NULL WHERE id = :id '
+        . "AND estado IN ('pendente', 'falha')"
+    );
+    $cancel->execute(['cancelled' => $nowText, 'id' => $requestId]);
+}
+
 function titularAnonymizationProcessOne(
     PDO $pdo,
     int $id,
@@ -77,7 +87,7 @@ function titularAnonymizationProcessOne(
     $pdo->beginTransaction();
     try {
         $query = $pdo->prepare(
-            "SELECT id, referencia_titular_cifrada FROM solicitacoes_anonimizacao "
+            "SELECT id, solicitacao_id, origem, referencia_titular_cifrada FROM solicitacoes_anonimizacao "
             . "WHERE id = :id AND estado IN ('pendente', 'falha') AND solicitado_em <= :now LIMIT 1" . $lock
         );
         $query->execute(['id' => $id, 'now' => $nowText]);
@@ -95,11 +105,41 @@ function titularAnonymizationProcessOne(
         }
 
         $holderQuery = $pdo->prepare(
-            'SELECT id, foto_url, referencia_privacidade FROM titulares WHERE id = :id AND tenant_id = :tenant LIMIT 1' . $lock
+            'SELECT id, ativo, inativado_em, anonimizado_em, foto_url, referencia_privacidade '
+            . 'FROM titulares WHERE id = :id AND tenant_id = :tenant LIMIT 1' . $lock
         );
         $holderQuery->execute(['id' => $reference['titular_id'], 'tenant' => $reference['tenant_id']]);
         $holder = $holderQuery->fetch(PDO::FETCH_ASSOC);
         if (is_array($holder)) {
+            $isRetentionRequest = (string) $request['origem'] === 'retencao_12m';
+            if (!$isRetentionRequest && is_string($holder['inativado_em'])) {
+                $legacyRetentionId = hash_hmac(
+                    'sha256',
+                    'retention:' . $reference['tenant_id'] . ':' . $reference['titular_id'] . ':' . $holder['inativado_em'],
+                    $key
+                );
+                $isRetentionRequest = hash_equals($legacyRetentionId, (string) $request['solicitacao_id']);
+            }
+            if ($isRetentionRequest) {
+                $matchesCurrentInactivePeriod = is_string($holder['inativado_em'])
+                    && (int) $holder['ativo'] === 0
+                    && $holder['anonimizado_em'] === null;
+                if (!$matchesCurrentInactivePeriod) {
+                    titularAnonymizationCancelRetentionRequest($pdo, $id, $nowText);
+                    $pdo->commit();
+                    return true;
+                }
+                $currentRetentionId = hash_hmac(
+                    'sha256',
+                    'retention:' . $reference['tenant_id'] . ':' . $reference['titular_id'] . ':' . $holder['inativado_em'],
+                    $key
+                );
+                if (!hash_equals($currentRetentionId, (string) $request['solicitacao_id'])) {
+                    titularAnonymizationCancelRetentionRequest($pdo, $id, $nowText);
+                    $pdo->commit();
+                    return true;
+                }
+            }
             $conversationPrivacy = $pdo->prepare(
                 "UPDATE whatsapp_conversas SET estado = 'anonimizada', contato_hmac = NULL, titular_id = NULL, "
                 . 'job_id = NULL, dados_cifrados = NULL '

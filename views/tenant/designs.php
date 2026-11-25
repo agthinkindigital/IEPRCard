@@ -82,10 +82,12 @@ $readonly = !$canSave;
                         <?php $privacy = $backgroundPrivacy[$side] ?? ['classificacao' => '', 'titular_id' => null]; ?>
                         <label>Classificação<select name="fundo_<?= $side ?>_classificacao" <?= $readonly ? 'disabled' : '' ?>><option value="" <?= !in_array($privacy['classificacao'], ['decorativo', 'titular'], true) ? 'selected' : '' ?>>Selecione a classificação</option><option value="decorativo" <?= $privacy['classificacao'] === 'decorativo' ? 'selected' : '' ?>>Arte decorativa sem pessoa identificável</option><option value="titular" <?= $privacy['classificacao'] === 'titular' ? 'selected' : '' ?>>Imagem vinculada a um titular</option></select></label>
                         <label>Titular<select name="fundo_<?= $side ?>_titular_id" <?= $readonly ? 'disabled' : '' ?>><option value="">Selecione se vinculada a titular</option><?php foreach ($titularesDisponiveis as $titular): ?><option value="<?= (int) $titular['id'] ?>" <?= $privacy['titular_id'] === (int) $titular['id'] ? 'selected' : '' ?>><?= $h($titular['name']) ?></option><?php endforeach; ?></select></label>
-                        <label>Imagem<input type="file" name="fundo_<?= $side ?>" accept="image/png,image/jpeg,image/webp" <?= $readonly ? 'disabled' : '' ?>></label>
+                        <label>Imagem ou PDF<input type="file" data-background-picker="<?= $h($side) ?>" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf" <?= $readonly ? 'disabled' : '' ?>></label>
+                        <input type="file" name="fundo_<?= $side ?>" data-background-upload="<?= $h($side) ?>" accept="image/png,image/jpeg,image/webp" hidden <?= $readonly ? 'disabled' : '' ?>>
+                        <p class="background-file-status" data-background-status="<?= $h($side) ?>" aria-live="polite"></p>
                     </fieldset>
                     <?php endforeach; ?>
-                    <p>PNG, JPEG ou WebP · até 10 MB e 4 megapixels. Imagens com mais de uma pessoa identificável não podem ser usadas como fundo. Para foto individual, use o elemento dinâmico de foto do titular.</p>
+                    <p>PNG, JPEG ou WebP · até 10 MB e 4 megapixels. PDF até 10 MB: somente a primeira página é convertida localmente para PNG 1011 × 638; o PDF original não é enviado. Imagens com mais de uma pessoa identificável não podem ser usadas como fundo. Para foto individual, use o elemento dinâmico de foto do titular.</p>
                     <p>Texto fixo não deve conter dados pessoais; use variáveis dinâmicas. Arte decorativa é guardada no envelope da Sede; fundo associado fica no envelope criptográfico do titular.</p>
                 </div>
                 <div class="form-actions"><span><?php if ($design !== null && (int) $design['ativo'] === 1): ?>Design ativo não pode ser alterado.<?php elseif ($hasPendingDesignJobs): ?>Aguarde as emissões deste design terminarem para editá-lo.<?php else: ?>Salvar mantém o design como rascunho.<?php endif; ?></span><?php if ($canSave): ?><button class="button primary" type="submit">Salvar design</button><?php endif; ?></div>
@@ -94,6 +96,6 @@ $readonly = !$canSave;
     </div>
 </main>
 <script>window.designEditorInitial = <?= json_encode(['map' => $map, 'mapping' => $mapping, 'editable' => !$readonly], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?>;</script>
-<script src="/assets/js/design-editor.js" defer></script>
+<script type="module" src="/assets/js/design-editor.js"></script>
 </body>
 </html>

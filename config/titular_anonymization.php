@@ -52,8 +52,8 @@ function titularAnonymizationRequest(
             throw new DomainException('ANONYMIZATION_TITULAR_NOT_FOUND');
         }
         $insert = $pdo->prepare(
-            "INSERT INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, estado, solicitado_em, prazo_em) "
-            . "VALUES (:request_id, :reference, 'pendente', :requested_at, :due_at)"
+            "INSERT INTO solicitacoes_anonimizacao (solicitacao_id, referencia_titular_cifrada, origem, estado, solicitado_em, prazo_em) "
+            . "VALUES (:request_id, :reference, 'solicitacao', 'pendente', :requested_at, :due_at)"
         );
         $insert->execute([
             'request_id' => $requestId,

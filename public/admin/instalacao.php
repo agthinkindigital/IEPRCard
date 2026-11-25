@@ -145,7 +145,7 @@ $modeLabel = match ($profile['modo'] ?? null) {
 <main class="content" id="installation">
     <p class="breadcrumb">Administração&nbsp; / &nbsp;Instalação</p>
     <div class="page-heading"><div><h1>Modo de hospedagem</h1><p>Escolha como esta instalação identifica a empresa e os endereços do sistema.</p></div></div>
-    <div class="info-banner" role="note"><span aria-hidden="true">i</span><div><strong>Configuração global da instalação</strong><p>A alteração não move dados. Ela define quais hostnames e empresas esta aplicação pode atender.</p></div></div>
+    <div class="info-banner" role="note"><span aria-hidden="true">i</span><div><strong>Configuração global da instalação</strong><p>O superadmin mantém acesso ao painel completo mesmo sem uma Sede. A Sede selecionada só define o escopo disponível aos usuários da instituição no modo Local Host.</p></div></div>
     <?php if ($notice !== ''): ?><p class="notice <?= str_contains($notice, 'Não foi possível') || str_contains($notice, 'Confirme') ? 'notice-error' : '' ?>" role="<?= str_contains($notice, 'Não foi possível') || str_contains($notice, 'Confirme') ? 'alert' : 'status' ?>" aria-live="polite"><?= installationPageEscape($notice) ?></p><?php endif; ?>
     <form class="installation-form" method="post" action="/admin/instalacao.php">
         <input type="hidden" name="action" value="save">
@@ -162,9 +162,9 @@ $modeLabel = match ($profile['modo'] ?? null) {
             <label class="mode-card<?= $selectedMode === 'local_host' ? ' selected' : '' ?>">
                 <input type="radio" name="modo" value="local_host"<?= $selectedMode === 'local_host' ? ' checked' : '' ?>>
                 <span class="mode-title">Local Host</span>
-                <span>Esta instalação atende uma empresa Sede e as unidades dela.</span>
+                <span>Usuários da instituição acessam uma Sede selecionada e as unidades dela.</span>
                 <span>Não usa hostname da plataforma, subdomínio ou domínio próprio.</span>
-                <small>A Sede é selecionada pelo superadmin; usuários continuam no próprio escopo.</small>
+                <small>O painel global do superadmin continua disponível antes e depois da escolha.</small>
             </label>
         </fieldset>
 
@@ -184,11 +184,11 @@ $modeLabel = match ($profile['modo'] ?? null) {
 
         <section class="panel mode-fields local-fields" id="local-fields"<?= $selectedMode !== 'local_host' ? ' hidden' : '' ?> aria-labelledby="local-title">
             <h2 id="local-title">Empresa disponível nesta instalação</h2>
-            <p>Selecione uma única Sede ativa. As unidades descendentes continuam acessíveis conforme o perfil do usuário.</p>
+            <p>A seleção limita o acesso de usuários da instituição. O painel do superadmin não depende dela.</p>
             <div class="field-grid local-grid">
                 <label for="local-tenant">Empresa Sede
-                    <select id="local-tenant" name="tenant_local_id"<?= $sedes === [] ? ' disabled' : '' ?>>
-                        <option value="">Selecione uma Sede ativa</option>
+                    <select id="local-tenant" name="tenant_local_id">
+                        <option value="">Nenhuma Sede selecionada</option>
                         <?php foreach ($sedes as $sede): ?>
                             <option value="<?= (int) $sede['id'] ?>" data-units="<?= (int) $sede['unidades_ativas'] ?>"<?= (string) $sede['id'] === $selectedTenantId ? ' selected' : '' ?>><?= installationPageEscape((string) $sede['nome_organizacao']) ?></option>
                         <?php endforeach; ?>
@@ -196,8 +196,8 @@ $modeLabel = match ($profile['modo'] ?? null) {
                 </label>
                 <div class="unit-count" aria-live="polite"><span>Unidades ativas vinculadas</span><strong id="active-unit-count"><?= $activeUnitCount ?> <?= $activeUnitCount === 1 ? 'unidade ativa' : 'unidades ativas' ?></strong></div>
             </div>
-            <?php if ($sedes === []): ?><p class="notice notice-error" role="alert">Não há Sede ativa disponível. Ative ou configure uma Sede antes de selecionar Local Host.</p><?php endif; ?>
-            <div class="warning-banner"><span class="warning-icon" aria-hidden="true">!</span><div><strong>Limites do modo Local Host</strong><p>Uma única Sede pode operar nesta instalação. Domínios próprios ficam desativados; as URLs usam localhost e só são acessíveis nesta máquina. O acesso respeita o usuário e a Sede configurados.</p></div></div>
+            <?php if ($selectedTenantId === ''): ?><p class="notice" role="status"><?= $sedes === [] ? 'Nenhuma Sede ativa. ' : 'Nenhuma Sede selecionada. ' ?>O superadmin continua no painel global; usuários institucionais só recebem acesso depois da seleção.</p><?php endif; ?>
+            <div class="warning-banner"><span class="warning-icon" aria-hidden="true">!</span><div><strong>Limites do modo Local Host</strong><p>Somente usuários da Sede selecionada e das unidades dela acessam as áreas institucionais. Domínios próprios ficam desativados; as URLs usam localhost e só são acessíveis nesta máquina.</p></div></div>
         </section>
 
         <section class="profile-status panel" aria-labelledby="profile-status-title">

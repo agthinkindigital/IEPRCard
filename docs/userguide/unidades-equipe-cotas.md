@@ -6,6 +6,8 @@ Este guia cobre a administração da rede por uma Sede. Os três fluxos têm moc
 
 O Cliente Master da Sede administra suas unidades, operadores e alocações dentro dos limites definidos para a conta. O Admin SaaS administra contas no contexto global. Um operador de unidade não cria operadores nem amplia permissões. Todo acesso é verificado pelo servidor com tenant, sessão e papel persistidos.
 
+O painel global do superadmin funciona antes de existir uma Sede ou plano de cliente. `Master` é o papel global do superadmin, sem plano de cliente. O superadmin poderá criar uma Sede com responsável ou emitir convite de uso único para um usuário concluir uma única Sede no primeiro acesso; poderá também criar unidades/empresas e contas diretamente em qualquer Sede, sempre respeitando suas cotas. Cada Sede cria subusuários e unidades dentro do plano e das permissões delegadas. A proposta global ainda aguarda aprovação visual e detalha esses fluxos em [Sedes, empresas e acessos](../../design-system/pages/admin-tenants.md).
+
 ## Unidades
 
 1. A lista mostra somente unidades da Sede, com situação, responsável e dados agregados da própria unidade.

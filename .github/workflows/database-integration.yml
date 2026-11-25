@@ -42,6 +42,14 @@ jobs:
         env:
           fail-fast: 'true'
 
+      - name: Set up Node for browser-side PDF tests
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Run local PDF conversion unit test
+        run: node tests/Unit/design-pdf-background.test.mjs
+
       - name: Install independent barcode decoder
         run: sudo apt-get update && sudo apt-get install -y zbar-tools poppler-utils
 

@@ -47,13 +47,6 @@ function adminExigirAcesso(): array
 
     $admin = adminAuthCurrentUser(dbConnection());
     if ($admin !== null) {
-        $profile = installationProfileCurrent(dbConnection());
-        $requestedPath = adminAuthSafeReturnPath((string) parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/admin/'), PHP_URL_PATH));
-        if ($profile === null && $requestedPath !== '/admin/instalacao.php') {
-            $_SESSION['admin_return_to'] = $requestedPath;
-            header('Location: /admin/instalacao.php', true, 303);
-            exit;
-        }
         return $admin;
     }
 

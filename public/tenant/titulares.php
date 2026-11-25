@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/config/tenant_resolver.php';
 require_once dirname(__DIR__, 2) . '/config/tenant_auth.php';
 require_once dirname(__DIR__, 2) . '/config/motor_permissoes.php';
 require_once dirname(__DIR__, 2) . '/config/titular_read.php';
+require_once dirname(__DIR__, 2) . '/config/titular_management.php';
 require_once dirname(__DIR__, 2) . '/config/titular_provisioning.php';
 require_once dirname(__DIR__, 2) . '/config/batch_import_confirmation.php';
 
@@ -52,13 +53,46 @@ if ($method === 'POST') {
         exit('Solicitação inválida.');
     }
     $action = is_string($_POST['action'] ?? null) ? $_POST['action'] : '';
-    if (!in_array($action, ['create_titular', 'stage_import', 'confirm_import', 'cancel_import'], true)) {
+    if (!in_array($action, ['create_titular', 'stage_import', 'confirm_import', 'cancel_import', 'set_titular_status', 'replace_titular_photo'], true)) {
         http_response_code(400);
         exit('Ação inválida.');
     }
 
     try {
-        if ($action === 'create_titular') {
+        if ($action === 'set_titular_status') {
+            if (!in_array($_POST['situacao'] ?? null, ['ativo', 'inativo'], true)
+                || ($_POST['confirm_status'] ?? null) !== '1') {
+                throw new DomainException('TITULAR_STATUS_CONFIRM_REQUIRED');
+            }
+            $titularId = tenantTitularesReadLotId($_POST['titular_id'] ?? null);
+            $changed = titularManagementSetStatus(
+                $pdo,
+                $context,
+                $identity,
+                $titularId,
+                $_POST['situacao'] === 'ativo'
+            );
+            $_SESSION['tenant_titulares_notice'] = $changed['situacao'] === 'inativo'
+                ? 'Titular inativado. O acesso ao portal foi bloqueado.'
+                : 'Titular reativado. O acesso ao portal continua bloqueado até nova liberação.';
+            $redirect = '/tenant/titulares.php?titular=' . $titularId . '#detalhe-titular';
+        } elseif ($action === 'replace_titular_photo') {
+            $titularId = tenantTitularesReadLotId($_POST['titular_id'] ?? null);
+            $upload = is_array($_FILES['foto'] ?? null) ? $_FILES['foto'] : [];
+            if (($upload['error'] ?? null) !== UPLOAD_ERR_OK || !is_string($upload['tmp_name'] ?? null)
+                || !is_uploaded_file($upload['tmp_name'])) {
+                throw new DomainException('TITULAR_PHOTO_INVALID');
+            }
+            $size = filesize($upload['tmp_name']);
+            if (!is_int($size) || $size < 1 || $size > BATCH_IMPORT_PHOTO_MAX_FILE_BYTES) {
+                throw new DomainException('TITULAR_PHOTO_INVALID');
+            }
+            $bytes = file_get_contents($upload['tmp_name']);
+            if (!is_string($bytes)) throw new DomainException('TITULAR_PHOTO_INVALID');
+            titularManagementReplacePhoto($pdo, $context, $identity, $titularId, $bytes);
+            $_SESSION['tenant_titulares_notice'] = 'Foto atualizada em armazenamento privado.';
+            $redirect = '/tenant/titulares.php?titular=' . $titularId . '#detalhe-titular';
+        } elseif ($action === 'create_titular') {
             if (!$canCreate) {
                 http_response_code(403);
                 exit('Sua conta não tem permissão para cadastrar titulares.');
@@ -171,15 +205,17 @@ if ($method === 'POST') {
         $error = $exception->getMessage();
         $_SESSION['tenant_titulares_notice'] = tenantTitularesDomainMessage($error);
         $postedLotId = tenantTitularesReadLotId($_POST['lote_id'] ?? null, false);
-        $redirect = $postedLotId === null
-            ? '/tenant/titulares.php#novo-titular'
-            : '/tenant/titulares.php?lote=' . $postedLotId . '#importacao';
+        $postedTitularId = tenantTitularesReadLotId($_POST['titular_id'] ?? null, false);
+        $redirect = $postedTitularId !== null
+            ? '/tenant/titulares.php?titular=' . $postedTitularId . '#detalhe-titular'
+            : ($postedLotId === null ? '/tenant/titulares.php#novo-titular' : '/tenant/titulares.php?lote=' . $postedLotId . '#importacao');
     } catch (Throwable) {
         $_SESSION['tenant_titulares_notice'] = 'Não foi possível concluir a operação. Revise os dados e tente novamente.';
         $postedLotId = tenantTitularesReadLotId($_POST['lote_id'] ?? null, false);
-        $redirect = $postedLotId === null
-            ? '/tenant/titulares.php#novo-titular'
-            : '/tenant/titulares.php?lote=' . $postedLotId . '#importacao';
+        $postedTitularId = tenantTitularesReadLotId($_POST['titular_id'] ?? null, false);
+        $redirect = $postedTitularId !== null
+            ? '/tenant/titulares.php?titular=' . $postedTitularId . '#detalhe-titular'
+            : ($postedLotId === null ? '/tenant/titulares.php#novo-titular' : '/tenant/titulares.php?lote=' . $postedLotId . '#importacao');
     }
     session_write_close();
     header('Location: ' . $redirect, true, 303);
@@ -249,6 +285,8 @@ $organization = (string) ($context->branding['nome_unidade'] ?? $context->brandi
 $notice = is_string($_SESSION['tenant_titulares_notice'] ?? null) ? $_SESSION['tenant_titulares_notice'] : '';
 unset($_SESSION['tenant_titulares_notice']);
 $csrfToken = tenantAuthCsrfToken($_SESSION);
+$detailId = tenantTitularesReadLotId($_GET['titular'] ?? null, false);
+$detail = $detailId === null ? null : titularDetalhar($pdo, $context, $identity, $detailId);
 $importState = null;
 $importTargetUnitId = null;
 $importStateError = '';
@@ -386,6 +424,10 @@ function tenantTitularesDomainMessage(string $error): string
         'TITULAR_CREATE_ROOT_INACTIVE', 'TITULAR_CREATE_PLAN_UNAVAILABLE' => 'A conta não pode cadastrar titulares neste momento.',
         'TITULAR_CREATE_TARGET_INVALID' => 'A unidade selecionada não está disponível.',
         'TITULAR_CREATE_DENIED' => 'Sua conta não tem permissão para cadastrar titulares neste escopo.',
+        'TITULAR_STATUS_DENIED', 'TITULAR_PHOTO_DENIED' => 'Sua conta não tem permissão para editar este titular.',
+        'TITULAR_STATUS_ANONYMIZED' => 'Titulares anonimizados não podem ser reativados ou alterados.',
+        'TITULAR_STATUS_CONFIRM_REQUIRED' => 'Confirme a alteração de situação antes de continuar.',
+        'TITULAR_PHOTO_INVALID' => 'Use uma imagem JPG, JPEG, PNG ou WebP válida, com até 5 MB e 12 megapixels.',
         'TITULAR_IMPORT_READ_DENIED' => 'Sua conta não tem permissão para importar nesse escopo.',
         'IMPORT_FORMAT_UNSUPPORTED' => 'Use um arquivo CSV, XLS, XLSX ou JSON.',
         'IMPORT_FILE_SIZE_INVALID' => 'O arquivo principal precisa ter até 10 MB e conter dados.',
@@ -469,7 +511,7 @@ function tenantTitularesDomainMessage(string $error): string
         <?php else: ?>
             <div class="titular-table-wrap" role="region" aria-label="Lista de titulares" tabindex="0">
                 <table>
-                    <thead><tr><th scope="col">Nome</th><th scope="col">CPF</th><th scope="col">Matrícula</th><th scope="col">Unidade</th><th scope="col">Situação</th><th scope="col">Origem</th></tr></thead>
+                    <thead><tr><th scope="col">Nome</th><th scope="col">CPF</th><th scope="col">Matrícula</th><th scope="col">Unidade</th><th scope="col">Situação</th><th scope="col">Origem</th><th scope="col">Ações</th></tr></thead>
                     <tbody>
                     <?php foreach ($listing['items'] as $item): ?>
                         <tr>
@@ -477,8 +519,9 @@ function tenantTitularesDomainMessage(string $error): string
                             <td><?= tenantTitularesEscape($item['cpf_mascarado'] ?? '—') ?></td>
                             <td><?= tenantTitularesEscape($item['matricula'] ?? '—') ?></td>
                             <td><?= tenantTitularesEscape($item['unidade']) ?></td>
-                            <td><span class="titular-status status-<?= tenantTitularesEscape($item['situacao']) ?>"><?= $item['situacao'] === 'ativo' ? 'Ativo' : 'Inativo' ?></span></td>
+                            <td><span class="titular-status status-<?= tenantTitularesEscape($item['situacao']) ?>"><?= $item['situacao'] === 'ativo' ? 'Ativo' : 'Inativo' ?></span><?php if ($item['inativado_em'] !== null): ?><small class="inactive-since">Inativo desde <?= tenantTitularesEscape(gmdate('d/m/Y H:i', strtotime($item['inativado_em'] . ' UTC'))) ?> UTC</small><?php endif; ?></td>
                             <td><?= tenantTitularesEscape(tenantTitularesOrigin($item['origem'])) ?></td>
+                            <td><?php if ($item['pode_editar']): ?><a class="secondary-link" href="/tenant/titulares.php?titular=<?= (int) $item['id'] ?>#detalhe-titular">Gerenciar</a><?php else: ?>—<?php endif; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -495,10 +538,70 @@ function tenantTitularesDomainMessage(string $error): string
             </nav>
         <?php endif; ?>
     </section>
+    <?php if ($detailId !== null): ?>
+        <?php if (!is_array($detail)): ?>
+            <p class="notice" role="alert">Titular não encontrado ou fora do seu escopo.</p>
+        <?php else: ?>
+            <section class="panel titular-detail-panel" id="detalhe-titular" aria-labelledby="detail-title">
+                <h2 id="detail-title">Detalhes do titular</h2>
+                <p class="subtle"><?= tenantTitularesEscape($detail['nome']) ?><?= $detail['matricula'] !== null ? ' · Matrícula ' . tenantTitularesEscape($detail['matricula']) : '' ?></p>
+                <div class="titular-detail-grid">
+                    <section class="photo-management" aria-labelledby="photo-title">
+                        <h3 id="photo-title">Foto do membro</h3>
+                        <?php if ($detail['foto_disponivel']): ?><img class="member-photo" src="/tenant/titular-foto.php?id=<?= (int) $detail['id'] ?>" alt="Foto de <?= tenantTitularesEscape($detail['nome']) ?>" loading="lazy"><?php else: ?><div class="member-photo-placeholder" aria-hidden="true">Sem foto</div><?php endif; ?>
+                        <?php if ($detail['pode_editar']): ?>
+                            <form method="post" enctype="multipart/form-data" action="/tenant/titulares.php?titular=<?= (int) $detail['id'] ?>#detalhe-titular" data-disable-on-submit>
+                                <input type="hidden" name="csrf_token" value="<?= tenantTitularesEscape($csrfToken) ?>">
+                                <input type="hidden" name="action" value="replace_titular_photo">
+                                <input type="hidden" name="titular_id" value="<?= (int) $detail['id'] ?>">
+                                <label>Enviar ou trocar foto
+                                    <input type="file" name="foto" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required>
+                                </label>
+                                <p class="upload-help">JPG, JPEG, PNG ou WebP · até 5 MB e 12 megapixels. A imagem é recodificada e armazenada em área privada.</p>
+                                <button type="submit">Salvar foto</button>
+                            </form>
+                        <?php endif; ?>
+                    </section>
+                    <section class="status-management" aria-labelledby="status-title">
+                        <h3 id="status-title">Situação do membro</h3>
+                        <p><span class="titular-status status-<?= tenantTitularesEscape($detail['situacao']) ?>"><?= $detail['situacao'] === 'ativo' ? 'Ativo' : 'Inativo' ?></span></p>
+                        <?php if ($detail['inativado_em'] !== null): ?><p>Inativo desde <?= tenantTitularesEscape(gmdate('d/m/Y H:i', strtotime($detail['inativado_em'] . ' UTC'))) ?> UTC.</p><?php endif; ?>
+                        <?php if ($detail['pode_editar']): ?>
+                            <?php if ($detail['situacao'] === 'ativo'): ?>
+                                <p>Inativar bloqueia o portal e inicia a retenção conforme as regras de ciclo de vida dos dados.</p>
+                                <form method="post" action="/tenant/titulares.php?titular=<?= (int) $detail['id'] ?>#detalhe-titular">
+                                    <input type="hidden" name="csrf_token" value="<?= tenantTitularesEscape($csrfToken) ?>">
+                                    <input type="hidden" name="action" value="set_titular_status">
+                                    <input type="hidden" name="titular_id" value="<?= (int) $detail['id'] ?>">
+                                    <input type="hidden" name="situacao" value="inativo">
+                                    <input type="hidden" name="confirm_status" value="1">
+                                    <label class="status-confirm"><input type="checkbox" required><span>Confirmo a inativação e o bloqueio do acesso ao portal.</span></label>
+                                    <button class="danger-button" type="submit">Inativar membro</button>
+                                </form>
+                            <?php else: ?>
+                                <p>Reativar cancela a retenção automática pendente. O acesso ao portal continuará bloqueado até nova liberação.</p>
+                                <form method="post" action="/tenant/titulares.php?titular=<?= (int) $detail['id'] ?>#detalhe-titular">
+                                    <input type="hidden" name="csrf_token" value="<?= tenantTitularesEscape($csrfToken) ?>">
+                                    <input type="hidden" name="action" value="set_titular_status">
+                                    <input type="hidden" name="titular_id" value="<?= (int) $detail['id'] ?>">
+                                    <input type="hidden" name="situacao" value="ativo">
+                                    <input type="hidden" name="confirm_status" value="1">
+                                    <label class="status-confirm"><input type="checkbox" required><span>Confirmo que a reativação não libera o portal automaticamente.</span></label>
+                                    <button type="submit">Reativar membro</button>
+                                </form>
+                            <?php endif; ?>
+                        <?php elseif ($detail['anonimizado']): ?>
+                            <p class="subtle">Este titular foi anonimizado e não pode ser alterado.</p>
+                        <?php endif; ?>
+                    </section>
+                </div>
+            </section>
+        <?php endif; ?>
+    <?php endif; ?>
     <?php if ($canCreate): ?>
         <section class="panel titular-form-panel" id="novo-titular" aria-labelledby="new-titular-title">
             <h2 id="new-titular-title">Novo titular</h2>
-            <p class="subtle">Informe o nome completo. Os demais campos são opcionais; fotos entram pela importação ZIP.</p>
+            <p class="subtle">Informe o nome completo. Os demais campos são opcionais; inclua foto pelo ZIP de importação ou depois no detalhe do titular.</p>
             <form class="titular-create-form" method="post" action="/tenant/titulares.php#novo-titular" data-disable-on-submit>
                 <input type="hidden" name="csrf_token" value="<?= tenantTitularesEscape($csrfToken) ?>">
                 <input type="hidden" name="action" value="create_titular">

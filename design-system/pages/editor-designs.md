@@ -19,3 +19,12 @@ O editor segue os tokens de [`MASTER.md`](../MASTER.md) e o contrato funcional d
 - Agrupar a edição no celular em abas `Campos`, `Fundo` e `Ajustes`, com ação `Salvar design` sempre acessível.
 - Estados de rascunho, salvo, erro de validação e upload devem ter rótulo textual e foco visível; cor não é o único sinal.
 - O mockup e o guia funcional foram aprovados pelo usuário em 2026-11-22.
+
+## Fundo PDF — aprovado pelo usuário
+
+- Aceitar PDF até 10 MB apenas como entrada no navegador. Validar o documento, rejeitar PDFs protegidos por senha e rasterizar somente a primeira página em canvas de 1011 × 638 px.
+- Enviar ao servidor apenas o PNG resultante; o PDF original não é enviado nem armazenado. O fundo salvo segue as regras de classificação e privacidade acima.
+- Incluir PDF.js v6.5.438 localmente no projeto, sem CDN, para que a conversão funcione em hospedagem PHP compartilhada e não transfira o documento a terceiros.
+- Em erro de leitura, avisar que o fundo não foi enviado e preservar o rascunho do design.
+
+O fluxo visual atualizado está em [`editor-designs-mockup.svg`](../mockups/editor-designs-mockup.svg). Os limites e a privacidade do fundo estão descritos no [guia funcional](../../docs/userguide/designs-carteirinhas.md).

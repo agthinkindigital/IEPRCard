@@ -9,7 +9,11 @@ Esta área permite cadastrar titulares individualmente ou importar uma lista com
 3. Confira a unidade indicada pela tela e selecione **Salvar titular**.
 4. Se a validação falhar, corrija o campo indicado. O cadastro não é criado parcialmente.
 
-O formulário individual não recebe foto. Para associar fotos, use o arquivo ZIP opcional na importação.
+Para associar a foto ao cadastrar ou depois, use o detalhe do titular. O arquivo ZIP opcional continua disponível na importação.
+
+## Foto e situação
+
+No detalhe de um titular, envie uma foto JPG/JPEG, PNG ou WebP com até 5 MB e 12 megapixels. A imagem é recodificada e guardada em storage privado; a leitura exige autenticação e o mesmo escopo. Na seção **Situação do membro**, confirme a inativação ou reativação. A data UTC automática, retenção e bloqueio do portal seguem as [regras de ciclo de vida](../01-regras-de-negocio.md). O mockup aprovado está em [`design-system/pages/titulares-importacao.md`](../../design-system/pages/titulares-importacao.md).
 
 ## Importar uma lista
 

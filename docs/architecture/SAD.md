@@ -88,7 +88,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-10 | Testabilidade | Nenhum módulo de negócio pronto sem passar em `tests/run_all.php` (SQLite efêmero + MySQL) | `docs/10` |
 | NFR-11 | Quality gates | Avanço de fase condicionado a `PASS` nos Gates 1–5 | `docs/12` |
 | NFR-12 | Restrição de stack | PHP 8.1+/8.2 puro, PDO, GD, MySQL, cron agendável e storage privado; proibido depender de daemon, Docker ou acesso root no perfil compartilhado | `docs/13`, `docs/14`; alinhamento de hospedagem |
-| NFR-13 | White-label | Em Hospedado, domínio próprio/subdomínio com branding por host validado; Local Host opera uma Sede configurada sem hostname público | `docs/00`, `docs/16`, ADR-0003 |
+| NFR-13 | White-label | Em Hospedado, domínio próprio/subdomínio com branding por host validado; Local Host limita usuários institucionais a uma Sede opcionalmente configurada, sem hostname público; o superadmin mantém o painel global | `docs/00`, `docs/16`, ADR-0003 |
 
 ### 2.2. NFRs propostos para production-readiness **[PROPOSTO]**
 
@@ -106,7 +106,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 | NFR-23 | Auditoria | Toda mudança de permissão, cota, plano e acesso de suporte gera linha em `auditoria_processos` | `docs/01` §6 e `docs/04` |
 | NFR-24 | Operação de lotes | Exibir lote recomendado e pico previsto; permitir ajuste manual aplicado após reinício do worker | Alinhamento do produto; ADR-0011 |
 | NFR-25 | Compatibilidade de hospedagem | Aplicação operável em hospedagem compartilhada PHP/MySQL com tarefas agendadas; processamento retomável e idempotente | Alinhamento do produto; §7.1 e ADR-0012 |
-| NFR-26 | Perfis de instalação | Superadmin escolhe Hospedado (múltiplos tenants por hostname validado) ou Local Host (uma Sede e suas unidades, sem hostname público); ambos preservam TenantScope e sessão | Alinhamento do produto; ADR-0003 |
+| NFR-26 | Perfis de instalação | Superadmin escolhe Hospedado (múltiplos tenants por hostname validado) ou Local Host (Sede opcional e suas unidades, sem hostname público); painel global independe do perfil e ambos preservam TenantScope/sessão | Alinhamento do produto; ADR-0003 |
 
 ### 2.3. Alinhamentos confirmados e decisões ainda abertas
 
@@ -119,7 +119,7 @@ A arqueologia de `docs/00-17` encontrou divergências que **devem** ser fechadas
 5. **Região:** uma única região atende ao lançamento; multirregião não é requisito.
 6. **Domínios:** domínios próprios dos Clientes são requisito do lançamento. Cada domínio deve ser verificado, vinculado unicamente a um tenant e servido com TLS; a hospedagem precisa aceitar múltiplos nomes apontando para a mesma aplicação.
 7. **Pagamentos:** cobranças SaaS, cobranças de titulares e repasses estão fora do MVP. O fluxo plataforma→Cliente por marketplace/split é apenas uma direção futura, descrita em `docs/07` e ADR-0008; o código de webhook existente será referência para avaliação, sem integração no lançamento.
-8. **Perfil da instalação:** superadmin seleciona Hospedado ou Local Host. O perfil local atende somente uma Sede ativa e suas unidades, não exige hostname público e não aceita resolução por host vindo de fora do loopback. O perfil hospedado conserva o roteamento validado por `HTTP_HOST`. Ver ADR-0003.
+8. **Perfil da instalação:** superadmin seleciona Hospedado ou Local Host sem perder acesso ao painel global. Local Host pode ser salvo sem Sede; quando configurada, só essa Sede ativa e suas unidades ficam disponíveis aos usuários institucionais, sem hostname público e sem resolução por host fora do loopback. O perfil hospedado conserva o roteamento validado por `HTTP_HOST`. Ver ADR-0003.
 
 **Decisões ainda abertas antes dos respectivos módulos:**
 

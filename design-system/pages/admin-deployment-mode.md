@@ -7,10 +7,10 @@ O mockup [`admin-deployment-mode-mockup.svg`](../mockups/admin-deployment-mode-m
 ## Estrutura e estados
 
 - Acesso exclusivo do superadmin, em **Administração → Instalação**.
-- Dois cartões selecionáveis: **Hospedado** atende múltiplos tenants por host validado; **Local Host** atende uma única Sede ativa e suas unidades.
+- Dois cartões selecionáveis: **Hospedado** atende múltiplos tenants por host validado; **Local Host** atende usuários de uma Sede selecionada e suas unidades.
 - Em **Hospedado**, mostrar hostname da plataforma e domínio base para subdomínios, com instrução de apontamento DNS e TLS. Domínios próprios de clientes continuam na tela de domínio da Sede.
-- Em **Local Host**, ocultar os campos de hostname e exigir a escolha de uma única Sede ativa; exibir a contagem das unidades ativas vinculadas.
-- Estado inicial sem perfil deve orientar o superadmin a escolher um modo antes de liberar rotas administrativas e de tenant.
+- Em **Local Host**, ocultar os campos de hostname e permitir salvar sem Sede. A escolha de uma Sede ativa é opcional e exibe a contagem das unidades ativas vinculadas.
+- O superadmin mantém acesso ao painel global em ambos os modos e antes de configurar um perfil ou Sede. As áreas institucionais só aceitam uma Sede selecionada e uma conta ativa existente; a unidade efetiva vem da conta autenticada.
 - Ao trocar o modo, apresentar resumo do impacto e exigir confirmação; registrar ator e valores anterior/novo na auditoria.
 - Erros de validação preservam a configuração anterior. Salvar exige sessão ativa, autorização superadmin e CSRF.
 

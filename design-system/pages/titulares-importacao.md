@@ -7,9 +7,9 @@ O mockup [`titulares-importacao-mockup.svg`](../mockups/titulares-importacao-moc
 ## Consulta e cadastro
 
 - A consulta respeita o tenant e a unidade da sessão; operador de unidade nunca escolhe nem consulta outra unidade.
-- A tabela mostra nome, CPF parcialmente oculto, matrícula, unidade, situação e origem. Busca e filtros permanecem dentro do escopo autorizado.
+- A tabela mostra nome, CPF parcialmente oculto, matrícula, unidade, situação e origem. Para inativos, também mostra a data UTC de inativação. Busca e filtros permanecem dentro do escopo autorizado.
 - Cadastro individual exige nome completo; CPF, matrícula, cargo/função, categoria e WhatsApp são opcionais conforme validação do backend.
-- O cadastro individual não envia foto. Para fotos, o usuário inclui ZIP opcional na importação em lote.
+- O cadastro individual pode incluir foto JPG/JPEG, PNG ou WebP. A interface de gestão permite substituir a foto e alterar o estado ativo/inativo quando a permissão `titular.editar` estiver disponível.
 - A confirmação de cadastro informa sucesso ou erro estável sem ecoar dados pessoais em log ou auditoria.
 
 ## Importação em lote
@@ -29,6 +29,16 @@ O mockup [`titulares-importacao-mockup.svg`](../mockups/titulares-importacao-moc
 - Desabilitar confirmação durante o envio para evitar repetição. Depois do sucesso, exibir o número importado e a referência do lote; em falha, preservar o staging quando permitido para correção ou cancelamento.
 - Permitir cancelar enquanto o lote estiver aguardando mapeamento. Staging não confirmado expira em 24 horas e a interface informa essa validade.
 - Não inventar progresso percentual: a confirmação é síncrona. Em mobile, transformar as etapas em fluxo vertical, manter ações finais acessíveis e evitar rolagem horizontal da página.
+
+## Foto individual e estado do titular — mockup aprovado
+
+- A foto individual aceita JPG/JPEG, PNG ou WebP, até 5 MB e 12 megapixels. Armazenar fora da raiz pública, com chave privada vinculada ao tenant; remover metadados ao recodificar a imagem.
+- Apenas uma pessoa deve aparecer na foto. Não registrar bytes, nome original ou identificadores da foto em auditoria.
+- A ação de inativar mostra a confirmação exigida pelas regras de ciclo de vida dos dados, grava o instante UTC e revoga o acesso ao portal do titular. A data não pode ser retroagida.
+- Reativar cancela pedidos automáticos de retenção ainda pendentes e mantém o acesso ao portal revogado até uma liberação separada. Titular anonimizado não pode ser reativado. A regra canônica está em [`docs/01-regras-de-negocio.md`](../../docs/01-regras-de-negocio.md).
+- A tela mostra confirmação antes de inativar e exibe “Inativo desde … UTC” na lista. Foto e controles respeitam o tenant/unidade e `titular.editar`.
+
+O mockup atualizado está em [`titulares-importacao-mockup.svg`](../mockups/titulares-importacao-mockup.svg); retenção e exclusão seguem as [regras de negócio](../../docs/01-regras-de-negocio.md).
 
 ## Estados essenciais
 

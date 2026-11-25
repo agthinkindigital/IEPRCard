@@ -558,7 +558,7 @@ try {
             || !is_string($pendingAfterRetry['ultimo_sucesso_em'] ?? null)
             || count($retriedSnapshotVersions['Versions'] ?? []) !== 1
             || ($retriedSnapshotPayload['manifest']['snapshot_id'] ?? null) !== $pendingSnapshotId
-            || ($retriedSnapshotPayload['manifest']['schema_version'] ?? null) !== '0027'
+            || ($retriedSnapshotPayload['manifest']['schema_version'] ?? null) !== privacySnapshotCurrentSchemaVersion()
             || !array_key_exists('snapshot_pendente_id', $snapshotDestination) || $snapshotDestination['snapshot_pendente_id'] !== null
             || !array_key_exists('snapshot_pendente_em', $snapshotDestination) || $snapshotDestination['snapshot_pendente_em'] !== null) {
             throw new RuntimeException($driver . ': retry after an ambiguous S3 acknowledgement must confirm the same complete object without creating another version.');

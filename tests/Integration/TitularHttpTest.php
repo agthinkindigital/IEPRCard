@@ -34,7 +34,7 @@ $titularHttpTenant = batchImportStagingTestCreateTenant($titularHttpPdo, $titula
 $titularHttpFixture = $titularHttpTenant['fixture'];
 $titularHttpPdo->prepare('UPDATE tenants SET limite_titulares = 100 WHERE id = :tenant')
     ->execute(['tenant' => $titularHttpFixture['tenant_id']]);
-foreach (['titular.ver', 'titular.importar'] as $feature) {
+foreach (['titular.ver', 'titular.editar', 'titular.importar'] as $feature) {
     $titularHttpPdo->prepare(
         'INSERT INTO plano_feature_flags (plano_id, feature_key, habilitado) VALUES (:plan, :feature, 1)'
     )->execute(['plan' => $titularHttpTenant['plan_id'], 'feature' => $feature]);
@@ -62,7 +62,7 @@ $titularHttpPdo->prepare(
 ]);
 $titularHttpPdo->prepare('UPDATE tenants SET permissoes_unidade_json = :permissions WHERE id = :tenant')
     ->execute([
-        'permissions' => json_encode(['titular.ver', 'titular.criar', 'titular.importar'], JSON_THROW_ON_ERROR),
+        'permissions' => json_encode(['titular.ver', 'titular.criar', 'titular.editar', 'titular.importar'], JSON_THROW_ON_ERROR),
         'tenant' => $titularHttpFixture['tenant_id'],
     ]);
 $titularHttpPdo->prepare(
@@ -330,6 +330,110 @@ try {
             . json_encode(['http' => $noticeStatus, 'notice' => strip_tags((string) ($noticeMatch[1] ?? ''))], JSON_THROW_ON_ERROR));
     }
     unset($titularHttpCreated, $titularHttpPdo);
+
+    $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);
+    $titularHttpManagedQuery = $titularHttpPdo->prepare(
+        'SELECT id FROM titulares WHERE tenant_id = :tenant AND matricula = :registration LIMIT 1'
+    );
+    $titularHttpManagedQuery->execute(['tenant' => $titularHttpFixture['tenant_id'], 'registration' => 'C-300']);
+    $titularHttpManagedId = (int) $titularHttpManagedQuery->fetchColumn();
+    $titularHttpOtherHolderQuery = $titularHttpPdo->prepare(
+        'SELECT id FROM titulares WHERE tenant_id = :tenant AND matricula = :registration LIMIT 1'
+    );
+    $titularHttpOtherHolderQuery->execute(['tenant' => $titularHttpOther['tenant_id'], 'registration' => 'X-1']);
+    $titularHttpOtherHolderId = (int) $titularHttpOtherHolderQuery->fetchColumn();
+    unset($titularHttpManagedQuery, $titularHttpOtherHolderQuery, $titularHttpPdo);
+    [$titularHttpStatus, $titularHttpBody] = titularHttpRequest(
+        $titularHttpUrl . '?titular=' . $titularHttpManagedId,
+        'GET', null, 'IEPRCARDTENANT=' . $titularHttpSessionId, $titularHttpHost
+    );
+    if ($titularHttpStatus !== 200 || !str_contains((string) $titularHttpBody, 'Detalhes do titular')
+        || !str_contains((string) $titularHttpBody, 'Inativar membro')
+        || !str_contains((string) $titularHttpBody, 'Enviar ou trocar foto')) {
+        throw new RuntimeException('Authorized staff must be able to manage an in-scope holder photo and status.');
+    }
+    $titularHttpImage = imagecreatetruecolor(2, 2);
+    ob_start();
+    imagepng($titularHttpImage);
+    $titularHttpPng = (string) ob_get_clean();
+    imagedestroy($titularHttpImage);
+    [$titularHttpStatus] = titularHttpMultipartRequest(
+        $titularHttpUrl . '?titular=' . $titularHttpManagedId,
+        ['action' => 'replace_titular_photo', 'titular_id' => (string) $titularHttpManagedId, 'csrf_token' => $titularHttpCsrf],
+        ['foto' => ['name' => 'member.png', 'type' => 'image/png', 'contents' => $titularHttpPng]],
+        'IEPRCARDTENANT=' . $titularHttpSessionId,
+        $titularHttpHost
+    );
+    if ($titularHttpStatus !== 303) throw new RuntimeException('A valid individual photo upload must redirect after saving.');
+    $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);
+    $titularHttpPhotoQuery = $titularHttpPdo->prepare('SELECT foto_url FROM titulares WHERE id = :id AND tenant_id = :tenant');
+    $titularHttpPhotoQuery->execute(['id' => $titularHttpManagedId, 'tenant' => $titularHttpFixture['tenant_id']]);
+    $titularHttpPhotoKey = $titularHttpPhotoQuery->fetchColumn();
+    unset($titularHttpPhotoQuery, $titularHttpPdo);
+    if (!is_string($titularHttpPhotoKey)
+        || preg_match('~^private://' . $titularHttpFixture['tenant_id'] . '/[a-f0-9]{48}\.png$~D', $titularHttpPhotoKey) !== 1) {
+        throw new RuntimeException('An individual photo upload must store only a private tenant key.');
+    }
+    [$titularHttpStatus, $titularHttpServedPhoto] = titularHttpRequest(
+        'http://127.0.0.1:' . $titularHttpPort . '/tenant/titular-foto.php?id=' . $titularHttpManagedId,
+        'GET', null, 'IEPRCARDTENANT=' . $titularHttpSessionId, $titularHttpHost
+    );
+    [$titularHttpCrossStatus] = titularHttpRequest(
+        'http://127.0.0.1:' . $titularHttpPort . '/tenant/titular-foto.php?id=' . $titularHttpOtherHolderId,
+        'GET', null, 'IEPRCARDTENANT=' . $titularHttpSessionId, $titularHttpHost
+    );
+    if ($titularHttpStatus !== 200 || $titularHttpServedPhoto !== $titularHttpPng || $titularHttpCrossStatus !== 404) {
+        throw new RuntimeException('Private photo delivery must require the same tenant and authorized session scope.');
+    }
+    $titularHttpOldDate = '2000-01-01 00:00:00';
+    [$titularHttpStatus] = titularHttpRequest(
+        $titularHttpUrl . '?titular=' . $titularHttpManagedId,
+        'POST',
+        http_build_query([
+            'action' => 'set_titular_status', 'titular_id' => (string) $titularHttpManagedId,
+            'situacao' => 'inativo', 'confirm_status' => '1', 'inativado_em' => $titularHttpOldDate,
+            'csrf_token' => $titularHttpCsrf,
+        ]),
+        'IEPRCARDTENANT=' . $titularHttpSessionId,
+        $titularHttpHost
+    );
+    $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);
+    $titularHttpStatusQuery = $titularHttpPdo->prepare('SELECT ativo, acesso_app_liberado, inativado_em FROM titulares WHERE id = :id');
+    $titularHttpStatusQuery->execute(['id' => $titularHttpManagedId]);
+    $titularHttpInactiveRow = $titularHttpStatusQuery->fetch(PDO::FETCH_ASSOC);
+    unset($titularHttpStatusQuery, $titularHttpPdo);
+    if ($titularHttpStatus !== 303 || !is_array($titularHttpInactiveRow)
+        || (int) $titularHttpInactiveRow['ativo'] !== 0 || (int) $titularHttpInactiveRow['acesso_app_liberado'] !== 0
+        || $titularHttpInactiveRow['inativado_em'] === $titularHttpOldDate
+        || !str_contains((string) $titularHttpInactiveRow['inativado_em'], gmdate('Y-m-d', time()))) {
+        throw new RuntimeException('Inactivation must use the current automatic UTC date and revoke portal access.');
+    }
+    [$titularHttpStatus, $titularHttpBody] = titularHttpRequest(
+        $titularHttpUrl . '?titular=' . $titularHttpManagedId,
+        'GET', null, 'IEPRCARDTENANT=' . $titularHttpSessionId, $titularHttpHost
+    );
+    if ($titularHttpStatus !== 200 || !str_contains((string) $titularHttpBody, 'Inativo desde')) {
+        throw new RuntimeException('The inactive date must be visible in the authorized holder list/detail.');
+    }
+    [$titularHttpStatus] = titularHttpRequest(
+        $titularHttpUrl . '?titular=' . $titularHttpManagedId,
+        'POST',
+        http_build_query([
+            'action' => 'set_titular_status', 'titular_id' => (string) $titularHttpManagedId,
+            'situacao' => 'ativo', 'confirm_status' => '1', 'csrf_token' => $titularHttpCsrf,
+        ]),
+        'IEPRCARDTENANT=' . $titularHttpSessionId,
+        $titularHttpHost
+    );
+    $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);
+    $titularHttpStatusQuery = $titularHttpPdo->prepare('SELECT ativo, acesso_app_liberado FROM titulares WHERE id = :id');
+    $titularHttpStatusQuery->execute(['id' => $titularHttpManagedId]);
+    $titularHttpReactivated = $titularHttpStatusQuery->fetch(PDO::FETCH_ASSOC);
+    unset($titularHttpStatusQuery, $titularHttpPdo);
+    if ($titularHttpStatus !== 303 || !is_array($titularHttpReactivated)
+        || (int) $titularHttpReactivated['ativo'] !== 1 || (int) $titularHttpReactivated['acesso_app_liberado'] !== 0) {
+        throw new RuntimeException('Reactivation must not silently grant access to the holder portal.');
+    }
 
     $titularHttpCsv = "nome;matricula\nImportado HTTP;I-101\n";
     $titularHttpPdo = dbConnect(['DB_DRIVER' => 'sqlite', 'DB_SQLITE_PATH' => $titularHttpDatabase]);

@@ -1,3 +1,8 @@
+import * as pdfjsLib from '/assets/vendor/pdfjs-6.5.438/pdf.min.mjs';
+import {convertPdfFirstPage, DESIGN_PDF_MAX_BYTES} from './design-pdf-background.js';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs-6.5.438/pdf.worker.min.mjs';
+
 (() => {
     'use strict';
     const state = window.designEditorInitial;
@@ -11,6 +16,8 @@
     const sideButtons = [...document.querySelectorAll('[data-side]')];
     const activeSide = {value: 'frente'};
     const localBackgroundUrls = {};
+    const pendingBackgroundConversions = new Set();
+    const disabledBeforeConversion = new Map();
     let selected = null;
     let drag = null;
     let dirty = false;
@@ -204,15 +211,58 @@
     });
     document.getElementById('edit-canvas').addEventListener('click', () => setPreviewMode(false));
     for (const side of ['frente', 'verso']) {
-        const input = document.querySelector(`[name="fundo_${side}"]`);
-        input?.addEventListener('change', () => {
-            const file = input.files?.[0];
-            if (!file) return;
-            if (localBackgroundUrls[side]) URL.revokeObjectURL(localBackgroundUrls[side]);
-            localBackgroundUrls[side] = URL.createObjectURL(file);
-            const image = document.querySelector(`[data-preview-side="${side}"]`);
-            image.src = localBackgroundUrls[side];
-            setDirty();
+        const picker = document.querySelector(`[data-background-picker="${side}"]`);
+        const upload = document.querySelector(`[data-background-upload="${side}"]`);
+        const status = document.querySelector(`[data-background-status="${side}"]`);
+        const setProcessing = (processing) => {
+            picker.disabled = processing || !state.editable;
+            if (processing) pendingBackgroundConversions.add(side);
+            else pendingBackgroundConversions.delete(side);
+            document.querySelectorAll('#design-form button[type="submit"], #render-preview').forEach((button) => {
+                if (pendingBackgroundConversions.size > 0) {
+                    if (!disabledBeforeConversion.has(button)) disabledBeforeConversion.set(button, button.disabled);
+                    button.disabled = true;
+                } else if (disabledBeforeConversion.has(button)) {
+                    button.disabled = disabledBeforeConversion.get(button);
+                    disabledBeforeConversion.delete(button);
+                }
+            });
+        };
+        picker?.addEventListener('change', async () => {
+            const source = picker.files?.[0];
+            if (!source || !upload) return;
+            upload.value = '';
+            let previewFile = source;
+            const isPdf = source.type.toLowerCase() === 'application/pdf' || /\.pdf$/i.test(source.name);
+            try {
+                if (isPdf) {
+                    if (source.size > DESIGN_PDF_MAX_BYTES) throw new Error('pdf_size_invalid');
+                    setProcessing(true);
+                    setDirty();
+                    if (status) status.textContent = 'Convertendo a primeira página no navegador… o PDF original não será enviado.';
+                    const pngBlob = await convertPdfFirstPage(source, pdfjsLib);
+                    if (picker.files?.[0] !== source) return;
+                    previewFile = new File([pngBlob], `fundo-${side}.png`, {type: 'image/png'});
+                    if (status) status.textContent = 'Primeira página convertida para PNG 1011 × 638. O PDF original permanece neste computador.';
+                } else if (status) {
+                    status.textContent = 'Imagem selecionada. O servidor validará o arquivo antes de salvar.';
+                }
+                const transfer = new DataTransfer();
+                transfer.items.add(previewFile);
+                upload.files = transfer.files;
+                if (localBackgroundUrls[side]) URL.revokeObjectURL(localBackgroundUrls[side]);
+                localBackgroundUrls[side] = URL.createObjectURL(previewFile);
+                const image = document.querySelector(`[data-preview-side="${side}"]`);
+                image.src = localBackgroundUrls[side];
+                setDirty();
+            } catch (error) {
+                upload.value = '';
+                if (status) status.textContent = error?.message === 'pdf_password_protected'
+                    ? 'PDF protegido por senha não aceito. O arquivo não foi enviado.'
+                    : 'Não foi possível ler o arquivo. Use PNG, JPEG, WebP ou um PDF válido de até 10 MB; nenhum PDF foi enviado.';
+            } finally {
+                if (pendingBackgroundConversions.has(side)) setProcessing(false);
+            }
         });
     }
     document.querySelectorAll('[data-editor-tab]').forEach((button) => button.addEventListener('click', () => {

@@ -27,6 +27,10 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         !== ['modo' => 'local_host', 'tenant_local_id' => $fixture['tenant_id'], 'hostname_plataforma' => null, 'dominio_base' => null]) {
         throw new RuntimeException($driver . ': Local Host profile should validate an active Sede.');
     }
+    if (installationProfileValidate($pdo, ['modo' => 'local_host', 'tenant_local_id' => ''])
+        !== ['modo' => 'local_host', 'tenant_local_id' => null, 'hostname_plataforma' => null, 'dominio_base' => null]) {
+        throw new RuntimeException($driver . ': Local Host must allow the superadmin console before a Sede exists.');
+    }
     $hosted = installationProfileValidate($pdo, [
         'modo' => 'hospedado', 'hostname_plataforma' => 'ADMIN.Example.Test', 'dominio_base' => 'Example.Test',
     ]);
@@ -35,6 +39,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
     }
     foreach ([
         ['modo' => 'remote'],
+        ['modo' => 'local_host', 'tenant_local_id' => 'not-an-id'],
         ['modo' => 'local_host', 'tenant_local_id' => $fixture['subcliente_id']],
         ['modo' => 'hospedado', 'hostname_plataforma' => 'bad/path', 'dominio_base' => 'example.test'],
         ['modo' => 'hospedado', 'hostname_plataforma' => 'example.test', 'dominio_base' => 'example.test'],
@@ -53,20 +58,33 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         throw new RuntimeException($driver . ': an unverified administrator must not change installation profile.');
     } catch (DomainException) {
     }
-    $first = installationProfileSave($pdo, ['modo' => 'local_host', 'tenant_local_id' => $fixture['tenant_id']], $adminId);
+    $first = installationProfileSave($pdo, ['modo' => 'local_host', 'tenant_local_id' => ''], $adminId);
     $second = installationProfileSave($pdo, [
         'modo' => 'hospedado', 'hostname_plataforma' => 'admin.example.test', 'dominio_base' => 'example.test',
     ], $adminId);
-    $history = $pdo->query('SELECT id, modo, ator_usuario_id FROM configuracoes_instalacao ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+    $history = $pdo->query('SELECT id, modo, tenant_local_id, ator_usuario_id FROM configuracoes_instalacao ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
     if ($first >= $second || count($history) !== 2 || $history[0]['modo'] !== 'local_host'
+        || $history[0]['tenant_local_id'] !== null
         || (int) $history[0]['ator_usuario_id'] !== $adminId || installationProfileCurrent($pdo)['modo'] !== 'hospedado') {
         throw new RuntimeException($driver . ': profile revisions must preserve actor and order while exposing the newest state.');
     }
 
     $localProfile = ['modo' => 'local_host', 'tenant_local_id' => $fixture['tenant_id']];
+    installationProfileSave($pdo, ['modo' => 'local_host', 'tenant_local_id' => ''], $adminId);
     $originalServer = $_SERVER;
     $_SERVER['HTTP_HOST'] = 'localhost:9477';
     $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    session_name('IEPRCARDADMIN');
+    session_id(bin2hex(random_bytes(16)));
+    if (!session_start()) throw new RuntimeException($driver . ': superadmin session should start for empty Local Host test.');
+    $_SESSION['admin_user_id'] = $adminId;
+    $adminContext = installationProfileTenantContext($pdo, ['modo' => 'local_host', 'tenant_local_id' => null]);
+    if ($adminContext?->tipo !== 'admin' || $adminContext->tenantId !== null
+        || tenantResolverResolve($pdo, 'localhost:9477')?->tipo !== 'admin') {
+        throw new RuntimeException($driver . ': Local Host superadmin console must resolve without a configured Sede.');
+    }
+    session_write_close();
     $localContext = installationProfileTenantContext($pdo, $localProfile);
     if (!installationProfileIsLoopbackRequest() || $localContext?->tenantId !== $fixture['tenant_id']
         || $localContext?->tipo !== 'cliente' || $localContext?->subclienteId !== null) {

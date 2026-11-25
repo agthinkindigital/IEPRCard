@@ -6,7 +6,7 @@ require_once __DIR__ . '/tenant_resolver.php';
 require_once __DIR__ . '/batch_import_parser.php';
 require_once __DIR__ . '/batch_import_staging.php';
 
-/** @param array<string, mixed> $identity @param array<string, mixed> $filters @return array{items:list<array{id:int,nome:string,cpf_mascarado:?string,matricula:?string,unidade:string,situacao:string,origem:string}>,total:int,pagina:int,por_pagina:int} */
+/** @param array<string, mixed> $identity @param array<string, mixed> $filters @return array{items:list<array{id:int,nome:string,cpf_mascarado:?string,matricula:?string,unidade:string,situacao:string,inativado_em:?string,origem:string,pode_editar:bool}>,total:int,pagina:int,por_pagina:int} */
 function titularListar(PDO $pdo, TenantContext $context, array $identity, array $filters = []): array
 {
     $identityUnitId = titularReadNullablePositiveId($identity['subcliente_id'] ?? null);
@@ -62,7 +62,7 @@ function titularListar(PDO $pdo, TenantContext $context, array $identity, array 
 
     $offset = ($page - 1) * $perPage;
     $query = $pdo->prepare(
-        'SELECT t.id, t.nome_completo, t.cpf, t.matricula, t.ativo, '
+        'SELECT t.id, t.nome_completo, t.cpf, t.matricula, t.ativo, t.inativado_em, t.subcliente_id, '
         . "COALESCE(unidade.nome_organizacao, 'Sede') AS nome_unidade, "
         . "CASE WHEN t.lote_origem_id IS NULL THEN 'manual' ELSE COALESCE(origem.origem_tipo, 'importacao') END AS origem "
         . 'FROM titulares t '
@@ -80,11 +80,55 @@ function titularListar(PDO $pdo, TenantContext $context, array $identity, array 
             'matricula' => is_string($row['matricula']) ? $row['matricula'] : null,
             'unidade' => (string) $row['nome_unidade'],
             'situacao' => (int) $row['ativo'] === 1 ? 'ativo' : 'inativo',
+            'inativado_em' => (int) $row['ativo'] === 0 && is_string($row['inativado_em']) ? $row['inativado_em'] : null,
             'origem' => (string) $row['origem'],
+            'pode_editar' => pode(
+                $pdo,
+                $context,
+                $identity,
+                'titular.editar',
+                $row['subcliente_id'] === null ? null : (int) $row['subcliente_id']
+            ),
         ];
     }
 
     return ['items' => $items, 'total' => $total, 'pagina' => $page, 'por_pagina' => $perPage];
+}
+
+/** @param array<string,mixed> $identity @return array{id:int,nome:string,matricula:?string,situacao:string,inativado_em:?string,foto_disponivel:bool,anonimizado:bool,pode_editar:bool}|null */
+function titularDetalhar(PDO $pdo, TenantContext $context, array $identity, int $titularId): ?array
+{
+    if ($titularId < 1) return null;
+    $scope = tenantScopeBuildPredicate($identity, null, 't');
+    $query = $pdo->prepare(
+        'SELECT t.id, t.nome_completo, t.matricula, t.ativo, t.inativado_em, t.foto_url, t.anonimizado_em, t.subcliente_id '
+        . 'FROM titulares t WHERE t.id = :id AND ' . $scope['sql'] . ' LIMIT 1'
+    );
+    $query->execute(['id' => $titularId] + $scope['params']);
+    $row = $query->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($row) || !pode(
+        $pdo,
+        $context,
+        $identity,
+        'titular.ver',
+        $row['subcliente_id'] === null ? null : (int) $row['subcliente_id']
+    )) return null;
+    return [
+        'id' => (int) $row['id'],
+        'nome' => (string) $row['nome_completo'],
+        'matricula' => is_string($row['matricula']) ? $row['matricula'] : null,
+        'situacao' => (int) $row['ativo'] === 1 ? 'ativo' : 'inativo',
+        'inativado_em' => (int) $row['ativo'] === 0 && is_string($row['inativado_em']) ? $row['inativado_em'] : null,
+        'foto_disponivel' => is_string($row['foto_url']) && $row['foto_url'] !== '',
+        'anonimizado' => $row['anonimizado_em'] !== null,
+        'pode_editar' => $row['anonimizado_em'] === null && pode(
+            $pdo,
+            $context,
+            $identity,
+            'titular.editar',
+            $row['subcliente_id'] === null ? null : (int) $row['subcliente_id']
+        ),
+    ];
 }
 
 /** @param array<string, mixed> $identity @return array{lote_id:int,status:string,colunas:list<string>,amostra:list<array<string,string|null>>,erros:list<array{linha?:int,campo?:string,codigo:string}>,total_registros:int} */

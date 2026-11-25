@@ -8,7 +8,7 @@ require_once __DIR__ . '/titular_privacy_keys.php';
 require_once __DIR__ . '/privacy_snapshot_labels.php';
 require_once __DIR__ . '/privacy_snapshot_resume.php';
 
-const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = '423f44509a5bfb5707e884ffdd13df1dd11aace11e14249a39ae6ccb2a3ba503';
+const PRIVACY_SNAPSHOT_REVIEWED_SCHEMA_SHA256 = 'c6c41d7bf779a64741420fad67b623f2b04c7caab7cf24e31f763fc407e239b5';
 
 /** Tables containing snapshot-external key material or support authorization state. */
 function privacySnapshotOmittedTables(): array

@@ -127,7 +127,7 @@ Para garantir que o Cliente tenha visão total organizada da sua rede e o Subcli
 ## 7. Ciclo de Vida dos Dados Pessoais
 
 - Enquanto a pessoa mantiver uma conta ou vínculo ativo e os dados forem necessários à operação, mantê-los com acesso restrito. Isso inclui titulares, usuários/equipe e responsáveis de tenant.
-- Após inativação, expiração ou substituição do vínculo/dado, anonimizar em até 12 meses. Ao receber uma solicitação de exclusão, concluir a anonimização em até 72 horas.
+- Para um titular, registrar automaticamente a data e hora UTC ao inativar; essa data inicia o prazo de 12 meses para anonimização. Não permitir retroagir a data. Reativar cancela a retenção automática ainda pendente; o portal continua bloqueado até nova liberação. Ao receber uma solicitação de exclusão, concluir a anonimização em até 72 horas. Para os demais vínculos e dados substituídos, anonimizar em até 12 meses conforme o respectivo evento de inativação, expiração ou substituição.
 - A regra cobre dados cadastrais e cópias derivadas: fotos, conversas e mensagens WhatsApp, snapshots, PDFs/WebPs, tokens, cache, índices e campos livres capazes de identificar alguém. Conversas WhatsApp sem vínculo a titular mantêm a expiração curta definida pelo fluxo (atualmente 24 horas); não são estendidas pela retenção geral.
 - Auditoria, telemetria e métricas podem permanecer somente sem identificadores que permitam reidentificação. Conteúdo livre nesses registros é proibido ou deve passar pela proteção do sujeito de privacidade correspondente.
 - A política de backup e a proteção contra restauração de dados anonimizados estão definidas em `docs/adr/0012-ci-deploy-e-backup.md`.
