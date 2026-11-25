@@ -4,6 +4,8 @@
 
 O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando todos os critérios objetivos do respectivo **Quality Gate** retornarem `PASS` (código de saída `0`):
 
+CI verde comprova os cenários automatizados, não a operação no host escolhido. A prontidão de produção continua condicionada às provas externas pendentes da #51 e #84/#85.
+
 * **GATE 1 — Fundação & Dual DB (Após Épico 1):**
 * [x] `php -l` retornou zero erros em 105 arquivos de `config/` e `includes/` com PHP 8.2.35 em 2026-11-23.
 * [x] Suíte `TDD-01` passou no CI SQLite/MySQL 8.4/MariaDB 10.11: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
@@ -13,6 +15,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 * **GATE 2 — Multi-Tenancy, Domínios & RBAC (Após Épico 2):**
 * [x] Suíte `TDD-02` passou no CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 * [x] Isolamento por tenant/unidade e negação de acesso por ID adulterado passaram em testes de escopo e rotas HTTP no CI [45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
+* [ ] Demonstrar DNS, aliases e TLS públicos, redação do bearer GOWA nos logs de borda e limites PHP/cron/storage nos perfis hospedagem compartilhada e VPS escolhidos, conforme [#51](https://github.com/agthinkindigital/IEPRCard/issues/51).
 * [x] Suporte remoto MCP exclusivo do superadmin: grants de 30 min a 24 h, alvos congelados e publicação apenas em `DEV`; revisão final aprovada na [#89](https://github.com/agthinkindigital/IEPRCard/issues/89), com CI MySQL 8.4, MariaDB 10.11 e PDF no run [45395042975](https://github.com/agthinkindigital/IEPRCard/actions/runs/45395042975).
 * [x] Promoções para `PROD` usam PR, CI obrigatório e revisão manual do mantenedor antes do merge. A proteção exige PR, checks estritos e se aplica a administradores; há um único colaborador no repositório, então o GitHub não exige aprovação formal de outra conta. A regra de promoção está em `AGENTS.md`.
 

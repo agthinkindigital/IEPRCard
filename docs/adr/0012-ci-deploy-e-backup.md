@@ -9,7 +9,7 @@
 
 ## Contexto
 
-`docs/12` define Gates 1–5, mas o projeto ainda não tem pipeline, estratégia de deploy, compatibilidade verificada com hospedagem compartilhada ou recuperação testada. `docs/10` lista oito suítes TDD. O sistema deve funcionar em PHP/MySQL compartilhado sem processos residentes, mas os limites de execução e backup variam por plano.
+CI, gates e fluxos de deploy estão implementados; isso comprova cenários automatizados, não a operação no host contratado. Permanecem pendentes a prova de DNS/TLS, logs de borda e limites reais de hospedagem na [#51](https://github.com/agthinkindigital/IEPRCard/issues/51), a medição de RPO ≤ 1 h na [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e o restore isolado com RTO ≤ 4 h na [#85](https://github.com/agthinkindigital/IEPRCard/issues/85). O sistema deve funcionar em PHP/MySQL compartilhado sem processos residentes, mas os limites de execução e backup variam por plano.
 
 ## Decisão
 
