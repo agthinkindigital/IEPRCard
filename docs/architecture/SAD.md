@@ -4,12 +4,12 @@
 | --- | --- |
 | Versão | 1.0.0 |
 | Data | 2026-11-18 |
-| Status | Proposto — incorpora objetivos de disponibilidade, ciclo de vida de dados e domínios próprios; pagamentos ficam fora do MVP. SLA contratual e validação do plano de hospedagem seguem pendentes (§2.3, §7.1) |
-| Fonte de verdade | `docs/00-visao-e-idealizacao.md` … `docs/17-telas-do-mvp.md` |
+| Status | Baseline arquitetural do MVP; implantação e recuperação em hospedagem real continuam condicionadas aos Gates 2 e 5 e às Issues #51, #84 e #85 |
+| Fonte de verdade | Requisitos em `docs/00-17`, decisões em `docs/adr/` e estado de execução em `docs/12-quality-gates.md` e `docs/14-roadmap.md` |
 | Decisões vinculadas | `docs/adr/0001` … `docs/adr/0012` |
-| Escopo | Greenfield: o repositório contém apenas o planejamento; não há código-fonte versionado até esta data |
+| Escopo | Arquitetura do monólito PHP IEPRCard; implementação e validação operacional evoluem em `DEV` e são rastreadas no GitHub |
 
-> Convenção deste documento: **`[BASE]`** = decisão já presente em `docs/00-17`; **[PROPOSTO]** = decisão nova do Arquiteto, registrada em ADR, necessária para atingir production-readiness. Nenhuma premissa de volumetria, SLA ou disponibilidade foi inventada sem ser marcada como a validar.
+> As marcações **`[BASE]`** e **`[PROPOSTO]`** preservam a origem das decisões na elaboração do SAD. O status atual das decisões é o dos ADRs; os gates e o roadmap registram o que está implementado e o que ainda depende de evidência operacional. Nenhuma meta interna representa SLA contratual.
 
 ---
 
@@ -745,20 +745,20 @@ No perfil VPS: releases imutáveis em `/var/www/releases/<sha>`, symlink `curren
 | [0002](../adr/0002-pdo-dual-sqlite-mysql.md) | Camada PDO dual SQLite → MySQL | Aceita (baseline) |
 | [0003](../adr/0003-multi-tenancy-por-linha.md) | Multi-tenancy por linha com resolução por `HTTP_HOST` | Aceita (baseline) |
 | [0004](../adr/0004-rbac-teto-descendente-e-cotas.md) | RBAC de teto descendente e cotas elásticas | Aceita + ajustes |
-| [0005](../adr/0005-schema-canonico-unificado.md) | Schema canônico unificado e nomes de colunas | Proposta |
+| [0005](../adr/0005-schema-canonico-unificado.md) | Schema canônico unificado e nomes de colunas | Aceita; schema e paridade entre bancos verificadas em E01.2 |
 | [0006](../adr/0006-event-bus-e-outbox.md) | Event bus interno com outbox transacional | Proposta |
 | [0007](../adr/0007-renderizacao-nativa-e-fila.md) | Renderização WebP/PDF nativa e fila em banco | Aceita (baseline) |
 | [0008](../adr/0008-webhooks-idempotentes-e-segredos.md) | Webhooks idempotentes, HMAC e sigilo de credenciais | Aceita + ajustes |
 | [0009](../adr/0009-mcp-escopos-e-patch-seguro.md) | Servidor MCP stateless com escopos e manutenção privilegiada temporária | Grants e publicação limitada a DEV implementados; revisão final/CI aprovados na #89 |
-| [0010](../adr/0010-self-healing-apenas-dev.md) | Self-healing restrito a dev/test e migrações expand-only | Proposta |
-| [0011](../adr/0011-observabilidade-golden-signals.md) | Observabilidade com `correlation_id` e golden signals | Proposta |
-| [0012](../adr/0012-ci-deploy-e-backup.md) | CI, perfil de hospedagem, deploy e recuperação | Proposta |
+| [0010](../adr/0010-self-healing-apenas-dev.md) | Self-healing restrito a dev/test e migrações expand-only | Aceita e implementada; compatibilidade operacional é verificada pelos gates de CI |
+| [0011](../adr/0011-observabilidade-golden-signals.md) | Observabilidade com `correlation_id` e golden signals | Implementada para os fluxos com runtime no MVP; ver #93 e escopo do outbox pendente |
+| [0012](../adr/0012-ci-deploy-e-backup.md) | CI, perfil de hospedagem, deploy e recuperação | CI implementada; comprovação de RPO/RTO e restore isolado pendentes (#84/#85) |
 
 ---
 
 ## 12. Próximos passos
 
-1. Validar o plano de hospedagem e demonstrar os objetivos internos de recuperação; definir janela e exclusões antes de qualquer SLA contratual. Calibrar janela X e previsão de lotes com telemetria real.
-2. Ratificar ou corrigir os ADRs com status **Proposta** — especialmente 0005 (schema canônico) e 0010 (self-healing), que mudam a forma de trabalhar do `/developer`.
-3. Somente então fatiar `docs/11-issues.md` em issues executáveis, com os testes de `docs/10-tdd.md` escritos antes do código.
+1. Validar DNS/TLS e logs no perfil Hospedado, conforme a #51; a prova local não demonstra resolução DNS nem certificado público.
+2. Medir backup no host e destino escolhidos e demonstrar RPO ≤ 1 h, depois concluir restore isolado em MySQL separado conforme #84/#85. Até lá, Gate 5 não libera declaração de prontidão operacional.
+3. Calibrar a janela e a previsão de lotes com telemetria real do ambiente de produção antes de definir qualquer SLA contratual.
 4. A trava visual (mockups + manual do usuário + aprovação explícita no chat) continua obrigatória antes de qualquer implementação de tela; este SAD não a substitui.

@@ -7,7 +7,7 @@ O editor organiza os layouts que a Sede usa para produzir carteirinhas. `design.
 ## Criar ou editar um design
 
 1. Em **Designs**, abra um layout existente ou selecione **Novo design**. Informe um nome que ajude a identificar o público ou a finalidade, por exemplo “Credencial de membro”.
-2. Escolha **Frente** ou **Verso** e selecione a imagem de fundo daquele lado, se houver. A prévia mantém o tamanho CR80 de 1011 × 638 px.
+2. Escolha **Frente** ou **Verso** e selecione a imagem de fundo daquele lado, se houver. O upload aceita PNG, JPEG ou WebP; arquivos PDF não são aceitos como fundo. A prévia mantém o tamanho CR80 de 1011 × 638 px.
 3. Use **Adicionar elemento** para inserir texto, foto do titular, QR de validação ou código de barras. Selecione um item na lista ou no cartão para editar suas propriedades.
 4. Vincule campos dinâmicos às variáveis do titular ou da hierarquia. Posicione o elemento arrastando no cartão ou informando X/Y; ajuste tamanho, fonte, cor e alinhamento no painel de propriedades.
 5. Revise frente e verso em **Pré-visualizar**. A amostra usa dados fictícios, não dados reais de titulares.
