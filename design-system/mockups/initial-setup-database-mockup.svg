@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1660" viewBox="0 0 1440 1660" role="img" aria-labelledby="title description">
+  <title id="title">Instalação inicial e configuração do banco</title>
+  <desc id="description">Assistente pré-login para configurar e testar MySQL ou MariaDB, seguido da variação superadmin para testar e atualizar a conexão após a instalação.</desc>
+  <defs>
+    <style>
+      text{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;fill:#0F172A}.muted{fill:#475569}.tiny{font-size:12px}.small{font-size:14px}.body{font-size:16px}.label{font-size:14px;font-weight:600}.title{font-size:27px;font-weight:700}.section{font-size:18px;font-weight:650}.step{font-size:14px;font-weight:600}.white{fill:#fff}.blue{fill:#1D4ED8}.green{fill:#166534}.amber{fill:#92400E}.line{stroke:#DCE3EC}.field{fill:#fff;stroke:#CBD5E1;stroke-width:1.4}.card{fill:#fff;stroke:#DCE3EC;stroke-width:1.2}
+    </style>
+  </defs>
+  <rect width="1440" height="1660" fill="#F6F8FB"/>
+  <rect width="1440" height="76" fill="#fff"/>
+  <path d="M0 75.5H1440" stroke="#DCE3EC"/>
+  <rect x="48" y="19" width="38" height="38" rx="11" fill="#1D4ED8"/>
+  <text x="67" y="45" text-anchor="middle" class="white" font-size="22" font-weight="700">I</text>
+  <text x="99" y="35" font-size="17" font-weight="700">IEPRCard</text>
+  <text x="99" y="53" class="tiny muted" letter-spacing="1.1">ASSISTENTE DE INSTALAÇÃO</text>
+  <text x="1392" y="43" text-anchor="end" class="small muted">Configuração inicial</text>
+
+  <main>
+    <text x="160" y="137" class="tiny muted" letter-spacing="1.5">INSTALAÇÃO · ETAPA 1 DE 3</text>
+    <text x="160" y="178" class="title">Conecte o banco de dados</text>
+    <text x="160" y="207" class="body muted">Configure a conexão para esta instalação. A tela funciona antes do login e sem banco previamente configurado.</text>
+
+    <rect x="160" y="238" width="1120" height="74" rx="12" fill="#EFF6FF" stroke="#BFDBFE"/>
+    <circle cx="193" cy="275" r="15" fill="#DBEAFE"/>
+    <text x="193" y="280" text-anchor="middle" class="blue" font-size="16" font-weight="700">i</text>
+    <text x="220" y="269" class="label blue">Para Local Host e Hospedado, prefira MySQL/MariaDB.</text>
+    <text x="220" y="291" class="small muted">No Laragon, confirme host e porta configurados. Na hospedagem, use os dados fornecidos no painel do provedor.</text>
+
+    <rect x="160" y="336" width="1120" height="516" rx="14" class="card"/>
+    <text x="196" y="379" class="section">1. Dados da conexão</text>
+    <text x="196" y="405" class="small muted">Informe um banco já criado e vazio. O assistente criará nele o schema versionado do IEPRCard.</text>
+
+    <text x="196" y="451" class="label">Tipo de banco</text>
+    <rect x="196" y="466" width="514" height="70" rx="9" fill="#EFF6FF" stroke="#1D4ED8" stroke-width="1.6"/>
+    <circle cx="220" cy="501" r="8" fill="#1D4ED8"/><circle cx="220" cy="501" r="3.5" fill="#fff"/>
+    <text x="243" y="497" class="label">MySQL / MariaDB</text>
+    <text x="243" y="519" class="tiny muted">Recomendado para instalação Local Host e Hospedado</text>
+    <rect x="726" y="466" width="518" height="70" rx="9" fill="#fff" stroke="#DCE3EC" stroke-width="1.3"/>
+    <circle cx="751" cy="501" r="8" fill="#fff" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="774" y="497" class="label">SQLite</text>
+    <text x="774" y="519" class="tiny muted">Somente para desenvolvimento e testes locais</text>
+
+    <text x="196" y="578" class="label">Servidor / host</text>
+    <rect x="196" y="591" width="390" height="46" rx="7" class="field"/>
+    <text x="212" y="620" class="body">127.0.0.1</text>
+    <text x="614" y="578" class="label">Porta</text>
+    <rect x="614" y="591" width="174" height="46" rx="7" class="field"/>
+    <text x="630" y="620" class="body">3306</text>
+    <text x="816" y="578" class="label">Nome do banco</text>
+    <rect x="816" y="591" width="428" height="46" rx="7" class="field"/>
+    <text x="832" y="620" class="body">ieprcard_local</text>
+
+    <text x="196" y="676" class="label">Usuário</text>
+    <rect x="196" y="689" width="390" height="46" rx="7" class="field"/>
+    <text x="212" y="718" class="body">root</text>
+    <text x="614" y="676" class="label">Senha</text>
+    <rect x="614" y="689" width="630" height="46" rx="7" class="field"/>
+    <text x="630" y="718" class="body muted">••••••••••••••••</text>
+
+    <rect x="196" y="760" width="225" height="42" rx="8" fill="#fff" stroke="#1D4ED8" stroke-width="1.4"/>
+    <text x="308" y="787" text-anchor="middle" class="label blue">Testar conexão</text>
+    <circle cx="451" cy="781" r="10" fill="#DCFCE7"/>
+    <path d="m446 781 4 4 7-9" fill="none" stroke="#166534" stroke-width="2"/>
+    <text x="470" y="786" class="small green" font-weight="600">Conexão validada · MySQL 8 · ieprcard_local</text>
+
+    <rect x="196" y="820" width="1048" height="1" fill="#E2E8F0"/>
+    <text x="196" y="886" class="section">2. Instale o schema</text>
+    <text x="196" y="913" class="small muted">O assistente só instala em banco vazio. Se o nome ainda não existir, crie o banco e o usuário no Laragon ou no painel da hospedagem e volte para testar.</text>
+    <rect x="196" y="937" width="1048" height="58" rx="8" fill="#FFFBEB" stroke="#FDE68A"/>
+    <text x="216" y="962" class="small amber" font-weight="600">Segurança e dados</text>
+    <text x="216" y="984" class="tiny muted">Credenciais ficam em arquivo privado fora de public/. A instalação não altera nem apaga tabelas já existentes.</text>
+
+    <rect x="160" y="1020" width="1120" height="1" fill="#DCE3EC"/>
+    <text x="160" y="1054" class="tiny muted">Depois do banco: criar o superadmin e escolher Local Host ou Hospedado. Integrações opcionais são configuradas após entrar.</text>
+    <rect x="1057" y="1030" width="223" height="52" rx="9" fill="#1D4ED8"/>
+    <text x="1168" y="1062" text-anchor="middle" class="white" font-size="15" font-weight="650">Salvar e instalar schema</text>
+    <text x="160" y="1090" class="tiny muted">Teclado: foco visível · Erros explicam como corrigir · Senhas nunca são registradas em logs ou exibidas novamente.</text>
+  </main>
+  <rect x="160" y="1160" width="1120" height="1" fill="#DCE3EC"/>
+  <text x="160" y="1200" class="tiny muted" letter-spacing="1.5">VARIAÇÃO · APÓS LOGIN COMO SUPERADMIN</text>
+  <text x="160" y="1242" class="title">Configurações da instalação</text>
+  <text x="160" y="1270" class="body muted">O estado da conexão pode ser verificado e credenciais atualizadas sem exibir a senha salva.</text>
+  <rect x="160" y="1300" width="1120" height="252" rx="14" class="card"/>
+  <text x="192" y="1340" class="section">Banco de dados</text>
+  <rect x="192" y="1358" width="1056" height="46" rx="8" fill="#F0FDF4" stroke="#BBF7D0"/>
+  <circle cx="215" cy="1381" r="8" fill="#166534"/>
+  <text x="235" y="1386" class="small green" font-weight="650">Conectado · MySQL 8 · ieprcard_local · 127.0.0.1:3306 · arquivo privado da instalação</text>
+  <text x="192" y="1440" class="label">SERVIDOR / HOST</text>
+  <rect x="192" y="1451" width="264" height="40" rx="7" class="field"/><text x="207" y="1477" class="small">127.0.0.1</text>
+  <text x="476" y="1440" class="label">PORTA</text>
+  <rect x="476" y="1451" width="120" height="40" rx="7" class="field"/><text x="491" y="1477" class="small">3306</text>
+  <text x="616" y="1440" class="label">BANCO</text>
+  <rect x="616" y="1451" width="236" height="40" rx="7" class="field"/><text x="631" y="1477" class="small">ieprcard_local</text>
+  <text x="872" y="1440" class="label">USUÁRIO</text>
+  <rect x="872" y="1451" width="190" height="40" rx="7" class="field"/><text x="887" y="1477" class="small">ieprcard_app</text>
+  <text x="1082" y="1440" class="label">NOVA SENHA</text>
+  <rect x="1082" y="1451" width="166" height="40" rx="7" class="field"/><text x="1097" y="1477" class="tiny muted">••••••••</text>
+  <rect x="192" y="1504" width="176" height="36" rx="7" fill="#fff" stroke="#1D4ED8"/><text x="280" y="1528" text-anchor="middle" class="tiny blue" font-weight="650">Testar conexão</text>
+  <rect x="1068" y="1504" width="180" height="36" rx="7" fill="#1D4ED8"/><text x="1158" y="1528" text-anchor="middle" class="tiny white" font-weight="650">Aplicar alteração</text>
+  <rect x="160" y="1570" width="1120" height="58" rx="8" fill="#FFFBEB" stroke="#FDE68A"/>
+  <text x="180" y="1594" class="tiny amber" font-weight="650">Trocar o destino não copia dados e pode desconectar esta instalação.</text>
+  <text x="180" y="1614" class="tiny muted">Para mover SQLite → MySQL, use a migração. Backups, IA/WhatsApp, domínios e MCP continuam em suas telas próprias.</text>
+</svg>

@@ -2,6 +2,8 @@
 
 Esta configuração global é exclusiva do superadmin e define se a instalação atende vários clientes pela internet ou uma única empresa no ambiente Local Host. O contrato técnico está em [ADR-0003](../adr/0003-multi-tenancy-por-linha.md).
 
+A conexão PDO necessária para chegar ao login é configurada no assistente pré-login descrito em [Instalação inicial do banco](initial-setup-database.md). O menu **Instalação** também apresenta a configuração autenticada e a fonte ativa da conexão; senha nunca é exibida. A conexão do banco é infraestrutura da aplicação, independente da escolha de perfil abaixo.
+
 ## Escolher o modo
 
 - **Hospedado:** use para sistema publicado em hospedagem compartilhada ou VPS. Informe o hostname da plataforma e o domínio base usado nos subdomínios. Cada Sede continua podendo cadastrar domínio próprio pela tela **Domínios próprios**, sujeita a prova DNS e HTTPS.

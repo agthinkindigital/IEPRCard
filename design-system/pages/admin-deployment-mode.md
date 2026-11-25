@@ -2,7 +2,7 @@
 
 ## Referências
 
-O mockup [`admin-deployment-mode-mockup.svg`](../mockups/admin-deployment-mode-mockup.svg) e o [guia funcional](../../docs/userguide/admin-deployment-mode.md) apresentam a configuração global do perfil Hospedado ou Local Host. As regras de roteamento e isolamento estão em [ADR-0003](../../docs/adr/0003-multi-tenancy-por-linha.md); compatibilidade e requisitos operacionais permanecem em [ADR-0012](../../docs/adr/0012-ci-deploy-e-backup.md).
+O mockup [`admin-deployment-mode-mockup.svg`](../mockups/admin-deployment-mode-mockup.svg) e o [guia funcional](../../docs/userguide/admin-deployment-mode.md) apresentam a configuração global do perfil Hospedado ou Local Host. A configuração do banco antes do login e sua configuração autenticada foram aprovadas e estão pendentes na [Issue #102](https://github.com/agthinkindigital/IEPRCard/issues/102); seu fluxo está em [configuração inicial do banco](initial-setup-database.md). As regras de roteamento e isolamento estão em [ADR-0003](../../docs/adr/0003-multi-tenancy-por-linha.md); compatibilidade e requisitos operacionais permanecem em [ADR-0012](../../docs/adr/0012-ci-deploy-e-backup.md).
 
 ## Estrutura e estados
 

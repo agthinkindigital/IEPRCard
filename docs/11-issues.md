@@ -25,6 +25,8 @@
 * **Descrição:** Serviço e script CLI transferem as tabelas SQLite para MySQL/MariaDB com verificação de integridade. A interface aprovada permite pré-verificar, enfileirar e acompanhar o worker sem repetir a lógica de migração.
 * **Critério de Aceite:** Migrar o fixture de 1.000 registros em menos de 5 segundos no ambiente de referência, com contagens e checksums idênticos, chaves estrangeiras válidas e rollback integral se a transferência falhar.
 
+* **ISSUE-004A: Assistente de instalação e configuração MySQL/MariaDB** — mockup e guia aprovados em 2026-11-25; implementação aguardando na [GitHub #102](https://github.com/agthinkindigital/IEPRCard/issues/102). O instalador pré-login deve testar conexão a banco já provisionado e instalar o schema versionado somente se vazio; após login, o superadmin pode testar/atualizar credenciais sem revelá-las. Contrato de segurança e configuração fica no [ADR-0002](adr/0002-pdo-dual-sqlite-mysql.md), e o fluxo está no [guia de instalação](userguide/initial-setup-database.md).
+
 
 
 ### ÉPICO 2: Multi-Tenancy, Domínios, Subdomínios e Permissões (Req 03, 04, 05, 12, 13)
