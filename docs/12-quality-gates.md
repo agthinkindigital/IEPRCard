@@ -14,7 +14,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 * [x] Suíte `TDD-02` passou no CI SQLite/MySQL/MariaDB: [run 45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 * [x] Isolamento por tenant/unidade e negação de acesso por ID adulterado passaram em testes de escopo e rotas HTTP no CI [45198416904](https://github.com/agthinkindigital/IEPRCard/actions/runs/45198416904).
 * [x] Suporte remoto MCP exclusivo do superadmin: grants de 30 min a 24 h, alvos congelados e publicação apenas em `DEV`; revisão final aprovada na [#89](https://github.com/agthinkindigital/IEPRCard/issues/89), com CI MySQL 8.4, MariaDB 10.11 e PDF no run [45395042975](https://github.com/agthinkindigital/IEPRCard/actions/runs/45395042975).
-* [ ] Definir se `PROD` deve exigir aprovação formal além de PR + CI. A branch está protegida e o mantenedor revisa a promoção; a quantidade mínima de aprovações formais segue pendente.
+* [x] Promoções para `PROD` usam PR, CI obrigatório e revisão manual do mantenedor antes do merge. A proteção exige PR, checks estritos e se aplica a administradores; há um único colaborador no repositório, então o GitHub não exige aprovação formal de outra conta. A regra de promoção está em `AGENTS.md`.
 
 
 
@@ -36,7 +36,7 @@ O agente só tem permissão para avançar da Fase $N$ para a Fase $N+1$ quando t
 * [x] `TDD-07`, incluindo `db.inspect`, passou na suíte CI SQLite/MySQL/MariaDB e no benchmark PDF: [run 45207558966](https://github.com/agthinkindigital/IEPRCard/actions/runs/45207558966), commit `39bc8b6`.
 * [x] O runtime registra `system.read`, `telemetry.read` e `db.inspect`; o teste HTTP da #88 cobre escopo, schema/drift estrutural e ausência de mutação. Cliente externo oficial `mcp==2.3.0` completou descoberta e chamadas read-only com OAuth client credentials em SQLite isolado; credencial limitada não descobriu nem executou `telemetry.read`. Evidência e limite do cliente TypeScript estão na [Issue #90](https://github.com/agthinkindigital/IEPRCard/issues/90). Essa prova cobre somente a superfície read-only atual.
 * [x] Revisão do mantenedor para grants e publicação limitada a `DEV`, conforme [#89](https://github.com/agthinkindigital/IEPRCard/issues/89); CI oficial passou no run [45395042975](https://github.com/agthinkindigital/IEPRCard/actions/runs/45395042975). `design.write`, SQL arbitrário, escrita irrestrita no filesystem e `code.patch` genérico seguem fora do escopo.
-* [ ] Definir se `PROD` deve exigir aprovação formal além de PR + CI; a quantidade mínima de aprovações segue pendente da política de promoção.
+* A política de promoção para `PROD` é definida no GATE 2 e se aplica também a este gate.
 * [ ] Demonstrar RPO ≤ 1 h e RTO ≤ 4 h para snapshot/restauração isolada no perfil contratado, conforme [#84](https://github.com/agthinkindigital/IEPRCard/issues/84) e [#85](https://github.com/agthinkindigital/IEPRCard/issues/85).
 
 

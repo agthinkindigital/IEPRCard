@@ -1,6 +1,6 @@
 # Instruções do repositório
 
-- Trabalhe na branch `DEV`. `PROD` é estável: não faça push direto; promova apenas mudanças verificadas e revisadas de `DEV`.
+- Trabalhe na branch `DEV`. `PROD` é estável: não faça push direto; promova apenas mudanças verificadas e revisadas de `DEV`, por PR com CI obrigatório e revisão manual do mantenedor antes do merge. O repositório tem um único colaborador; não exige aprovação formal de outra conta no GitHub.
 - Use GitHub Issues como tracker. Não mantenha backlog paralelo em arquivos locais.
 - Antes de planejar ou alterar arquitetura, consulte o [SAD](docs/architecture/SAD.md), as [regras de negócio](docs/01-regras-de-negocio.md) e os ADRs relevantes.
 - O [roadmap existente](docs/14-roadmap.md), o [backlog](docs/11-issues.md) e os [quality gates](docs/12-quality-gates.md) são canônicos. Atualize-os no lugar; não crie cópias de roadmap ou backlog.
