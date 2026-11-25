@@ -27,7 +27,7 @@
 - Métricas operacionais de lote registram demanda diária, tempo em fila, duração, throughput, falhas/retries e saturação. `duracao_media_ms` usa média ponderada de milissegundos por registro processado. O painel mostra lote recomendado e pico previsto sobre janela X configurável; o cálculo inicial usa P95 dos picos diários, com 30 dias propostos como padrão e histórico insuficiente sinalizado abaixo de 7 dias.
 - O Administrador edita lote e pico manualmente. A aplicação salva uma versão pendente; a ação `Reiniciar worker e aplicar` solicita a ativação. Em hospedagem compartilhada, a próxima execução agendada do worker aplica a versão; lotes em andamento mantêm a versão original. Ver ADR-0012 para o perfil de execução.
 - Alertas iniciais: cota > 80%, DLQ > 0, 5xx sustentado, WebP > 80 ms, disco > 80%, trial expirando, token de suporte utilizado.
-- OpenTelemetry fica como evolução; a correlação HTTP está na #94, e a E08 continua cobrindo somente os fluxos assíncronos implementados, sem afirmar rastreabilidade de outbox ou de integrações futuras.
+- OpenTelemetry fica como evolução; a correlação HTTP está na #94, e o recorte encerrado da E08 está limitado aos fluxos assíncronos implementados, sem afirmar rastreabilidade de outbox ou de integrações futuras.
 
 ## Estado de implementação
 
