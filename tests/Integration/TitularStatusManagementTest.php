@@ -127,7 +127,7 @@ foreach (tenantTestConnections() as $driver => $pdo) {
             . json_encode([$staleWorker, $raceRequest, $raceHolder]));
     }
 
-    if (!function_exists('imagecreatetruecolor') || !function_exists('imagepng')) {
+    if (!function_exists('imagecreatetruecolor') || !function_exists('imagepng') || !function_exists('imagejpeg')) {
         throw new RuntimeException('GD image support is required for individual photo management.');
     }
     $photoHolderInsert = $pdo->prepare(
@@ -160,17 +160,30 @@ foreach (tenantTestConnections() as $driver => $pdo) {
         || isset($photoResult['public_url']) || ($photoResult['updated'] ?? null) !== true) {
         throw new RuntimeException($driver . ': an individual photo must be stored privately and linked to the scoped holder.');
     }
+    $jpegImage = imagecreatetruecolor(3, 2);
+    ob_start();
+    imagejpeg($jpegImage, null, 85);
+    $jpegBytes = (string) ob_get_clean();
+    imagedestroy($jpegImage);
+    titularManagementReplacePhoto($pdo, $account['context'], $account['identity'], $photoHolderId, $jpegBytes);
+    $storedPhotoQuery->execute(['id' => $photoHolderId, 'tenant' => $fixture['tenant_id']]);
+    $jpegPhotoKey = $storedPhotoQuery->fetchColumn();
+    $jpegPhotoPath = is_string($jpegPhotoKey) ? titularManagementResolvePhotoPath($fixture['tenant_id'], $jpegPhotoKey) : '';
+    if (!is_string($jpegPhotoKey) || preg_match('~^private://' . $fixture['tenant_id'] . '/[a-f0-9]{48}\.jpg$~D', $jpegPhotoKey) !== 1
+        || !is_file($jpegPhotoPath) || getimagesize($jpegPhotoPath)['mime'] !== 'image/jpeg' || is_file($storedPhotoPath)) {
+        throw new RuntimeException($driver . ': an individual JPEG photo must be accepted, privately stored, and replace the previous image.');
+    }
     try {
         titularManagementReplacePhoto($pdo, $account['context'], $account['identity'], $photoHolderId, 'not an image');
         throw new RuntimeException($driver . ': invalid photo bytes must be rejected.');
     } catch (DomainException $exception) {
         if ($exception->getMessage() !== 'TITULAR_PHOTO_INVALID') throw $exception;
     }
-    if (!is_file($storedPhotoPath)) {
+    if (!is_file($jpegPhotoPath)) {
         throw new RuntimeException($driver . ': rejecting an invalid replacement must preserve the current photo.');
     }
     titularManagementReplacePhoto($pdo, $account['context'], $account['identity'], $photoHolderId, $pngBytes);
-    if (is_file($storedPhotoPath)) {
+    if (is_file($jpegPhotoPath)) {
         throw new RuntimeException($driver . ': replacing a photo must remove the previous private file.');
     }
 }

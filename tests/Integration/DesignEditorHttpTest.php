@@ -235,6 +235,31 @@ try {
     if ($designEditorHttpStatus !== 200 || !str_starts_with((string) $designEditorHttpBody, "\x89PNG\r\n\x1a\n")) {
         throw new RuntimeException('Private backgrounds must stream through an authenticated tenant-scoped route.');
     }
+    if (!function_exists('imagejpeg')) throw new RuntimeException('GD JPEG support is required for design background uploads.');
+    $designEditorHttpJpeg = imagecreatetruecolor(32, 32);
+    ob_start();
+    imagejpeg($designEditorHttpJpeg, null, 85);
+    $designEditorHttpJpegBytes = (string) ob_get_clean();
+    imagedestroy($designEditorHttpJpeg);
+    [$designEditorHttpStatus] = designEditorHttpMultipartRequest($designEditorHttpUrl, $designEditorHttpCookie, $designEditorHttpHost, [
+        'csrf_token' => $designEditorHttpCsrf, 'nome_layout' => 'Rascunho JPEG validado',
+        'mapa_campos_json' => $designEditorHttpDefaults, 'mapeamento_fixo_json' => $designEditorHttpMapping,
+        'fundo_frente_classificacao' => 'decorativo',
+    ], ['fundo_frente' => ['name' => 'card.jpg', 'mime' => 'image/jpeg', 'bytes' => $designEditorHttpJpegBytes]]);
+    if ($designEditorHttpStatus !== 303) throw new RuntimeException('A valid JPEG background must save and redirect.');
+    $designEditorHttpJpegQuery = $designEditorHttpCheck->prepare(
+        'SELECT bg_frente_url FROM designs_carteirinha WHERE tenant_id = :tenant AND nome_layout = :name LIMIT 1'
+    );
+    $designEditorHttpJpegQuery->execute(['tenant' => $designEditorHttpTenantId, 'name' => 'Rascunho JPEG validado']);
+    $designEditorHttpJpegKey = $designEditorHttpJpegQuery->fetchColumn();
+    $designEditorHttpJpegPath = is_string($designEditorHttpJpegKey)
+        ? $designEditorHttpPrivateRoot . DIRECTORY_SEPARATOR . $designEditorHttpTenantId . DIRECTORY_SEPARATOR . basename($designEditorHttpJpegKey)
+        : '';
+    if (!is_string($designEditorHttpJpegKey)
+        || preg_match('/^private:\/\/' . $designEditorHttpTenantId . '\/[a-f0-9]{48}\.jpg$/D', $designEditorHttpJpegKey) !== 1
+        || !is_file($designEditorHttpJpegPath) || getimagesize($designEditorHttpJpegPath)['mime'] !== 'image/jpeg') {
+        throw new RuntimeException('JPEG backgrounds must be validated by content and stored privately with the correct extension.');
+    }
     unset($designEditorHttpCheck);
     [$designEditorHttpStatus] = designEditorHttpRequest($designEditorHttpUrl . '?id=' . $designEditorHttpDraftId, $designEditorHttpCookie, $designEditorHttpHost, 'POST', http_build_query([
         'csrf_token' => $designEditorHttpCsrf, 'design_id' => $designEditorHttpDraftId,
@@ -294,7 +319,7 @@ try {
         'fundo_verso' => ['name' => 'bad.txt', 'mime' => 'text/plain', 'bytes' => 'not an image'],
     ]);
     $designEditorHttpStoredFiles = glob($designEditorHttpPrivateRoot . DIRECTORY_SEPARATOR . $designEditorHttpTenantId . DIRECTORY_SEPARATOR . '*') ?: [];
-    if ($designEditorHttpStatus !== 200 || !str_contains((string) $designEditorHttpBody, 'do verso deve ser PNG') || count($designEditorHttpStoredFiles) !== 1) {
+    if ($designEditorHttpStatus !== 200 || !str_contains((string) $designEditorHttpBody, 'do verso deve ser PNG, JPEG ou WebP') || count($designEditorHttpStoredFiles) !== 2) {
         throw new RuntimeException('A valid front upload must not be orphaned if the back upload is invalid.');
     }
     $designEditorHttpForeignHost = $designEditorHttpForeignSlug . '.ieprcard.test';
